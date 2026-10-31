@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Doc2App — Academic Mathematics Vector Logo">
+  <defs>
+    <linearGradient id="monoBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090D16" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="monoStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#E2E8F0" />
+      <stop offset="100%" stop-color="#94A3B8" />
+    </linearGradient>
+    <linearGradient id="monoSubtle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Minimalist Academic Squircle / Medallion -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#monoBg)" stroke="url(#monoStroke)" stroke-width="6" />
+  <rect x="34" y="34" width="444" height="444" rx="96" fill="none" stroke="#334155" stroke-width="1.75" stroke-dasharray="6 6" />
+
+  <!-- Subtle Cartesian Coordinate Grid & Golden Ratio Circle -->
+  <g stroke="#1E293B" stroke-width="1.5" fill="none">
+    <line x1="96" y1="236" x2="416" y2="236" />
+    <line x1="256" y1="76" x2="256" y2="376" />
+    <circle cx="256" cy="236" r="118" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 4" />
+    <circle cx="256" cy="236" r="76" stroke="#1E293B" stroke-width="1.2" />
+  </g>
+
+  <!-- Coordinate Axis Arrowheads -->
+  <path d="M 408 230 L 420 236 L 408 242" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 250 84 L 256 72 L 262 84" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Left Wing: Minimalist Academic Document Page (Doc) -->
+  <g fill="none" stroke="url(#monoStroke)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 126 118 H 214 L 244 148 V 334 C 244 345 235 354 224 354 H 126 C 115 354 106 345 106 334 V 138 C 106 127 115 118 126 118 Z" fill="#0F172A" fill-opacity="0.85" stroke-width="7" />
+    <!-- Folded Document Corner -->
+    <path d="M 212 118 V 148 H 242" stroke-width="5.5" />
+    <!-- Mathematical Text Lines on Document -->
+    <line x1="132" y1="168" x2="188" y2="168" stroke="#CBD5E1" stroke-width="4.5" />
+    <line x1="132" y1="196" x2="210" y2="196" stroke="#94A3B8" stroke-width="4" />
+    <!-- Mini Square Root Symbol on Document -->
+    <path d="M 132 234 L 142 234 L 152 252 L 168 218 H 210" stroke="#F8FAFC" stroke-width="4.5" />
+    <line x1="132" y1="282" x2="196" y2="282" stroke="#94A3B8" stroke-width="4" />
+    <line x1="132" y1="310" x2="174" y2="310" stroke="#64748B" stroke-width="4" />
+  </g>
+
+  <!-- Right Wing: Digital App Vector Nodes & Isometric Cube Grid (App) -->
+  <g fill="none" stroke="url(#monoStroke)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- App Module Cards -->
+    <rect x="276" y="118" width="54" height="54" rx="12" fill="#0F172A" stroke-width="6" />
+    <rect x="348" y="118" width="54" height="54" rx="12" fill="#F8FAFC" stroke-width="6" />
+    <rect x="276" y="190" width="54" height="54" rx="12" fill="#0F172A" stroke-width="6" />
+    <rect x="348" y="190" width="54" height="54" rx="12" fill="#0F172A" stroke-width="6" />
+
+    <!-- Math glyphs inside App Modules -->
+    <!-- Sigma ∑ in Top-Left Module -->
+    <path d="M 313 133 H 293 L 305 145 L 293 157 H 313" stroke="#F8FAFC" stroke-width="3.8" />
+    <!-- Pi π in Top-Right Inverted Module -->
+    <path d="M 363 136 H 387 M 369 136 V 156 M 381 136 V 154 C 381 156 383 157 385 157" stroke="#0F172A" stroke-width="4" />
+    <!-- Delta Δ in Bottom-Left Module -->
+    <path d="M 303 204 L 291 228 H 315 Z" stroke="#E2E8F0" stroke-width="3.6" />
+    <!-- Function Curve in Bottom-Right Module -->
+    <path d="M 360 226 Q 375 198 390 218" stroke="#F8FAFC" stroke-width="3.8" />
+
+    <!-- Lower Right Analytic Wave & Vector Node Connection -->
+    <path d="M 276 286 C 304 252, 332 320, 362 284 C 378 265, 392 274, 404 262" stroke="#E2E8F0" stroke-width="5.5" />
+    <circle cx="276" cy="286" r="6" fill="#0F172A" stroke="#FFFFFF" stroke-width="3.5" />
+    <circle cx="348" cy="296" r="6" fill="#0F172A" stroke="#FFFFFF" stroke-width="3.5" />
+    <circle cx="404" cy="262" r="7" fill="#FFFFFF" stroke="#0F172A" stroke-width="3" />
+
+    <!-- App Terminal Base Bar -->
+    <line x1="276" y1="336" x2="368" y2="336" stroke="#CBD5E1" stroke-width="5" />
+    <circle cx="394" cy="336" r="5" fill="#F8FAFC" />
+  </g>
+
+  <!-- Centerpiece: Sculptural Mathematical Integral (∫) Bridging Doc → App -->
+  <g>
+    <!-- Backdrop Halo for Contrast -->
+    <path d="M 284 96 C 260 96, 252 118, 252 156 L 252 308 C 252 346, 244 368, 220 368" fill="none" stroke="#090D16" stroke-width="24" stroke-linecap="round" />
+    <!-- Main Monochromatic Integral Curve -->
+    <path d="M 286 96 C 260 96, 252 118, 252 158 L 252 306 C 252 346, 244 368, 218 368" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" />
+    <!-- Integral Terminals -->
+    <circle cx="288" cy="96" r="7.5" fill="#FFFFFF" />
+    <circle cx="216" cy="368" r="7.5" fill="#FFFFFF" />
+    <!-- Center Transformation Ring (The '2' / Morph Node) -->
+    <circle cx="252" cy="232" r="16" fill="#0F172A" stroke="#FFFFFF" stroke-width="6" />
+    <circle cx="252" cy="232" r="5" fill="#FFFFFF" />
+  </g>
+
+  <!-- Minimalist Academic Typography Banner: DOC2APP -->
+  <g transform="translate(256, 424)">
+    <text x="0" y="0" text-anchor="middle" fill="#FFFFFF" font-family="'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif" font-size="42" font-weight="900" letter-spacing="8">
+      DOC<tspan fill="#94A3B8">2</tspan>APP
+    </text>
+    <text x="0" y="28" text-anchor="middle" fill="#64748B" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="13.5" font-weight="700" letter-spacing="5">
+      ∫ ACADEMIC MATH STUDIO ∑
+    </text>
+  </g>
+</svg>

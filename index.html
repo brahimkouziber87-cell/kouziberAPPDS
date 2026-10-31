@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Filter out non-fatal WebSocket / HMR messages in AI Studio preview sandbox
+      (function() {
+        var isWsError = function(val) {
+          if (!val) return false;
+          var str = '';
+          try {
+            if (typeof val === 'string') str = val;
+            else if (val.message) str = val.message;
+            else if (val.stack) str = val.stack;
+            else str = String(val);
+          } catch (e) {
+            return false;
+          }
+          return (
+            str.indexOf('WebSocket') !== -1 ||
+            str.indexOf('websocket') !== -1 ||
+            str.indexOf('[vite]') !== -1 ||
+            str.indexOf('closed without opened') !== -1
+          );
+        };
+
+        var origError = console.error;
+        console.error = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isWsError(arguments[i])) return;
+          }
+          return origError.apply(console, arguments);
+        };
+
+        var origWarn = console.warn;
+        console.warn = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isWsError(arguments[i])) return;
+          }
+          return origWarn.apply(console, arguments);
+        };
+
+        window.onerror = function(msg, url, line, col, error) {
+          if (isWsError(msg) || isWsError(error) || (url && url.indexOf('@vite/client') !== -1)) {
+            return true;
+          }
+        };
+
+        window.addEventListener('error', function(event) {
+          if (isWsError(event.message) || isWsError(event.error) || (event.filename && event.filename.indexOf('@vite/client') !== -1)) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isWsError(event.reason)) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        // Intercept Vite HMR WebSocket in preview iframe so it never fires 'WebSocket closed without opened'
+        if (typeof window.WebSocket !== 'undefined') {
+          var OrigWebSocket = window.WebSocket;
+          var MockWebSocket = function(url, protocols) {
+            var isViteHmr =
+              protocols === 'vite-hmr' ||
+              (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1) ||
+              (typeof url === 'string' && url.indexOf('vite-hmr') !== -1);
+
+            if (isViteHmr) {
+              return {
+                url: url || '',
+                protocol: 'vite-hmr',
+                readyState: 1, // OPEN
+                bufferedAmount: 0,
+                extensions: '',
+                binaryType: 'blob',
+                onopen: null,
+                onerror: null,
+                onclose: null,
+                onmessage: null,
+                addEventListener: function() {},
+                removeEventListener: function() {},
+                dispatchEvent: function() { return true; },
+                send: function() {},
+                close: function() {}
+              };
+            }
+
+            var ws = protocols !== undefined ? new OrigWebSocket(url, protocols) : new OrigWebSocket(url);
+            var hasOpened = false;
+            ws.addEventListener('open', function() {
+              hasOpened = true;
+            });
+
+            var origAddEventListener = ws.addEventListener;
+            ws.addEventListener = function(type, listener, options) {
+              if (type === 'close') {
+                var safeClose = function() {
+                  if (!hasOpened) return;
+                  try {
+                    return listener.apply(this, arguments);
+                  } catch (err) {}
+                };
+                return origAddEventListener.call(this, type, safeClose, options);
+              }
+              if (type === 'error') {
+                var safeError = function() {
+                  if (!hasOpened) return;
+                  try {
+                    return listener.apply(this, arguments);
+                  } catch (err) {}
+                };
+                return origAddEventListener.call(this, type, safeError, options);
+              }
+              return origAddEventListener.apply(this, arguments);
+            };
+            return ws;
+          };
+          MockWebSocket.prototype = OrigWebSocket.prototype;
+          MockWebSocket.CONNECTING = OrigWebSocket.CONNECTING;
+          MockWebSocket.OPEN = OrigWebSocket.OPEN;
+          MockWebSocket.CLOSING = OrigWebSocket.CLOSING;
+          MockWebSocket.CLOSED = OrigWebSocket.CLOSED;
+          window.WebSocket = MockWebSocket;
+        }
+      })();
+    </script>
+    <meta name="theme-color" content="#090d16" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="رياضيات" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/prof-kouziber-logo.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
+    <title>منصة الهندسة البيداغوجية والتقويم التربوي - الرياضيات | Prof Kouziber Brahim</title>
+    <meta name="description" content="منصة رقمية متكاملة لإعداد الفروض المحروسة والمنزلية وسلاسل التمارين وشبكات التقويم والجذاذات التربوية لمادة الرياضيات — بإشراف الأستاذ إبراهيم كوزيبر (Prof Kouziber Brahim)." />
+    <meta property="og:title" content="منصة الهندسة البيداغوجية والتقويم التربوي - الرياضيات | Prof Kouziber Brahim" />
+    <meta property="og:description" content="منصة رقمية متكاملة لإعداد الفروض المحروسة والمنزلية وسلاسل التمارين وشبكات التقويم والجذاذات التربوية لمادة الرياضيات — بإشراف الأستاذ إبراهيم كوزيبر (Prof Kouziber Brahim)." />
+    <meta property="og:image" content="/prof-kouziber-logo.svg" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Architects+Daughter&family=Aref+Ruqaa+Ink:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@600;700;800&family=Gulzar&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Kalam:wght@400;700&family=Katibeh&family=Kufam:wght@400;600;700&family=Lateef:wght@400;600;700&family=Marhey:wght@400;600;700&family=Mirza:wght@400;600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Patrick+Hand&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Rakkas&family=Reem+Kufi:wght@400;600;700&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-600 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

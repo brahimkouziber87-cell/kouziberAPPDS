@@ -1,0 +1,683 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --surface-canvas: #f1f5f9;
+    --surface-card: #ffffff;
+    --surface-elevated: #f8fafc;
+    --border-hairline: #e2e8f0;
+    --accent-navy: #0f172a;
+    --accent-sky: #0284c7;
+    --accent-cyan: #06b6d4;
+    --accent-teal: #0d9488;
+    --accent-ice: #e0f2fe;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans Arabic', 'Cairo', 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--surface-canvas);
+    color: #0f172a;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  pre, code, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* أشرطة تمرير متناسقة وأنيقة للوحات الدروس والأرشيف */
+.studio-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.studio-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.studio-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+}
+.studio-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* خلفية مسرح المعاينة الورقية بألوان باردة ونمط شبكي رياضي هادئ ودقيق (A4 Mathematical Coordinate Grid) */
+.a4-studio-backdrop {
+  background-color: #e2e8f0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+    linear-gradient(to right, rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+}
+
+/* خلفية الواجهة العامة: نمط شبكي بارد هادئ مع رموز رياضية شفافة (Calm Cool Mathematical Canvas) */
+.math-canvas-cool {
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(13, 148, 136, 0.04) 0%, transparent 40%),
+    linear-gradient(to right, rgba(203, 213, 225, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 213, 225, 0.4) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+}
+
+/* خلفية الشريط العلوي الرصين بألوان هادئة عالية المقروئية والراحة البصرية */
+.cool-header-gradient {
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 50%, #111e38 100%);
+  box-shadow: 0 4px 20px -2px rgba(2, 6, 23, 0.45), inset 0 -1px 0 0 rgba(56, 189, 248, 0.18);
+}
+
+/* تأثيرات التمرير المتناسقة والرصينة لجميع أزرار الشريط العلوي */
+.top-navigation-header button {
+  transition:
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.top-navigation-header button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.35);
+}
+
+.top-navigation-header button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* أزرار وحبوب الرموز الرياضية بالألوان الباردة */
+.math-symbol-btn {
+  font-family: 'STIX Two Text', 'Cambria Math', 'KaTeX_Math', 'Times New Roman', serif;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.math-symbol-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(6, 182, 212, 0.18);
+}
+
+.math-symbol-btn:active {
+  transform: translateY(0);
+}
+
+/* توهج أزرق سماوي بارد هادئ */
+.glow-cool-cyan {
+  box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.25);
+}
+
+/* أنماط الخطوط الأكاديمية وخطوط الكتابة باليد للوثيقة المطبوعة والمعاينة */
+.doc-font-academic,
+.doc-font-academic *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'STIX Two Text', 'Amiri', Georgia, serif !important;
+}
+
+.doc-font-modern,
+.doc-font-modern *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.doc-font-official,
+.doc-font-official *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'Cairo', 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* 1. خط الرقعة اليدوي للأستاذ (Aref Ruqaa / Caveat) */
+.doc-font-handwritten,
+.doc-font-handwritten *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'Aref Ruqaa', 'Caveat', 'Kalam', 'Amiri', cursive, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* 2. خط الكراسة والدفتر المدرسي (Marhey / Patrick Hand) */
+.doc-font-notebook,
+.doc-font-notebook *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'Marhey', 'Patrick Hand', 'Kalam', cursive, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* 3. خط المخطوط المغربي والرقعة الجريئة (Rakkas / Kalam) */
+.doc-font-maghribi,
+.doc-font-maghribi *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'Rakkas', 'Aref Ruqaa', 'Kalam', cursive, serif !important;
+  letter-spacing: 0.015em;
+}
+
+/* 4. خط السبورة الهندسي الحر (Lateef / Architects Daughter) */
+.doc-font-board,
+.doc-font-board *:not(.font-mono):not(code):not(pre):not(.katex):not(.katex *):not(.katex-inline-math):not(.katex-display-block) {
+  font-family: 'Lateef', 'Architects Daughter', 'Caveat', cursive, sans-serif !important;
+  font-size: 1.04em;
+}
+
+/* ============================================================================
+   أنماط الخطوط العربية التقليدية للعناوين والترويسات (الديواني، الثلث، الرقعة، الكوفي، المغربي)
+   مع أولوية عالية لتتجاوز خط المتن العام عند اعتمادها في العناوين النهائية
+   ============================================================================ */
+
+/* 1. خط الثلث السلطاني والجليل (Thuluth Royal) */
+.calligraphy-title-thuluth,
+.doc-font-academic .calligraphy-title-thuluth,
+.doc-font-modern .calligraphy-title-thuluth,
+.doc-font-official .calligraphy-title-thuluth,
+.doc-font-handwritten .calligraphy-title-thuluth,
+.doc-font-notebook .calligraphy-title-thuluth,
+.doc-font-maghribi .calligraphy-title-thuluth,
+.doc-font-board .calligraphy-title-thuluth {
+  font-family: 'DecoType Thuluth', 'Katibeh', 'Mirza', 'Amiri', serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "swsh" 1 !important;
+  letter-spacing: 0.01em;
+}
+
+/* 2. خط الديواني الانسيابي الهمايوني (Diwani Sultani) */
+.calligraphy-title-diwani,
+.doc-font-academic .calligraphy-title-diwani,
+.doc-font-modern .calligraphy-title-diwani,
+.doc-font-official .calligraphy-title-diwani,
+.doc-font-handwritten .calligraphy-title-diwani,
+.doc-font-notebook .calligraphy-title-diwani,
+.doc-font-maghribi .calligraphy-title-diwani,
+.doc-font-board .calligraphy-title-diwani {
+  font-family: 'Diwani Letter', 'Aldhabi', 'Gulzar', 'Noto Nastaliq Urdu', 'Aref Ruqaa Ink', cursive, serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "swsh" 1 !important;
+  line-height: 1.85 !important;
+}
+
+/* 3. خط الديواني الجلي المزخرف (Diwani Jali Ornamental) */
+.calligraphy-title-diwani-jali,
+.doc-font-academic .calligraphy-title-diwani-jali,
+.doc-font-modern .calligraphy-title-diwani-jali,
+.doc-font-official .calligraphy-title-diwani-jali,
+.doc-font-handwritten .calligraphy-title-diwani-jali,
+.doc-font-notebook .calligraphy-title-diwani-jali,
+.doc-font-maghribi .calligraphy-title-diwani-jali,
+.doc-font-board .calligraphy-title-diwani-jali {
+  font-family: 'Diwani Bent', 'Noto Nastaliq Urdu', 'Gulzar', 'Aref Ruqaa Ink', 'Mirza', cursive, serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "swsh" 1, "salt" 1 !important;
+  line-height: 1.95 !important;
+}
+
+/* 4. خط الرقعة الديواني بالحبر الأصيل (Ruqaa Ink Calligraphic) */
+.calligraphy-title-ruqaa-ink,
+.doc-font-academic .calligraphy-title-ruqaa-ink,
+.doc-font-modern .calligraphy-title-ruqaa-ink,
+.doc-font-official .calligraphy-title-ruqaa-ink,
+.doc-font-handwritten .calligraphy-title-ruqaa-ink,
+.doc-font-notebook .calligraphy-title-ruqaa-ink,
+.doc-font-maghribi .calligraphy-title-ruqaa-ink,
+.doc-font-board .calligraphy-title-ruqaa-ink {
+  font-family: 'Aref Ruqaa Ink', 'Aref Ruqaa', cursive, serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1 !important;
+  line-height: 1.65 !important;
+}
+
+/* 5. الخط المغربي المبسوط والثلث الأندلسي (Maghribi Andalusi) */
+.calligraphy-title-maghribi,
+.doc-font-academic .calligraphy-title-maghribi,
+.doc-font-modern .calligraphy-title-maghribi,
+.doc-font-official .calligraphy-title-maghribi,
+.doc-font-handwritten .calligraphy-title-maghribi,
+.doc-font-notebook .calligraphy-title-maghribi,
+.doc-font-maghribi .calligraphy-title-maghribi,
+.doc-font-board .calligraphy-title-maghribi {
+  font-family: 'Rakkas', 'Mirza', 'Aref Ruqaa', serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1 !important;
+  letter-spacing: 0.015em;
+}
+
+/* 6. الخط الكوفي المصحفي والهندسي (Kufi Geometric) */
+.calligraphy-title-kufi,
+.doc-font-academic .calligraphy-title-kufi,
+.doc-font-modern .calligraphy-title-kufi,
+.doc-font-official .calligraphy-title-kufi,
+.doc-font-handwritten .calligraphy-title-kufi,
+.doc-font-notebook .calligraphy-title-kufi,
+.doc-font-maghribi .calligraphy-title-kufi,
+.doc-font-board .calligraphy-title-kufi {
+  font-family: 'Reem Kufi', 'Kufam', 'Monotype Koufi', sans-serif !important;
+  font-feature-settings: "liga" 1, "calt" 1 !important;
+  letter-spacing: 0.02em;
+}
+
+/* 7. خط النسخ الأميري السلطاني (Naskh Amiri Classic) */
+.calligraphy-title-naskh,
+.doc-font-academic .calligraphy-title-naskh,
+.doc-font-modern .calligraphy-title-naskh,
+.doc-font-official .calligraphy-title-naskh,
+.doc-font-handwritten .calligraphy-title-naskh,
+.doc-font-notebook .calligraphy-title-naskh,
+.doc-font-maghribi .calligraphy-title-naskh,
+.doc-font-board .calligraphy-title-naskh {
+  font-family: 'Scheherazade New', 'Amiri', 'Traditional Arabic', serif !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1 !important;
+  line-height: 1.7 !important;
+}
+
+/* شبكة الميزان النقطي للخط العربي (ميزان ابن مقلة الهندسي لمعاينة تناسق العناوين) */
+.calligraphy-mizan-grid {
+  background-image:
+    linear-gradient(to right, rgba(180, 83, 9, 0.11) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(180, 83, 9, 0.11) 1px, transparent 1px),
+    linear-gradient(to bottom, transparent 49%, rgba(217, 119, 6, 0.28) 50%, transparent 51%);
+  background-size: 14px 14px, 14px 14px, 100% 100%;
+}
+
+/* بطاقات الأشكال الهندسية والرسوم التوضيحية المدرجة */
+.inserted-figure-card {
+  cursor: pointer;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s ease;
+}
+
+.inserted-figure-card:hover {
+  transform: translateY(-2px) scale(1.018);
+  z-index: 15;
+}
+
+.inserted-figure-card:hover .inserted-figure-frame {
+  border-color: rgba(79, 70, 229, 0.55);
+  box-shadow:
+    0 14px 28px -6px rgba(15, 23, 42, 0.16),
+    0 6px 14px -4px rgba(79, 70, 229, 0.14);
+}
+
+.figure-drop-active {
+  border-color: #4f46e5 !important;
+  background-color: rgba(238, 242, 255, 0.75) !important;
+}
+
+/* أحجام خطوط الوثيقة */
+.doc-scale-compact {
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.doc-scale-normal {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.doc-scale-large {
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+
+/* تحسين عرض الصيغ والأسئلة في وضع التعديل المباشر */
+.editable-sheet [contenteditable="true"]:hover {
+  outline: 1px dashed #6366f1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.editable-sheet [contenteditable="true"]:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  background-color: rgba(238, 242, 255, 0.4);
+  border-radius: 4px;
+}
+
+/* تنسيق ورقة العمل - عمودي (Portrait) وأفقي (Landscape) */
+.sheet-portrait {
+  max-width: 56rem !important; /* ~896px A4 Portrait */
+  width: 100% !important;
+  min-height: 297mm;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sheet-landscape {
+  max-width: 78rem !important; /* ~1248px A4 Landscape */
+  width: 100% !important;
+  min-height: 210mm;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* تكييف التمارين والشبكات التفاعلية في الوضع الأفقي */
+.sheet-landscape .landscape-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+@page portrait-mode {
+  size: A4 portrait;
+  margin: 10mm 12mm;
+}
+
+@page landscape-mode {
+  size: A4 landscape;
+  margin: 8mm 12mm;
+}
+
+.page-portrait {
+  page: portrait-mode;
+}
+
+.page-landscape {
+  page: landscape-mode;
+}
+
+/* ============================================================================
+   خامات الورق الأكاديمي للمعاينة الحية (Paper Surface Textures)
+   ============================================================================ */
+.paper-surface-white {
+  background-color: #ffffff;
+}
+
+.paper-surface-millimeter {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(to right, rgba(14, 165, 233, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.09) 1px, transparent 1px),
+    linear-gradient(to right, rgba(14, 165, 233, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.18) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+}
+
+.paper-surface-seyes {
+  background-color: #fdfefe;
+  background-image:
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(to right, rgba(99, 102, 241, 0.14) 1px, transparent 1px);
+  background-size: 100% 32px, 100% 8px, 32px 100%;
+}
+
+.paper-surface-ivory {
+  background-color: #fcfaf2;
+}
+
+/* ============================================================================
+   قوالب محاكاة حزم LaTeX في المعاينة الحية (tcolorbox, fancyhdr, mdframed, bclogo)
+   ============================================================================ */
+.latex-skin-tcolorbox .avoid-break.border:not(.branch-themed-card) {
+  border-width: 2px !important;
+  border-color: #1e1b4b !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 3px 0 0 rgba(30, 27, 75, 0.12) !important;
+}
+
+.latex-skin-tcolorbox .avoid-break.border.branch-themed-card {
+  border-width: 2px !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 3px 0 0 rgba(15, 23, 42, 0.1) !important;
+}
+
+.print-exact-color {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.latex-skin-fancyhdr .avoid-break.border:not(.branch-themed-card) {
+  border-radius: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  border-top: 2px solid #0f172a !important;
+  border-bottom: 1px solid #475569 !important;
+}
+
+.latex-skin-mdframed .avoid-break.border:not(.branch-themed-card) {
+  border-radius: 0.5rem !important;
+  border-inline-start: 5px solid #0e7490 !important;
+  background-color: rgba(248, 250, 252, 0.85) !important;
+}
+
+.latex-skin-bclogo .avoid-break.border:not(.branch-themed-card) {
+  border-style: dashed !important;
+  border-width: 2px !important;
+  border-color: #b45309 !important;
+  border-radius: 1rem !important;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 9mm 11mm;
+  }
+
+  body.print-portrait,
+  body:not(.print-landscape) {
+    size: A4 portrait;
+  }
+
+  body.print-landscape {
+    size: A4 landscape;
+  }
+
+  body.print-landscape .sheet-landscape {
+    page: landscape-mode;
+  }
+
+  body.print-portrait .sheet-portrait {
+    page: portrait-mode;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* إلغاء قيود الارتفاع والتمرير والتكبير في حاويات المعاينة لضمان طباعة كافة الصفحات كاملة */
+  main,
+  section,
+  .a4-studio-backdrop,
+  .print-zoom-wrapper {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* نمط الطباعة الليزرية الاقتصادية بالأبيض والأسود عالي التباين */
+  body.print-mono-laser .print-sheet {
+    filter: grayscale(100%) contrast(112%) !important;
+  }
+
+  /* ضمان وضوح العناوين الملونة بخاصية background-clip: text عند الطباعة الورقية */
+  .print-sheet [style*="background-clip"],
+  .print-sheet [style*="-webkit-background-clip"] {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-image: none !important;
+  }
+
+  /* إزالة إطار التحرير المباشر عند الطباعة */
+  .editable-sheet,
+  .editable-sheet [contenteditable="true"] {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* ضبط الجداول لمنع انقسام الأسطر وتكرار ترويسة الجدول عند تعدد الصفحات */
+  .print-sheet table {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  .print-sheet thead {
+    display: table-header-group;
+  }
+
+  .print-sheet tfoot {
+    display: table-footer-group;
+  }
+
+  .print-sheet tr,
+  .print-sheet li,
+  .print-sheet .inserted-figure-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-sheet h1,
+  .print-sheet h2,
+  .print-sheet h3,
+  .print-sheet h4,
+  .print-sheet h5 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* عزل شهادة الاختبار التفاعلي عند طباعتها مباشرة من النافذة المنبثقة */
+  body.printing-quiz-report .print-sheet,
+  body.printing-quiz-report header,
+  body.printing-quiz-report aside {
+    display: none !important;
+  }
+
+  body.printing-quiz-report .quiz-modal-root {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  body.printing-quiz-report .quiz-modal-card {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  body.printing-quiz-report .quiz-modal-body {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+}
+
+/* ==========================================================================
+   تنسيق المعادلات والرموز الرياضية التيبوغرافية عبر محرك KaTeX
+   ========================================================================== */
+.katex-inline-math {
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0 0.15em;
+  font-family: KaTeX_Main, "Times New Roman", serif;
+  line-height: 1.1;
+}
+
+.katex-display-block {
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.katex {
+  font-size: 1.06em;
+  text-rendering: optimizeLegibility;
+  direction: ltr !important;
+}
+
+/* ضبط الكسور والجذور والحدود داخل النصوص العربية والفرنسية */
+.katex .frac-line {
+  border-bottom-width: 1.2px !important;
+}
+
+.katex .sqrt > .sqrt-sign {
+  font-weight: 500;
+}
+
+@media print {
+  .katex {
+    text-rendering: geometricPrecision !important;
+    color: #000000 !important;
+  }
+  .katex-inline-math,
+  .katex-display-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+/* ==========================================================================
+   وضع الطباعة الاقتصادية 2-في-1 (صفحتان A5 في ورقة A4 بالعرض لخفض 50% من الورق)
+   ========================================================================== */
+.mode-two-up-print {
+  column-count: 2;
+  column-gap: 28px;
+  column-rule: 1.5px dashed #cbd5e1;
+}
+
+@media print {
+  .mode-two-up-print {
+    column-count: 2 !important;
+    column-gap: 16mm !important;
+    column-rule: 1px dashed #94a3b8 !important;
+  }
+}
+
+

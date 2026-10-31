@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- 24K Gold Metallic Rim Gradient -->
+    <linearGradient id="goldRimOuter" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8A5A19" />
+      <stop offset="20%" stop-color="#FDE68A" />
+      <stop offset="40%" stop-color="#CA8A04" />
+      <stop offset="55%" stop-color="#FEF08A" />
+      <stop offset="75%" stop-color="#A16207" />
+      <stop offset="90%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#713F12" />
+    </linearGradient>
+
+    <linearGradient id="goldRimInner" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="35%" stop-color="#B45309" />
+      <stop offset="65%" stop-color="#FACC15" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <!-- Obsidian Core Radial Gradient -->
+    <radialGradient id="obsidianCore" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#171717" />
+      <stop offset="65%" stop-color="#070709" />
+      <stop offset="100%" stop-color="#000000" />
+    </radialGradient>
+
+    <!-- Copper-Orange & Gold 3D 'M' Gradient -->
+    <linearGradient id="copperM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDBA74" />
+      <stop offset="30%" stop-color="#EA580C" />
+      <stop offset="65%" stop-color="#9A3412" />
+      <stop offset="100%" stop-color="#F97316" />
+    </linearGradient>
+
+    <linearGradient id="innerMHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="50%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#FB923C" />
+    </linearGradient>
+
+    <!-- 3D Platinum-Silver Radical (√) Gradient -->
+    <linearGradient id="platinumRadical" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="25%" stop-color="#CBD5E1" />
+      <stop offset="50%" stop-color="#94A3B8" />
+      <stop offset="75%" stop-color="#E2E8F0" />
+      <stop offset="100%" stop-color="#64748B" />
+    </linearGradient>
+
+    <linearGradient id="radicalHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+
+    <!-- Golden Script Gradient for Kouziber -->
+    <linearGradient id="goldScript" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FEF9C3" />
+      <stop offset="40%" stop-color="#FACC15" />
+      <stop offset="80%" stop-color="#EAB308" />
+      <stop offset="100%" stop-color="#FEF08A" />
+    </linearGradient>
+
+    <!-- Glow Filters -->
+    <filter id="goldGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="whiteGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="shadow3D" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="6" stdDeviation="4" flood-color="#000000" flood-opacity="0.85" />
+    </filter>
+  </defs>
+
+  <!-- Outer Gold Medallion Ring -->
+  <circle cx="250" cy="250" r="244" fill="url(#goldRimOuter)" stroke="#451A03" stroke-width="3" />
+  <circle cx="250" cy="250" r="231" fill="none" stroke="#27272A" stroke-width="3.5" />
+  <circle cx="250" cy="250" r="226" fill="url(#goldRimInner)" />
+
+  <!-- Obsidian Black Inner Disc -->
+  <circle cx="250" cy="250" r="218" fill="url(#obsidianCore)" stroke="#B45309" stroke-width="1.5" />
+
+  <!-- Subtle Mathematical Geometric Ring Etching -->
+  <circle cx="250" cy="250" r="206" fill="none" stroke="#FACC15" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="6 6" />
+
+  <!-- ATHE [M] ATICS Header -->
+  <g filter="url(#shadow3D)">
+    <!-- Left: A T H E -->
+    <text
+      x="152"
+      y="153"
+      text-anchor="middle"
+      fill="url(#goldScript)"
+      font-family="Cinzel, Georgia, 'Times New Roman', serif"
+      font-size="27"
+      font-weight="700"
+      letter-spacing="8"
+    >ATHE</text>
+
+    <!-- Right: A T I C S -->
+    <text
+      x="355"
+      y="153"
+      text-anchor="middle"
+      fill="url(#goldScript)"
+      font-family="Cinzel, Georgia, 'Times New Roman', serif"
+      font-size="27"
+      font-weight="700"
+      letter-spacing="7"
+    >ATICS</text>
+
+    <!-- Center Tall Sculptural 'M' -->
+    <path
+      d="M 222 168 L 233 65 L 250 132 L 267 65 L 278 168"
+      fill="none"
+      stroke="url(#copperM)"
+      stroke-width="14"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M 222 168 L 233 65 L 250 132 L 267 65 L 278 168"
+      fill="none"
+      stroke="url(#innerMHighlight)"
+      stroke-width="4.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      filter="url(#goldGlow)"
+    />
+  </g>
+
+  <!-- 3D Platinum-Silver Square Root Radical Symbol (√) -->
+  <g filter="url(#shadow3D)">
+    <!-- Outer Bevel Path -->
+    <path
+      d="M 78 312 L 135 312 L 195 432 L 252 184 L 448 184"
+      fill="none"
+      stroke="url(#platinumRadical)"
+      stroke-width="22"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <!-- Inner Specular Ridge -->
+    <path
+      d="M 78 309 L 137 309 L 195 425 L 250 181 L 446 181"
+      fill="none"
+      stroke="url(#radicalHighlight)"
+      stroke-width="6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- "Prof" in Radiant White Script (Left of Radical) -->
+  <text
+    x="130"
+    y="286"
+    text-anchor="middle"
+    fill="#FFFFFF"
+    font-family="'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive"
+    font-size="64"
+    font-style="italic"
+    filter="url(#whiteGlow)"
+  >Prof</text>
+
+  <!-- "Kouziber" in Luminous Golden Script (Center) -->
+  <text
+    x="312"
+    y="278"
+    text-anchor="middle"
+    fill="url(#goldScript)"
+    font-family="'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive"
+    font-size="82"
+    font-style="italic"
+    filter="url(#goldGlow)"
+  >Kouziber</text>
+
+  <!-- Lightbulb #1 over the 'i' in Kouziber -->
+  <g transform="translate(348, 212)" filter="url(#goldGlow)">
+    <!-- Rays -->
+    <line x1="0" y1="-16" x2="0" y2="-22" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="11" y1="-12" x2="16" y2="-16" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="-11" y1="-12" x2="-16" y2="-16" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="15" y1="-2" x2="21" y2="-2" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="-15" y1="-2" x2="-21" y2="-2" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <!-- Bulb Glass -->
+    <circle cx="0" cy="-3" r="9" fill="#FACC15" stroke="#FEF08A" stroke-width="1.5" />
+    <!-- Filament -->
+    <path d="M -3 1 L 0 -6 L 3 1" fill="none" stroke="#78350F" stroke-width="1.6" stroke-linejoin="round" />
+    <!-- Bulb Base -->
+    <rect x="-4.5" y="5" width="9" height="4.5" rx="1.5" fill="#CBD5E1" />
+  </g>
+
+  <!-- "Brahim" in Radiant White Script (Lower Right) -->
+  <text
+    x="332"
+    y="374"
+    text-anchor="middle"
+    fill="#FFFFFF"
+    font-family="'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive"
+    font-size="74"
+    font-style="italic"
+    filter="url(#whiteGlow)"
+  >Brahim</text>
+
+  <!-- Lightbulb #2 over the 'i' in Brahim -->
+  <g transform="translate(374, 314)" filter="url(#goldGlow)">
+    <!-- Rays -->
+    <line x1="0" y1="-15" x2="0" y2="-21" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="11" y1="-11" x2="15" y2="-15" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="-11" y1="-11" x2="-15" y2="-15" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="14" y1="-2" x2="20" y2="-2" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <line x1="-14" y1="-2" x2="-20" y2="-2" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+    <!-- Bulb Glass -->
+    <circle cx="0" cy="-3" r="8.5" fill="#FACC15" stroke="#FEF08A" stroke-width="1.5" />
+    <!-- Filament -->
+    <path d="M -3 1 L 0 -5.5 L 3 1" fill="none" stroke="#78350F" stroke-width="1.6" stroke-linejoin="round" />
+    <!-- Bulb Base -->
+    <rect x="-4" y="4.5" width="8" height="4" rx="1.5" fill="#CBD5E1" />
+  </g>
+</svg>
