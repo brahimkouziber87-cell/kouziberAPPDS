@@ -7,6 +7,7 @@ import {
   Code2,
   Copy,
   FilePlus2,
+  FileText,
   GitBranch,
   LineChart,
   Play,
@@ -25,6 +26,8 @@ import {
   getVariantQuestions,
 } from "../data/curriculum";
 import { MathText } from "./MathRenderer";
+import { Interactive3DSpaceCanvas } from "./Interactive3DSpaceCanvas";
+import { ClassCouncilReportModal } from "./ClassCouncilReportModal";
 import {
   DifferentiatedPathConfig,
   DoublePenaltyFinding,
@@ -283,6 +286,8 @@ export const MathTeacherInspectorStudioModal: React.FC<
   const [spaceParamB, setSpaceParamB] = useState<number>(2);
   const [spaceShowSection, setSpaceShowSection] = useState<boolean>(true);
   const [targetExerciseIdxSpace, setTargetExerciseIdxSpace] = useState<number>(0);
+  const [showCouncilReportModal, setShowCouncilReportModal] = useState<boolean>(false);
+  const [viewMode3D, setViewMode3D] = useState<"INTERACTIVE_CANVAS" | "SVG">("INTERACTIVE_CANVAS");
   const [copiedTikzSpace, setCopiedTikzSpace] = useState<boolean>(false);
 
   // حالات إضافية لتحسين النقطة 2 و 3 للمفتش التربوي
@@ -2060,6 +2065,15 @@ export const MathTeacherInspectorStudioModal: React.FC<
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => setShowCouncilReportModal(true)}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-200" />
+                    <span>توليد تقرير مجلس القسم والتفتيش الرسمي (A4)</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleInsertLongitudinalChartFigure}
                     className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 font-black text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
                   >
@@ -3214,12 +3228,45 @@ export const MathTeacherInspectorStudioModal: React.FC<
                       </button>
                     </div>
 
-                    <div
-                      className="w-full overflow-x-auto rounded-xl border border-slate-200 p-2 bg-slate-50"
-                      dangerouslySetInnerHTML={{
-                        __html: spaceGeometryData.svgWireframe,
-                      }}
-                    />
+                    <div className="flex items-center gap-2 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode3D("INTERACTIVE_CANVAS")}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          viewMode3D === "INTERACTIVE_CANVAS"
+                            ? "bg-cyan-600 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        محاكاة مدارية ثلاثية الأبعاد 3D Canvas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode3D("SVG")}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          viewMode3D === "SVG"
+                            ? "bg-cyan-600 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        رسم SVG الأكاديمي القياسي
+                      </button>
+                    </div>
+
+                    {viewMode3D === "INTERACTIVE_CANVAS" ? (
+                      <Interactive3DSpaceCanvas
+                        presetType={spacePresetType}
+                        paramA={spaceParamA}
+                        paramB={spaceParamB}
+                      />
+                    ) : (
+                      <div
+                        className="w-full overflow-x-auto rounded-xl border border-slate-200 p-2 bg-slate-50"
+                        dangerouslySetInnerHTML={{
+                          __html: spaceGeometryData.svgWireframe,
+                        }}
+                      />
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                       <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-1">
@@ -3274,7 +3321,21 @@ export const MathTeacherInspectorStudioModal: React.FC<
             إغلاق والعودة لمعاينة الورقة
           </button>
         </div>
-      </div>
+      {showCouncilReportModal && (
+        <ClassCouncilReportModal
+          isOpen={showCouncilReportModal}
+          onClose={() => setShowCouncilReportModal(false)}
+          schoolName="الثانوية التأهيلية الرسمية"
+          profName="أستاذ مادة الرياضيات"
+          trackLabelAr={trackLabelAr}
+          trackLabelFr={trackLabelFr}
+          year="2024-2025"
+          semester="S1"
+          cohortConfig={longitudinalConfig}
+          onNotify={onNotify}
+        />
+      )}
+    </div>
     </div>
   );
 };

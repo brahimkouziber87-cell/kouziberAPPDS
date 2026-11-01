@@ -26,6 +26,8 @@ import {
   PrintDpiQuality,
 } from "../utils/pdfExporter";
 import { generateOverleafZipBundle } from "../utils/overleafZipExporter";
+import { exportExamToMoodleXML } from "../utils/mathjsValidator";
+import { LessonItem } from "../data/curriculum";
 
 export interface ExportCenterModalProps {
   isOpen: boolean;
@@ -53,6 +55,7 @@ export interface ExportCenterModalProps {
   generatedLatexCode?: string;
   hasQcm?: boolean;
   hasPython?: boolean;
+  lessons?: LessonItem[];
   onOpenExportDashboard?: () => void;
   onFileExported?: (
     fileName: string,
@@ -88,6 +91,7 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
   generatedLatexCode = "",
   hasQcm = true,
   hasPython = true,
+  lessons = [],
   onOpenExportDashboard,
   onFileExported,
 }) => {
@@ -215,6 +219,35 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
   };
 
   // تصدير PDF مباشر
+  const handleExportMoodleXml = () => {
+    try {
+      const xml = exportExamToMoodleXML(
+        `${trackLabelAr || "رياضيات"} - ${documentFileTag}`,
+        "BAC",
+        lessons || [],
+        (l) => ({
+          questionsAr: l.sampleExerciseAr || [],
+          questionsFr: l.sampleExerciseFr || [],
+          answersAr: l.sampleSolutionAr || [],
+          answersFr: l.sampleSolutionFr || [],
+        })
+      );
+      const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseFileName}_Moodle_TelmidTICE.xml`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onFileExported?.(`${baseFileName}_Moodle_TelmidTICE.xml`, "HTML_JSON", "Moodle XML (.xml)", Number((blob.size / 1024).toFixed(1)) || 24.5);
+      onNotify("success", "تم تصدير بنك التمارين بصيغة Moodle XML المعتمدة لمنصة TelmidTICE بنجاح!");
+      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
+      onNotify("error", `تعذر تصدير Moodle XML: ${msg}`);
+    }
+  };
+
   const handleExportDirectPDF = async () => {
     if (isExportingPDF || generatingStatus.active) return;
     setIsExportingPDF(true);
@@ -791,6 +824,43 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
                 {generatingStatus.type === "ZIP" ? "جاري البناء..." : "تحميل حزمة .zip"}
               </button>
             </div>
+          </div>
+
+          {/* تصدير بنك الأسئلة الموحد لمنصة تلميذ تيس ومودل Moodle XML */}
+          <div
+            onClick={() => !generatingStatus.active && handleExportMoodleXml()}
+            className={`p-4 rounded-2xl border-2 border-amber-600/70 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/30 transition shadow-2xs hover:shadow-md flex items-center justify-between gap-4 group ${
+              generatingStatus.active
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:border-amber-600 cursor-pointer"
+            }`}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition font-black text-sm">
+                XML
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-black text-sm text-slate-950">
+                    تصدير بنك الأسئلة لمنصة تلميذ تيس ومودل (Moodle XML)
+                  </h4>
+                  <span className="text-[10px] font-mono text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded border border-amber-300">
+                    TelmidTICE / Moodle LMS
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  تصدير الفرض بكامل أسئلته وعناصره وسلم النقط بصيغة Moodle XML المعيارية للاستيراد المباشر في المنصات الافتراضية للوزارة.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={generatingStatus.active}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shrink-0 transition shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              تحميل .xml
+            </button>
           </div>
 
           {/* 4. تصدير كود Typst الحديث (.typ) */}

@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Search,
   Sparkles,
+  Scan,
   Upload,
   Users,
   X,
@@ -707,6 +708,48 @@ export const FourProposalsInnovationStudioModal: React.FC<
     onNotify(
       "success",
       "تم إدراج سؤال القراءة المبيانية المتكامل مع المنحنى (C_f) في التمرين الأول."
+    );
+  };
+
+  const handleGenerateSplineQcmForOmr = () => {
+    const targetLesson = lessons[0];
+    if (!targetLesson) return;
+
+    const lessonKey = `${trackCode}_${targetLesson.lessonFr}`;
+    const current = getVariantQuestions(targetLesson, "A", false, 0);
+
+    const isMaxAtP1 = p1.y > p2.y;
+    const q1Ar = `[QCM-OMR] قيمة العدد المشتق $f'(${p1.x})$ عند نقطة المماس الأفقي $A(${p1.x}; ${p1.y})$ هي:
+(A) $0$  |  (B) $1$  |  (C) $-1$  |  (D) غير معرف`;
+    const q1Fr = `[QCM-OMR] La valeur du nombre dérivé $f'(${p1.x})$ au point de tangente horizontale $A(${p1.x}; ${p1.y})$ est :
+(A) $0$  |  (B) $1$  |  (C) $-1$  |  (D) Indéterminé`;
+
+    const q2Ar = `[QCM-OMR] طبيعة النقطة $A(${p1.x}; ${p1.y})$ بالنسبة لمنحنى الدالة $f$:
+(A) ${isMaxAtP1 ? "قيمة قصوية محلية" : "قيمة دنوية محلية"}  |  (B) ${isMaxAtP1 ? "قيمة دنوية محلية" : "قيمة قصوية محلية"}  |  (C) نقطة انعطاف  |  (D) مقارب عمودي`;
+    const q2Fr = `[QCM-OMR] La nature du point $A(${p1.x}; ${p1.y})$ pour la courbe $(\\mathcal{C}_f)$ :
+(A) ${isMaxAtP1 ? "Maximum local" : "Minimum local"}  |  (B) ${isMaxAtP1 ? "Minimum local" : "Maximum local"}  |  (C) Point d'inflexion  |  (D) Asymptote`;
+
+    const signOnIntervalAr = isMaxAtP1 ? "تناقصية قطعا ($f'(x) \\le 0$)" : "تزايدية قطعا ($f'(x) \\ge 0$)";
+    const signAltAr = isMaxAtP1 ? "تزايدية قطعا ($f'(x) \\ge 0$)" : "تناقصية قطعا ($f'(x) \\le 0$)";
+    const q3Ar = `[QCM-OMR] على المجال $]${Math.min(p1.x, p2.x)}; ${Math.max(p1.x, p2.x)}[$، إشارة $f'(x)$ ورتابة $f$:
+(A) ${signOnIntervalAr}  |  (B) ${signAltAr}  |  (C) ثابتة  |  (D) غير رتيبة`;
+    const q3Fr = `[QCM-OMR] Sur l'intervalle $]${Math.min(p1.x, p2.x)}; ${Math.max(p1.x, p2.x)}[$, le signe de $f'(x)$ et monotonie :
+(A) ${isMaxAtP1 ? "f est strictement décroissante" : "f est strictement croissante"}  |  (B) ${isMaxAtP1 ? "f est strictement croissante" : "f est strictement décroissante"}  |  (C) Constante  |  (D) Non monotone`;
+
+    const q4Ar = `[QCM-OMR] إحداثيات نقطة انعطاف المنحنى $(\\mathcal{C}_f)$ حيث تنعدم المشتقة الثانية وتغير إشارتها:
+(A) $I(${cubicModel.xInflection}; ${cubicModel.yInflection.toFixed(1)})$  |  (B) $I(0; 0)$  |  (C) $I(${p2.x}; ${p2.y})$  |  (D) لا توجد`;
+    const q4Fr = `[QCM-OMR] Les coordonnées du point d'inflexion $I$ où $f''(x)$ s'annule et change de signe :
+(A) $I(${cubicModel.xInflection}; ${cubicModel.yInflection.toFixed(1)})$  |  (B) $I(0; 0)$  |  (C) $I(${p2.x}; ${p2.y})$  |  (D) Aucune`;
+
+    onUpdateCustomQuestions(
+      lessonKey,
+      [...current.questionsAr, q1Ar, q2Ar, q3Ar, q4Ar],
+      [...current.questionsFr, q1Fr, q2Fr, q3Fr, q4Fr]
+    );
+    handleInsertSplineFigureToExam();
+    onNotify(
+      "success",
+      "تم توليد 4 أسئلة QCM بيانية متوافقة مع مصحح الكاميرا OMR وإدراجها مع المنحنى في الفرض بنجاح."
     );
   };
 
@@ -1599,6 +1642,17 @@ export const FourProposalsInnovationStudioModal: React.FC<
                       <Sparkles className="w-4 h-4" />
                       <span>
                         توليد وإدراج تمرين قراءة مبيانية متكامل (BIOF) في الفرض
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleGenerateSplineQcmForOmr}
+                      className="w-full py-2.5 px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                    >
+                      <Scan className="w-4 h-4 text-amber-300" />
+                      <span>
+                        توليد أسئلة QCM بيانية موجهة للمصحح الآلي OMR (بالكاميرا)
                       </span>
                     </button>
 

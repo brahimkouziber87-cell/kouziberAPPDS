@@ -5161,6 +5161,7 @@ export default function App() {
           }
           hasQcm={dsStructureMode === "QCM_ET_EXERCICES" || dsStructureMode === "COMPLETE_EXAM_MAROC"}
           hasPython={attachedPythonAlgorithms.length > 0}
+          lessons={activeCustomLessons}
           onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
           onFileExported={(fileName, category, formatLabel, fileSizeKb) => {
             const updated = recordExportHistoryEntry({
