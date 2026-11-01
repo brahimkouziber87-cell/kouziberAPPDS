@@ -71,6 +71,10 @@ export interface MathTeacherInspectorStudioModalProps {
   trackCode: string;
   trackLabelAr: string;
   trackLabelFr: string;
+  school?: string;
+  prof?: string;
+  year?: string;
+  semester?: string;
   dsQuestionDensity: DSQuestionDensity;
   isFr: boolean;
   onUpdateCustomQuestions: (
@@ -224,6 +228,10 @@ export const MathTeacherInspectorStudioModal: React.FC<
   trackCode,
   trackLabelAr,
   trackLabelFr,
+  school,
+  prof,
+  year,
+  semester,
   dsQuestionDensity,
   isFr,
   onUpdateCustomQuestions,
@@ -3258,6 +3266,7 @@ export const MathTeacherInspectorStudioModal: React.FC<
                         presetType={spacePresetType}
                         paramA={spaceParamA}
                         paramB={spaceParamB}
+                        showSection={spaceShowSection}
                       />
                     ) : (
                       <div
@@ -3325,12 +3334,12 @@ export const MathTeacherInspectorStudioModal: React.FC<
         <ClassCouncilReportModal
           isOpen={showCouncilReportModal}
           onClose={() => setShowCouncilReportModal(false)}
-          schoolName="الثانوية التأهيلية الرسمية"
-          profName="أستاذ مادة الرياضيات"
+          schoolName={school || "الثانوية التأهيلية الرسمية"}
+          profName={prof || "أستاذ مادة الرياضيات"}
           trackLabelAr={trackLabelAr}
           trackLabelFr={trackLabelFr}
-          year="2024-2025"
-          semester="S1"
+          year={year || "2024-2025"}
+          semester={semester || "S1"}
           cohortConfig={longitudinalConfig}
           onNotify={onNotify}
         />

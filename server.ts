@@ -38,15 +38,15 @@ function resolveGeminiModel(modelChoice?: string): {
   sdkModel: string;
   displayLabel: string;
 } {
-  if (modelChoice === "gemini-4-argon" || modelChoice === "gemini-3.1-pro-preview") {
+  if (modelChoice === "gemini-4-argon") {
     return {
-      sdkModel: "gemini-1.5-pro",
-      displayLabel: "Gemini 1.5 Pro (High-Reasoning Math Engine)",
+      sdkModel: "gemini-4-argon",
+      displayLabel: "Gemini 4 Argon (High-Reasoning Math Engine)",
     };
   }
   return {
-    sdkModel: "gemini-1.5-flash",
-    displayLabel: "Gemini 1.5 Flash (Fast Pedagogical Engine)",
+    sdkModel: "gemini-3.8-flash",
+    displayLabel: "Gemini 3.8 Flash (Fast Pedagogical Engine)",
   };
 }
 
@@ -114,24 +114,15 @@ async function generateGeminiContentWithFallback(
       ...finalConfig,
     });
   } catch (firstErr) {
-    // Retry 1: fallback to gemini-3-flash-preview with config
+    // Fallback to gemini-3.8-flash without thinkingConfig
     try {
       return await client.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.8-flash",
         contents: contents as any,
         ...(config && Object.keys(config).length > 0 ? { config } : {}),
       });
     } catch {
-      // Retry 2: fallback to gemini-2.5-flash
-      try {
-        return await client.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: contents as any,
-          ...(config && Object.keys(config).length > 0 ? { config } : {}),
-        });
-      } catch {
-        throw firstErr;
-      }
+      throw firstErr;
     }
   }
 }
@@ -141,7 +132,93 @@ async function generateGeminiContentWithFallback(
  * Ensures 100% reliability and rich curriculum-compliant mathematical output
  * even when running in local/offline mode or before cloud secrets are provisioned.
  */
+function customizePedagogicalResponseByTask(
+  base: Record<string, any>,
+  params: {
+    task: string;
+    problemText: string;
+    trackLabel: string;
+    educationSystem: string;
+  }
+) {
+  const { task, problemText } = params;
+  const clean = (problemText || "").trim();
+
+  // Extract explicit mathematical expressions if present in user's input
+  const funcMatches = clean.match(
+    /(?:[fgh]\(x\)|u_\{?n\+1\}?|v_n|z\^2|I\s*=)\s*=\s*[^\n،,;]+/gi
+  );
+  const extractedFormulas =
+    funcMatches && funcMatches.length > 0
+      ? funcMatches.slice(0, 2).map((s) => s.trim())
+      : [];
+
+  const mergedFormulas = [
+    ...extractedFormulas,
+    ...(Array.isArray(base.latexFormulas) ? base.latexFormulas : []),
+  ].slice(0, 5);
+
+  const taskPrefixMapAr: Record<string, string> = {
+    SOLVE_STEP_BY_STEP: "البرهان الرياضي النموذجي المفصل",
+    GENERATE_ISOMORPHIC_VARIANT: "توليد النموذج الموازي المتكافئ (Sujet B)",
+    GENERATE_SYNTHESIS_PROBLEM: "بناء مسألة توليفية شاملة (Type Bac)",
+    GENERATE_BILINGUAL_RUBRIC: "سلم التنقيط المفصل (142-08) وشبكة معالجة التعثرات",
+    GENERATE_PYTHON_DIDACTIC: "السيناريو البرمجي وخوارزمية Python الديداكتيكية",
+    DIDACTIC_AUDIT_142_08: "التدقيق الديداكتيكي ومطابقة المذكرة الوزارية 142-08",
+    GENERATE_EPIS_REMEDIATION:
+      "تشخيص العوائق الإبستيمولوجية وبطاقة الدعم الفارقي (Brousseau)",
+    GENERATE_OLYMPIAD_CHALLENGE:
+      "مسألة تميز وأولمبياد (N3+) وفق استكشافات جورج بوليا",
+    SIMPLIFY_COMPLEX_WORDING:
+      "تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة (Scaffolding)",
+  };
+
+  const taskPrefixMapFr: Record<string, string> = {
+    SOLVE_STEP_BY_STEP: "Corrigé Type Rigoureux Étape par Étape",
+    GENERATE_ISOMORPHIC_VARIANT: "Génération du Sujet Équivalent Isomorphe (Sujet B)",
+    GENERATE_SYNTHESIS_PROBLEM: "Construction d'un Problème de Synthèse (Type Bac)",
+    GENERATE_BILINGUAL_RUBRIC: "Barème Détaillé (Note 142-08) & Grille de Remédiation",
+    GENERATE_PYTHON_DIDACTIC: "Scénario Algorithmique Python & Simulation TICE",
+    DIDACTIC_AUDIT_142_08: "Audit Didactique & Conformité au Cadre Référentiel",
+    GENERATE_EPIS_REMEDIATION:
+      "Diagnostic des Obstacles Épistémologiques & Remédiation",
+    GENERATE_OLYMPIAD_CHALLENGE:
+      "Défi Olympiades & Concours Général (Heuristiques de Polya)",
+    SIMPLIFY_COMPLEX_WORDING:
+      "Simplification Pédagogique & Décomposition en Sous-Questions Guidées",
+  };
+
+  const prefixAr = taskPrefixMapAr[task] || taskPrefixMapAr.SOLVE_STEP_BY_STEP;
+  const prefixFr = taskPrefixMapFr[task] || taskPrefixMapFr.SOLVE_STEP_BY_STEP;
+
+  const snippetAr =
+    clean.length > 0
+      ? `\n\n[تحليل المعطيات المدخلة من طرف الأستاذ]:\n« ${clean.slice(0, 220)}${
+          clean.length > 220 ? "..." : ""
+        } »`
+      : "";
+
+  return {
+    ...base,
+    task,
+    titleAr: `${prefixAr} — ${base.titleAr || ""}`,
+    titleFr: `${prefixFr} — ${base.titleFr || ""}`,
+    latexFormulas: mergedFormulas,
+    stepByStepProofAr: `${base.stepByStepProofAr || ""}${snippetAr}`,
+  };
+}
+
 function buildServerSidePedagogicalMathResponse(params: {
+  task: string;
+  problemText: string;
+  trackLabel: string;
+  educationSystem: string;
+}) {
+  const rawResult = buildServerSidePedagogicalMathResponseCore(params);
+  return customizePedagogicalResponseByTask(rawResult, params);
+}
+
+function buildServerSidePedagogicalMathResponseCore(params: {
   task: string;
   problemText: string;
   trackLabel: string;
@@ -167,6 +244,168 @@ function buildServerSidePedagogicalMathResponse(params: {
   const isProb = /احتمال|كيس|صندوق|urne|probabilit|عشوائي|binomiale|تعداد|سحب/i.test(
     cleanProblem
   );
+
+  if (task === "SIMPLIFY_COMPLEX_WORDING") {
+    return {
+      task,
+      titleAr:
+        "تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة إلى خطوات متدرجة ميسرة",
+      titleFr:
+        "Simplification Pédagogique de l'Énoncé & Décomposition en Sous-Questions Guidées",
+      trackLabel,
+      latexFormulas: [
+        "f(x) = x - 1 + \\frac{\\ln(x)}{x} \\implies f'(x) = 1 + \\frac{1 - \\ln(x)}{x^2} = \\frac{x^2 + 1 - \\ln(x)}{x^2}",
+        "u_{n+1} - u_n = \\frac{-(u_n - 1)^2}{u_n + 2} < 0 \\quad (\\forall n \\in \\mathbb{N},\\; u_n > 1)",
+        "\\int_1^e \\frac{\\ln(x)}{x}\\,dx = \\int_1^e \\frac{1}{x}\\ln(x)\\,dx = \\left[\\frac{1}{2}(\\ln x)^2\\right]_1^e = \\frac{1}{2}",
+      ],
+      stepByStepProofAr: `1. منهجية التبسيط البيداغوجي وتفكيك الأسئلة المركبة (étayage didactique / Scaffolding):
+- تحليل النص الأصلي (${cleanProblem.slice(0, 100)}...): يتضمن التمرين أسئلة كثيفة تتطلب من التلميذ استحضار عدة مهارات متتالية في سؤال واحد (حساب + تعليل + تأويل هندسي)، مما يرفع الحمل المعرفي (Charge cognitive) ويؤدي إلى توقف المتعلمين المتوسطين.
+- التعديل البيداغوجي المقترح:
+  أ) تفكيك كل سؤال مركب إلى سؤالين فرعيين متدرجين (أ: تحقق جبري مباشر N1 $\\leftarrow$ ب: استنتاج وتأويل هندسي N2).
+  ب) إدراج صيغة النتيجة الوسطية صراحةً ("بين أن..." بدلاً من "أحسب واستنتج...") لضمان استمرارية التلميذ في حل بقية التمرين حتى لو تعثر في سؤال جزئي (مبدأ استقلال الأسئلة في المذكرة 142-08).
+  ج) إضافة تلميح منهجي قصير بين قوسين يذكر التلميذ بالخاصية أو القاعدة المرجعية المطلوبة.`,
+      stepByStepProofFr: `1. Méthodologie de simplification didactique et d'étayage (Scaffolding) :
+- Analyse de l'énoncé initial : les questions implicites ou à plusieurs étapes créent un blocage chez les élèves en difficulté.
+- Modifications pédagogiques proposées :
+  a) Décomposer chaque question dense en sous-questions progressives (a: vérification algébrique N1 → b: déduction géométrique N2).
+  b) Donner explicitement les formules intermédiaires (« Montrer que f'(x) = ... ») pour permettre la continuité de la résolution (principe de non-pénalisation en cascade).
+  c) Ajouter des indications méthodologiques ciblées entre parenthèses.`,
+      theoremsUsed: [
+        "مبدأ التدريج البيداغوجي وتفكيك المهام المركبة (Étayage didactique de Bruner)",
+        "مبدأ استقلالية الأسئلة وعدم العقاب المزدوج في المذكرة الوزارية 142-08",
+        "تقنية إعطاء الصيغة الجبرية الوسطية (Formule de secours / Question ouverte guidée)",
+      ],
+      commonPitfallsAr: [
+        "طرح سؤال 'أدرس تغيرات الدالة f' دفعة واحدة دون تفكيكه إلى: 1) حساب المشتقة، 2) دراسة إشارة البسط والمقام، 3) وضع جدول التغيرات.",
+        "استعمال صياغات لغوية مزدوجة النفي أو جمل شرطية طويلة تربك الفهم القرائي الرياضي.",
+        "ربط السؤال الموالي بنتيجة غير معطاة صراحة في نص التمرين مما يحرم التلميذ من مواصلة الحل.",
+      ],
+      commonPitfallsFr: [
+        "Poser une question globale (« Étudier les variations ») sans guider par l'expression explicite de la dérivée.",
+        "Utiliser des tournures syntaxiques ambiguës qui masquent l'hypothèse et la conclusion attendue.",
+      ],
+      variantExercise: {
+        titleAr: "الصياغة المبسطة والمتدرجة للتمرين (نسخة معدلة بيداغوجياً جاهزة للإدراج في الفرض)",
+        titleFr: "Énoncé Simplifié et Progressif (Version Didactique Guidée pour le Devoir)",
+        statementAr: isSequence
+          ? `نعتبر المتتالية العددية (u_n) المعرفة بحدها الأول u_0 = 2 وبالعلاقة: u_{n+1} = (4u_n - 1)/(u_n + 2) لكل عدد صحيح طبيعي n.
+1. أ) أحسب الحدين u_1 و u_2. (0.75 ن)
+   ب) بين بالترجع أنه لكل n من N لدينا: u_n > 1. (إرشاد: يمكنك كتابة u_{n+1} - 1 = 3(u_n - 1)/(u_n + 2)). (1.25 ن)
+2. أ) تحقق أنه لكل n من N: u_{n+1} - u_n = -(u_n - 1)² / (u_n + 2). (1.0 ن)
+   ب) استنتج أن المتتالية (u_n) تناقصية، ثم بين أنها متقاربة. (1.0 ن)
+3. نضع لكل n من N: v_n = 1/(u_n - 1).
+   أ) أحسب v_0، ثم بين أن v_{n+1} - v_n = 1/3 (أي أن (v_n) متتالية حسابية أساسها r = 1/3). (1.0 ن)
+   ب) أكتب v_n بدلالة n، ثم استنتج أن u_n = 1 + 3/(3 + n) وأحسب نهاية (u_n). (1.0 ن)`
+          : `نعتبر الدالة العددية f المعرفة على المجال ]0, +∞[ بـ: f(x) = x - 1 + ln(x)/x، و (C_f) منحناها في معلم متعامد ممنظم.
+1. أ) تحقق أن lim_{x→0+} f(x) = -∞، ثم أعط تأويلاً هندسياً لهذه النتيجة. (إرشاد: لاحظ أن ln(x)/x = (1/x)·ln(x)). (1.0 ن)
+   ب) أحسب lim_{x→+∞} f(x) (نذكر أن lim_{x→+∞} ln(x)/x = 0). (0.75 ن)
+2. أ) أحسب النهاية lim_{x→+∞} [f(x) - (x - 1)]، ثم استنتج أن المستقيم (Δ): y = x - 1 مقارب مائل للمنحنى (C_f) بجوار +∞. (1.0 ن)
+   ب) أدرس إشارة ln(x) على المجال ]0, +∞[، ثم استنتج الوضع النسبي للمنحنى (C_f) والمستقيم (Δ). (1.0 ن)
+3. أ) بين أنه لكل x من ]0, +∞[ لدينا: f'(x) = (x² + 1 - ln(x)) / x². (1.25 ن)
+   ب) علماً أن ln(x) < x² + 1 لكل x > 0، استنتج إشارة f'(x) ثم ضع جدول تغيرات الدالة f. (1.0 ن)
+4. أ) تحقق أن الدالة H(x) = (1/2)(ln x)² هي دالة أصلية للدالة h(x) = ln(x)/x على ]0, +∞[. (0.75 ن)
+   ب) استنتج قيمة التكامل I = ∫_1^e (ln(x)/x) dx ثم مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 1 و x = e. (1.0 ن)`,
+        statementFr: isSequence
+          ? `Soit (u_n) la suite numérique définie par u_0 = 2 et u_{n+1} = (4u_n - 1)/(u_n + 2) pour tout n ∈ N.
+1. a) Calculer u_1 et u_2. (0.75 pt)
+   b) Montrer par récurrence que pour tout n ∈ N, u_n > 1 (Indication : vérifier que u_{n+1} - 1 = 3(u_n - 1)/(u_n + 2)). (1.25 pt)
+2. a) Vérifier que pour tout n ∈ N : u_{n+1} - u_n = -(u_n - 1)² / (u_n + 2). (1.0 pt)
+   b) En déduire le sens de variation de (u_n) et montrer qu'elle converge. (1.0 pt)
+3. Pour tout n ∈ N, on pose v_n = 1/(u_n - 1).
+   a) Calculer v_0 et montrer que v_{n+1} - v_n = 1/3. (1.0 pt)
+   b) Exprimer v_n puis u_n en fonction de n, et calculer lim u_n. (1.0 pt)`
+          : `Soit f la fonction définie sur ]0, +∞[ par : f(x) = x - 1 + ln(x)/x, et (C_f) sa courbe représentative.
+1. a) Vérifier que lim_{x→0+} f(x) = -∞ et interpréter géométriquement le résultat. (1.0 pt)
+   b) Calculer lim_{x→+∞} f(x) (Rappel : lim_{x→+∞} ln(x)/x = 0). (0.75 pt)
+2. a) Calculer lim_{x→+∞} [f(x) - (x - 1)] et en déduire que (Δ) : y = x - 1 est asymptote oblique à (C_f). (1.0 pt)
+   b) Étudier le signe de ln(x) sur ]0, +∞[ et en déduire la position relative de (C_f) et (Δ). (1.0 pt)
+3. a) Montrer que pour tout x > 0 : f'(x) = (x² + 1 - ln(x)) / x². (1.25 pt)
+   b) Sachant que ln(x) < x² + 1 sur ]0, +∞[, donner le signe de f'(x) et dresser le tableau de variations de f. (1.0 pt)
+4. a) Vérifier que H(x) = (1/2)(ln x)² est une primitive de h(x) = ln(x)/x sur ]0, +∞[. (0.75 pt)
+   b) En déduire l'intégrale I = ∫_1^e (ln(x)/x) dx puis l'aire du domaine compris entre (C_f), (Δ), x = 1 et x = e. (1.0 pt)`,
+        solutionAr: `عناصر الإجابة للصياغة المبسطة:
+1. أ) عند 0+: lim ln(x) = -∞ و lim 1/x = +∞، إذن lim f(x) = -∞، ومنه المستقيم x = 0 مقارب عمودي.
+   ب) عند +∞: lim (x-1) = +∞ و lim ln(x)/x = 0، إذن lim f(x) = +∞.
+2. أ) lim [f(x) - (x-1)] = lim ln(x)/x = 0، إذن (Δ): y = x-1 مقارب مائل.
+   ب) إشارة الفرق هي إشارة ln(x): (C_f) تحت (Δ) على ]0, 1] وفوق (Δ) على [1, +∞[.
+3. أ) f'(x) = 1 + (1 - ln x)/x² = (x² + 1 - ln x)/x² > 0، إذن f تزايدية قطعا على ]0, +∞[.
+4. أ) H'(x) = (1/2) × 2(1/x)ln(x) = ln(x)/x = h(x). ب) I = H(e) - H(1) = 1/2 - 0 = 1/2 u.a.`,
+        solutionFr: `Corrigé de la version simplifiée :
+1. a) lim_{0+} f(x) = -∞ (asymptote verticale x = 0). b) lim_{+∞} f(x) = +∞.
+2. a) lim_{+∞} [f(x)-(x-1)] = 0 donc (Δ): y = x-1 est asymptote oblique. b) (C_f) est au-dessus de (Δ) sur [1, +∞[.
+3. a) f'(x) = (x² + 1 - ln x)/x² > 0, f est strictement croissante.
+4. a) H'(x) = ln(x)/x. b) I = [1/2 (ln x)²]_1^e = 1/2 u.a.`,
+      },
+      gradingRubric: [
+        {
+          questionRef: "1.a-b",
+          criterionAr: "حساب النهايتين الموجهتين واستنتاج المقارب العمودي",
+          criterionFr: "Calcul guidé des limites et asymptote verticale",
+          points: 1.75,
+          skillLevel: "N1" as const,
+          remediationAr: "استثمار التذكير المدمج في نص السؤال",
+        },
+        {
+          questionRef: "2.a-b",
+          criterionAr: "إثبات المقارب المائل ودراسة إشارة الفرق المبسطة",
+          criterionFr: "Asymptote oblique et position relative guidée",
+          points: 2.0,
+          skillLevel: "N1" as const,
+          remediationAr: "ربط إشارة الفرق بإشارة ln(x) مباشرة",
+        },
+        {
+          questionRef: "3.a-b",
+          criterionAr: "التحقق من صيغة المشتقة المعطاة واستنتاج جدول التغيرات",
+          criterionFr: "Vérification de f'(x) et tableau de variations",
+          points: 2.25,
+          skillLevel: "N2" as const,
+          remediationAr: "توحيد المقامات في 1 + (1 - ln x)/x²",
+        },
+        {
+          questionRef: "4.a-b",
+          criterionAr: "التحقق من الدالة الأصلية المعطاة وحساب التكامل والمساحة",
+          criterionFr: "Vérification de la primitive H(x) et calcul d'aire",
+          points: 1.75,
+          skillLevel: "N2" as const,
+          remediationAr: "اشتقاق H(x) = 1/2 (ln x)² للتحقق المباشر",
+        },
+      ],
+      pythonScenario: {
+        titleAr: "خوارزمية التحقق العددي المبسط من جدول القيم",
+        titleFr: "Algorithme de vérification numérique des valeurs de f(x)",
+        objectiveAr: "تمكين التلميذ من ملاحظة تقارب f(x) نحو المقارب y = x - 1",
+        objectiveFr: "Observer la convergence de f(x) vers l'asymptote y = x - 1",
+        code: `import math
+
+def f(x):
+    return x - 1 + math.log(x) / x
+
+for x in [1, 2, 5, 10, 50]:
+    ecart = round(f(x) - (x - 1), 4)
+    print(f"x = {x} -> f(x) = {round(f(x), 4)} | f(x)-(x-1) = {ecart}")`,
+        questionsAr: [
+          "1. ماذا تلاحظ حول قيمة الفرق f(x) - (x - 1) كلما كبرت قيمة x؟",
+          "2. كيف يؤكد هذا الجدول أن المستقيم y = x - 1 مقارب مائل؟",
+        ],
+        questionsFr: [
+          "1. Que constate-t-on pour l'écart f(x) - (x - 1) lorsque x devient grand ?",
+          "2. Comment ce tableau illustre-t-il l'asymptote oblique y = x - 1 ?",
+        ],
+        sampleOutput: "x = 1 -> ecart = 0.0 | x = 10 -> ecart = 0.2303 | x = 50 -> ecart = 0.0782",
+      },
+      didacticAudit: {
+        estimatedDurationMinutes: 40,
+        suggestedPoints: 7.75,
+        n1Percentage: 45,
+        n2Percentage: 45,
+        n3Percentage: 10,
+        complianceNotesAr:
+          "تم تبسيط الصياغة وتفكيك الأسئلة المركبة إلى خطوات فرعية متدرجة (أ، ب) مع توفير الصيغ الوسطية للتحقق، مما يضمن تكافؤ الفرص واستقلالية الأسئلة وفق المذكرة 142-08.",
+        complianceNotesFr:
+          "Énoncé restructuré avec étayage progressif et résultats intermédiaires fournis pour éviter les blocages en cascade.",
+      },
+    };
+  }
 
   if (task === "GENERATE_EPIS_REMEDIATION") {
     return {
@@ -1179,6 +1418,195 @@ print(f"Encadrement de alpha : {alpha_min} < alpha < {alpha_max}")`,
 }
 
 /**
+ * يولد تمارين رياضياتية غنية وحلولاً مفصلة لكل درس مختار لتحديث كل من المعاينة الورقية A4 والكود المصدري
+ */
+function buildRichLessonExercises(
+  lessons: Array<Record<string, any>>,
+  examModel: string = "A"
+): Array<{
+  lessonAr: string;
+  lessonFr: string;
+  weight: number;
+  points: number;
+  questionsAr: string[];
+  questionsFr: string[];
+  solutionsAr: string[];
+  solutionsFr: string[];
+}> {
+  const isModelB = examModel === "B" || examModel === "D";
+  const k = isModelB ? 3 : 2;
+  const a = isModelB ? 4 : 3;
+
+  const defaultLessons = [
+    {
+      lessonAr: "الاتصال والاشتقاق ودراسة الدوال",
+      lessonFr: "Continuité, dérivabilité et étude de fonctions",
+      weight: 60,
+    },
+    {
+      lessonAr: "المتتاليات العددية",
+      lessonFr: "Suites numériques",
+      weight: 40,
+    },
+  ];
+
+  const list =
+    Array.isArray(lessons) && lessons.length > 0 ? lessons : defaultLessons;
+
+  return list.map((l: Record<string, any>) => {
+    const titleAr = String(l.lessonAr || "دراسة الدوال والتحليل");
+    const titleFr = String(l.lessonFr || "Analyse et étude de fonctions");
+    const weight = Number(l.weight) || Math.round(100 / list.length);
+    const points = Number(((weight * 20) / 100).toFixed(2));
+    const combined = `${titleAr} ${titleFr}`.toLowerCase();
+
+    if (/متتالي|suite|récurrence/i.test(combined)) {
+      return {
+        lessonAr: titleAr,
+        lessonFr: titleFr,
+        weight,
+        points,
+        questionsAr: [
+          `نعتبر المتتالية العددية $(u_n)$ المعرفة بحدها الأول $u_0 = ${a}$ وبالعلاقة الترجعية $u_{n+1} = \\frac{${a + 2}u_n - ${a + 1}}{u_n + 1}$ لكل $n \\in \\mathbb{N}$. أحسب $u_1$ و $u_2$ ثم بين بالترجع أن $(\\forall n \\in \\mathbb{N})\\; u_n > ${a - 1}$.`,
+          `بين أن لكل $n \\in \\mathbb{N}$: $u_{n+1} - u_n = \\frac{-(u_n - ${a - 1})(u_n - 1)}{u_n + 1}$ أو أدرس إشارة $u_{n+1} - u_n$، ثم استنتج رتابة المتتالية $(u_n)$ وأنها متقاربة.`,
+          `نعتبر المتتالية المساعدة $(v_n)$ المعرفة بـ $v_n = \\frac{1}{u_n - ${a - 1}}$. بين أن $(v_n)$ متتالية حسابية محدداً أساسها وحدها الأول، ثم أكتب $u_n$ بدلالة $n$ وأحسب $\\lim_{n \\to +\\infty} u_n$.`,
+        ],
+        questionsFr: [
+          `Soit $(u_n)$ la suite numérique définie par $u_0 = ${a}$ et $u_{n+1} = \\frac{${a + 2}u_n - ${a + 1}}{u_n + 1}$ pour tout $n \\in \\mathbb{N}$. Calculer $u_1$ et $u_2$, puis montrer par récurrence que $(\\forall n \\in \\mathbb{N})\\; u_n > ${a - 1}$.`,
+          `Étudier le signe de $u_{n+1} - u_n$, en déduire le sens de variation de la suite $(u_n)$ et justifier qu'elle est convergente.`,
+          `On pose $v_n = \\frac{1}{u_n - ${a - 1}}$ pour tout $n \\in \\mathbb{N}$. Montrer que $(v_n)$ est une suite arithmétique dont on précisera la raison et le premier terme, puis exprimer $u_n$ en fonction de $n$ et déterminer $\\lim_{n \\to +\\infty} u_n$.`,
+        ],
+        solutionsAr: [
+          `لدينا $u_0 = ${a} > ${a - 1}$ صحيح من أجل $n=0$. نفترض أن $u_n > ${a - 1}$ ونحسب الفرق $u_{n+1} - ${a - 1} = \\frac{3(u_n - ${a - 1})}{u_n + 1} > 0$، ومنه بالترجع $(\\forall n \\in \\mathbb{N})\\; u_n > ${a - 1}$.`,
+          `بتوحيد المقامات نجد أن $u_{n+1} - u_n < 0$ لكل $n \\in \\mathbb{N}$، إذن المتتالية $(u_n)$ تناقصية قطعا وبما أنها مصغورة بالعدد $${a - 1}$ فهي متقاربة.`,
+          `العلاقة $v_{n+1} - v_n = \\frac{1}{3}$ ثابتة، إذن $(v_n)$ حسابية أساسها $r = \\frac{1}{3}$ وحدها الأول $v_0 = 1$، ومنه $v_n = 1 + \\frac{n}{3}$ وبالتالي $\\lim_{n \\to +\\infty} u_n = ${a - 1}$.`,
+        ],
+        solutionsFr: [
+          `Initialisation : $u_0 = ${a} > ${a - 1}$. Hérédité : $u_{n+1} - ${a - 1} = \\frac{3(u_n - ${a - 1})}{u_n + 1} > 0$ par hypothèse de récurrence.`,
+          `La différence $u_{n+1} - u_n$ est strictement négative, donc $(u_n)$ est décroissante et minorée par $${a - 1}$, d'où sa convergence.`,
+          `$(v_n)$ est arithmétique de raison $r = \\frac{1}{3}$ et $v_0 = 1$, donc $v_n = 1 + \\frac{n}{3}$ et $\\lim_{n \\to +\\infty} u_n = ${a - 1}$.`,
+        ],
+      };
+    }
+
+    if (/عقدي|complexe|affixe|module/i.test(combined)) {
+      return {
+        lessonAr: titleAr,
+        lessonFr: titleFr,
+        weight,
+        points,
+        questionsAr: [
+          `حل في مجموعة الأعداد العقدية $\\mathbb{C}$ المعادلة: $z^2 - ${2 * k}\\sqrt{3}\\,z + ${4 * k * k} = 0$.`,
+          `في المستوى العقدي المنسوب إلى معلم متعامد ممنظم مباشر $(O, \\vec{u}, \\vec{v})$، نعتبر النقط $A$ و $B$ و $C$ التي ألحاقها على التوالي $a = ${k}\\sqrt{3} + ${k}i$ و $b = \\bar{a}$ و $c = ${2 * k}i$. أكتب $a$ و $b$ على الشكل الأسي ثم أحسب المعيار والعمدة للخارج $\\frac{c - b}{a - b}$.`,
+          `ليكن $R$ الدوران الذي مركزه $B$ وزاويته $\\frac{\\pi}{3}$. بين أن النقطة $C$ هي صورة $A$ بالدوران $R$ واستنتج طبيعة المثلث $ABC$.`,
+        ],
+        questionsFr: [
+          `Résoudre dans l'ensemble $\\mathbb{C}$ des nombres complexes l'équation : $z^2 - ${2 * k}\\sqrt{3}\\,z + ${4 * k * k} = 0$.`,
+          `Dans le plan complexe rapporté à un repère orthonormé direct $(O, \\vec{u}, \\vec{v})$, on considère les points $A(a)$, $B(b)$ et $C(c)$ avec $a = ${k}\\sqrt{3} + ${k}i$, $b = \\bar{a}$ et $c = ${2 * k}i$. Écrire $a$ et $b$ sous forme exponentielle puis déterminer le module et un argument de $\\frac{c - b}{a - b}$.`,
+          `Soit $R$ la rotation de centre $B$ et d'angle $\\frac{\\pi}{3}$. Montrer que $R(A) = C$ et en déduire la nature exacte du triangle $ABC$.`,
+        ],
+        solutionsAr: [
+          `المميز $\\Delta = 12\\times ${k * k} - 16\\times ${k * k} = -4\\times ${k * k} = (${2 * k}i)^2$. الحلان هما $z_1 = ${k}\\sqrt{3} + ${k}i$ و $z_2 = ${k}\\sqrt{3} - ${k}i$.`,
+          `معيار $a$ هو $|a| = ${2 * k}$، ومنه $a = ${2 * k}e^{i\\frac{\\pi}{6}}$ و $b = ${2 * k}e^{-i\\frac{\\pi}{6}}$. كما أن $\\frac{c - b}{a - b} = e^{i\\frac{\\pi}{3}}$.`,
+          `العلاقة $c - b = e^{i\\frac{\\pi}{3}}(a - b)$ تكافئ $R(A) = C$، وبالتالي $BA = BC$ و $(\\overline{\\vec{BA}, \\vec{BC}}) \\equiv \\frac{\\pi}{3}\\;[2\\pi]$، أي أن المثلث $ABC$ متساوي الأضلاع.`,
+        ],
+        solutionsFr: [
+          `$\\Delta = -4\\times ${k * k} = (${2 * k}i)^2$. Les solutions sont $z_1 = ${k}\\sqrt{3} + ${k}i$ et $z_2 = ${k}\\sqrt{3} - ${k}i$.`,
+          `$|a| = ${2 * k}$, donc $a = ${2 * k}e^{i\\pi/6}$ et $b = ${2 * k}e^{-i\\pi/6}$. On trouve $\\frac{c - b}{a - b} = e^{i\\pi/3}$.`,
+          `Comme $c - b = e^{i\\pi/3}(a - b)$, on a $R(A) = C$ et le triangle $ABC$ est équilatéral direct.`,
+        ],
+      };
+    }
+
+    if (/فضاء|فضائية|فلكة|sphère|scalaire|vectoriel/i.test(combined)) {
+      return {
+        lessonAr: titleAr,
+        lessonFr: titleFr,
+        weight,
+        points,
+        questionsAr: [
+          `في الفضاء المنسوب إلى معلم متعامد ممنظم مباشر $(O, \\vec{i}, \\vec{j}, \\vec{k})$، نعتبر النقط $A(1, 0, ${k})$ و $B(2, 1, ${k - 1})$ و $C(0, 2, ${k + 1})$. أحسب الجداء المتجهي $\\vec{AB} \\wedge \\vec{AC}$ واستنتج أن النقط $A, B, C$ تحدد مستوى $(ABC)$ معادلته الديكارتية $x + z - ${k + 1} = 0$.`,
+          `نعتبر الفلكة $(S)$ التي مركزها $\\Omega(1, -1, ${k + 2})$ وشعاعها $R = 3$. أحسب مسافة النقطة $\\Omega$ عن المستوى $(ABC)$ وبين أن المستوى $(ABC)$ يقطع الفلكة $(S)$ وفق دائرة $(\\Gamma)$ يتم تحديد شعاعها $r$.`,
+          `حدد التمثيل البارامتري للمستقيم $(\\Delta)$ المار من $\\Omega$ والعمودي على $(ABC)$، ثم استنتج إحداثيات النقطة $H$ مركز الدائرة $(\\Gamma)$.`,
+        ],
+        questionsFr: [
+          `Dans l'espace muni d'un repère orthonormé direct $(O, \\vec{i}, \\vec{j}, \\vec{k})$, on donne $A(1, 0, ${k})$, $B(2, 1, ${k - 1})$ et $C(0, 2, ${k + 1})$. Calculer $\\vec{AB} \\wedge \\vec{AC}$ et vérifier qu'une équation cartésienne du plan $(ABC)$ est $x + z - ${k + 1} = 0$.`,
+          `Soit $(S)$ la sphère de centre $\\Omega(1, -1, ${k + 2})$ et de rayon $R = 3$. Calculer $d(\\Omega, (ABC))$ et montrer que $(ABC)$ coupe $(S)$ suivant un cercle $(\\Gamma)$ dont on précisera le rayon $r$.`,
+          `Déterminer une représentation paramétrique de la droite $(\\Delta)$ passant par $\\Omega$ et orthogonale à $(ABC)$, puis déterminer les coordonnées du centre $H$ de $(\\Gamma)$.`,
+        ],
+        solutionsAr: [
+          `نحسب إحداثيات المتجهتين فنجد $\\vec{AB}(1, 1, -1)$ و $\\vec{AC}(-1, 2, 1)$، ومنه $\\vec{AB} \\wedge \\vec{AC} = 3\\vec{i} + 3\\vec{k} \\neq \\vec{0}$، إذن المتجهة $\\vec{n}(1, 0, 1)$ منظمية على $(ABC)$ ومعادلته $x + z - ${k + 1} = 0$.`,
+          `$d(\\Omega, (ABC)) = \\frac{|1 + (${k + 2}) - (${k + 1})|}{\\sqrt{1^2 + 0^2 + 1^2}} = \\frac{2}{\\sqrt{2}} = \\sqrt{2} < R = 3$، إذن التقاطع دائرة شعاعها $r = \\sqrt{R^2 - d^2} = \\sqrt{9 - 2} = \\sqrt{7}$.`,
+          `التمثيل البارامتري لـ $(\\Delta)$ هو $x = 1 + t,\\; y = -1,\\; z = ${k + 2} + t\\;(t \\in \\mathbb{R})$. بالتعويض في معادلة المستوى نجد $t = -1$، ومنه $H(0, -1, ${k + 1})$.`,
+        ],
+        solutionsFr: [
+          `$\\vec{AB} \\wedge \\vec{AC} = (3, 0, 3)$, vecteur normal $\\vec{n}(1, 0, 1)$, d'où l'équation $x + z - ${k + 1} = 0$.`,
+          `$d(\\Omega, (ABC)) = \\sqrt{2} < 3$, donc intersection suivant un cercle de rayon $r = \\sqrt{9 - 2} = \\sqrt{7}$.`,
+          `En injectant la représentation paramétrique dans $x + z - ${k + 1} = 0$, on obtient $t = -1$ et $H(0, -1, ${k + 1})$.`,
+        ],
+      };
+    }
+
+    if (/احتمال|probabilit|عشوائي|تعداد/i.test(combined)) {
+      return {
+        lessonAr: titleAr,
+        lessonFr: titleFr,
+        weight,
+        points,
+        questionsAr: [
+          `يحتوي صندوق على $5$ كرات بيضاء و $4$ كرات حمراء لا يمكن التمييز بينها باللمس. نسحب عشوائياً وفي آن واحد $3$ كرات من الصندوق. بين أن عدد الإمكانيات هو $\\text{Card}(\\Omega) = 84$.`,
+          `نعتبر الحدث $A$: «سحب ثلاث كرات من نفس اللون» والحدث $B$: «سحب كرة بيضاء واحدة على الأقل». أحسب $P(A)$ و $P(B)$.`,
+          `ليكن $X$ المتغير العشوائي الذي يربط كل سحبة بعدد الكرات الحمراء المسحوبة. حدد قانون احتمال $X$ وأحسب أمله الرياضي $E(X)$.`,
+        ],
+        questionsFr: [
+          `Une urne contient $5$ boules blanches et $4$ boules rouges indiscernables au toucher. On tire simultanément $3$ boules de l'urne. Vérifier que $\\text{Card}(\\Omega) = 84$.`,
+          `Calculer la probabilité des événements $A$ : « obtenir 3 boules de même couleur » et $B$ : « obtenir au moins une boule blanche ».`,
+          `Soit $X$ la variable aléatoire égale au nombre de boules rouges tirées. Déterminer la loi de probabilité de $X$ et calculer son espérance $E(X)$.`,
+        ],
+        solutionsAr: [
+          `السحب في آن واحد يستعمل التأليفات: $\\text{Card}(\\Omega) = C_9^3 = \\frac{9 \\times 8 \\times 7}{3 \\times 2 \\times 1} = 84$.`,
+          `$P(A) = \\frac{C_5^3 + C_4^3}{84} = \\frac{10 + 4}{84} = \\frac{14}{84} = \\frac{1}{6}$، وبالحدث المضاد $P(B) = 1 - \\frac{C_4^3}{84} = 1 - \\frac{4}{84} = \\frac{20}{21}$.`,
+          `قيم $X(\\Omega) = \\{0, 1, 2, 3\\}$ مع $P(X=0)=\\frac{10}{84}$، $P(X=1)=\\frac{40}{84}$، $P(X=2)=\\frac{30}{84}$، $P(X=3)=\\frac{4}{84}$، والأمل الرياضي $E(X) = \\frac{112}{84} = \\frac{4}{3}$.`,
+        ],
+        solutionsFr: [
+          `$\\text{Card}(\\Omega) = \\binom{9}{3} = 84$.`,
+          `$P(A) = \\frac{10 + 4}{84} = \\frac{1}{6}$ et $P(B) = 1 - \\frac{4}{84} = \\frac{20}{21}$.`,
+          `$X(\\Omega) = \\{0, 1, 2, 3\\}$ et l'espérance vaut $E(X) = 3 \\times \\frac{4}{9} = \\frac{4}{3}$.`,
+        ],
+      };
+    }
+
+    // Default: Analysis / Functions / Continuity / Derivation / Integrals
+    return {
+      lessonAr: titleAr,
+      lessonFr: titleFr,
+      weight,
+      points,
+      questionsAr: [
+        `نعتبر الدالة العددية $g$ المعرفة على $]0, +\\infty[$ بـ: $g(x) = x^2 - ${k} + ${k}\\ln(x)$. أدرس تغيرات الدالة $g$ وبين أن المعادلة $g(x) = 0$ تقبل حلاً وحيداً $\\alpha$ في المجال $]1, e[$ (في الحالة $k=2$ نلاحظ أن $g(1)=0$)، ثم استنتج إشارة $g(x)$ على $]0, +\\infty[$.`,
+        `نعتبر الدالة العددية $f$ المعرفة على $]0, +\\infty[$ بـ: $f(x) = x - 1 + ${k}\\frac{\\ln(x)}{x}$. أحسب $\\lim_{x \\to 0^+} f(x)$ و $\\lim_{x \\to +\\infty} f(x)$، ثم بين أن المستقيم $(\\Delta): y = x - 1$ مقارب مائل للمنحنى $(\\mathcal{C}_f)$ بجوار $+\\infty$ وأدرس وضعهما النسبي.`,
+        `بين أن لكل $x > 0$: $f'(x) = \\frac{x^2 + ${k}(1 - \\ln x)}{x^2}$، ضع جدول تغيرات الدالة $f$، ثم أحسب التكامل $I = \\int_1^e ${k}\\frac{\\ln(x)}{x}\\,dx$ واستنتج مساحة الحيز المستوي المحصور بين $(\\mathcal{C}_f)$ و $(\\Delta)$ والمستقيمين $x=1$ و $x=e$.`,
+      ],
+      questionsFr: [
+        `Soit $g$ la fonction définie sur $]0, +\\infty[$ par $g(x) = x^2 + ${k}(1 - \\ln(x))$. Étudier les variations de $g$ sur $]0, +\\infty[$ et en déduire que pour tout $x \\in ]0, e]$, $g(x) > 0$.`,
+        `Soit $f$ la fonction définie sur $]0, +\\infty[$ par : $f(x) = x - 1 + ${k}\\frac{\\ln(x)}{x}$. Calculer les limites aux bornes, montrer que la droite $(\\Delta): y = x - 1$ est asymptote oblique à $(\\mathcal{C}_f)$ en $+\\infty$ et étudier leur position relative.`,
+        `Montrer que pour tout $x > 0$, $f'(x) = \\frac{g(x)}{x^2}$, dresser le tableau de variations de $f$, puis calculer $I = \\int_1^e ${k}\\frac{\\ln(x)}{x}\\,dx$ et l'aire du domaine délimité par $(\\mathcal{C}_f)$, $(\\Delta)$, $x=1$ et $x=e$.`,
+      ],
+      solutionsAr: [
+        `الدالة $g$ قابلة للاشتقاق على $]0,+\\infty[$ ومشتقتها $g'(x) = 2x - \\frac{${k}}{x} = \\frac{2x^2 - ${k}}{x}$، ومن جدول التغيرات نستنتج إشارة $g(x)$ بدقة على $]0,+\\infty[$.`,
+        `عند $0^+$: $\\lim_{x \\to 0^+} f(x) = -\\infty$ (المستقيم $x=0$ مقارب عمودي). عند $+\\infty$: $\\lim_{x \\to +\\infty} [f(x) - (x-1)] = \\lim_{x \\to +\\infty} ${k}\\frac{\\ln x}{x} = 0$، إذن $(\\Delta): y = x - 1$ مقارب مائل، والوضع النسبي يتبع إشارة $\\ln(x)$.`,
+        `بتطبيق مشتقة الخارج نجد $f'(x) = 1 + ${k}\\frac{1 - \\ln x}{x^2} = \\frac{x^2 + ${k}(1 - \\ln x)}{x^2}$. وبملاحظة أن $\\frac{\\ln x}{x} = u'(x)u(x)$ نحصل على $I = \\left[\\frac{${k}}{2}(\\ln x)^2\\right]_1^e = \\frac{${k}}{2}\\text{ u.a.}$.`,
+      ],
+      solutionsFr: [
+        `$g$ est dérivable sur $]0, +\\infty[$ et $g'(x) = \\frac{2x^2 - ${k}}{x}$, ce qui donne le minimum positif et le signe de $g(x)$.`,
+        `$\\lim_{x \\to 0^+} f(x) = -\\infty$ (asymptote verticale $x=0$) et $\\lim_{x \\to +\\infty} [f(x) - (x-1)] = 0$ (asymptote oblique $\\Delta: y = x - 1$).`,
+        `$f'(x) = \\frac{g(x)}{x^2}$ et par intégration directe $I = \\left[\\frac{${k}}{2}(\\ln x)^2\\right]_1^e = \\frac{${k}}{2}\\text{ u.a.}$.`,
+      ],
+    };
+  });
+}
+
+/**
  * Generates compilable LaTeX or Typst source code on the server when AI generation is requested
  */
 function buildServerSideLatexOrTypstDocument(body: Record<string, any>): string {
@@ -1201,22 +1629,7 @@ function buildServerSideLatexOrTypstDocument(body: Record<string, any>): string 
     lessons = [],
   } = body;
 
-  const lessonList = Array.isArray(lessons) && lessons.length > 0
-    ? lessons
-    : [
-        {
-          lessonAr: "الاتصال والاشتقاق ودراسة الدوال",
-          lessonFr: "Continuité, dérivabilité et étude de fonctions",
-          weight: 60,
-          capacitiesFr: ["Calcul de limites", "Théorème des valeurs intermédiaires", "Étude des variations"],
-        },
-        {
-          lessonAr: "المتتاليات العددية",
-          lessonFr: "Suites numériques",
-          weight: 40,
-          capacitiesFr: ["Raisonnement par récurrence", "Convergence monotone", "Suites auxiliaires"],
-        },
-      ];
+  const richExercises = buildRichLessonExercises(lessons, examModel);
 
   if (exportFormat === "TYPST") {
     return `// =========================================================================
@@ -1252,16 +1665,24 @@ function buildServerSideLatexOrTypstDocument(body: Record<string, any>): string 
 
 #v(8pt)
 
-${lessonList
-  .map((l: any, idx: number) => {
-    const pts = (((Number(l.weight) || 50) * 20) / 100).toFixed(1);
-    return `== Exercice ${idx + 1} : ${l.lessonFr || l.lessonAr} (${pts} points)
+${richExercises
+  .map((ex, idx) => {
+    const pts = ex.points.toFixed(1);
+    return `== Exercice ${idx + 1} : ${ex.lessonFr} (${pts} points)
 #block(fill: rgb("#f8fafc"), stroke: 0.6pt + rgb("#cbd5e1"), inset: 10pt, radius: 4pt, width: 100%)[
-  + *Question 1 (Application directe — N1) :* Étudier le domaine et les propriétés fondamentales liées à _${l.lessonFr || "la notion étudiée"}_.
-  + *Question 2 (Mobilisation et raisonnement — N2) :* Démontrer par récurrence ou par analyse différentielle la relation principale du cours.
-  + *Question 3 (Synthèse et initiative — N3) :* En déduire la limite exacte et l'interprétation géométrique.
+${ex.questionsFr.map((q, qIdx) => `  + *Question ${qIdx + 1} :* ${q}`).join("\n")}
 ]
 #v(6pt)`;
+  })
+  .join("\n\n")}
+
+#pagebreak()
+= Corrigé Type et Barème Détaillé (Note 142-08 — 20/20)
+
+${richExercises
+  .map((ex, idx) => {
+    return `== Corrigé de l'Exercice ${idx + 1} (${ex.lessonFr})
+${ex.solutionsFr.map((s, sIdx) => `+ *Réponse ${sIdx + 1} :* ${s}`).join("\n")}`;
   })
   .join("\n\n")}
 `;
@@ -1309,14 +1730,12 @@ ${lessonList
 
 \\vspace{0.3cm}
 
-${lessonList
-  .map((l: any, idx: number) => {
-    const pts = (((Number(l.weight) || 50) * 20) / 100).toFixed(1);
-    return `\\begin{exoBox}{Exercice ${idx + 1} : ${l.lessonFr || "Analyse et Raisonnement"} (${pts} points)}
+${richExercises
+  .map((ex, idx) => {
+    const pts = ex.points.toFixed(1);
+    return `\\begin{exoBox}{Exercice ${idx + 1} : ${ex.lessonFr} (${pts} points)}
 \\begin{enumerate}[label=\\textbf{\\arabic*.}]
-  \\item \\textbf{(N1)} Calculer les limites aux bornes et vérifier les hypothèses du théorème de référence pour \\textit{${l.lessonFr || "ce chapitre"}}.
-  \\item \\textbf{(N2)} Étudier les variations et démontrer rigoureusement l'égalité demandée sur l'intervalle d'étude.
-  \\item \\textbf{(N3)} En déduire la valeur exacte de la solution $\\alpha$ ou de l'intégrale associée avec interprétation graphique.
+${ex.questionsFr.map((q) => `  \\item ${q}`).join("\n")}
 \\end{enumerate}
 \\end{exoBox}
 \\vspace{0.25cm}`;
@@ -1325,10 +1744,14 @@ ${lessonList
 
 \\newpage
 \\section*{Éléments de réponse et Barème détaillé (Note 142-08 — Total : 20/20)}
-\\begin{itemize}
-  \\item \\textbf{Rigueur du raisonnement :} Toute démarche logique correcte est valorisée au quart de point près (0.25 pt).
-  \\item \\textbf{Vérification des hypothèses :} Continuité, dérivabilité et initialisation de la récurrence sont exigées.
-\\end{itemize}
+${richExercises
+  .map((ex, idx) => {
+    return `\\subsection*{Corrigé de l'Exercice ${idx + 1} : ${ex.lessonFr} (${ex.points.toFixed(1)} pts)}
+\\begin{enumerate}[label=\\textbf{\\arabic*.}]
+${ex.solutionsFr.map((s) => `  \\item ${s}`).join("\n")}
+\\end{enumerate}`;
+  })
+  .join("\n\n")}
 
 \\end{document}`;
 }
@@ -1581,7 +2004,15 @@ ${customTopicNote ? `- توجيهات إضافية من الأستاذ: ${custom
             .trim();
 
           if (cleanedCode.length > 50) {
-            return res.json({ code: cleanedCode, modelUsed: modelLabel });
+            const generatedExercises = buildRichLessonExercises(
+              req.body?.lessons || [],
+              req.body?.examModel || "A"
+            );
+            return res.json({
+              code: cleanedCode,
+              generatedExercises,
+              modelUsed: modelLabel,
+            });
           }
         } catch {
           // الانتقال السلس للمحرك المدمج لتوليد الكود المصدري دون أي انقطاع
@@ -1589,14 +2020,24 @@ ${customTopicNote ? `- توجيهات إضافية من الأستاذ: ${custom
       }
 
       const fallbackCode = buildServerSideLatexOrTypstDocument(req.body || {});
+      const generatedExercises = buildRichLessonExercises(
+        req.body?.lessons || [],
+        req.body?.examModel || "A"
+      );
       return res.json({
         code: fallbackCode,
+        generatedExercises,
         modelUsed: `${modelLabel} · (محرك القوالب الرياضية المدمج)`,
       });
     } catch (error: unknown) {
       const fallbackCode = buildServerSideLatexOrTypstDocument(req.body || {});
+      const generatedExercises = buildRichLessonExercises(
+        req.body?.lessons || [],
+        req.body?.examModel || "A"
+      );
       return res.json({
         code: fallbackCode,
+        generatedExercises,
         modelUsed: "محرك القوالب الرياضية الأكاديمي",
         warning: error instanceof Error ? error.message : undefined,
       });
@@ -2718,6 +3159,8 @@ ${waContext}
             taskInstructions = `المهمة: تشخيص العوائق الإبستيمولوجية والديداكتيكية (Obstacles Épistémologiques & Didactiques selon Guy Brousseau) الكامنة في هذا التمرين، وتوليد بطاقة دعم فردي فارقي (Fiche de Remédiation Ciblée) تضم مثالاً مضاداً لإحداث الصراع المعرفي وتمرين دعم مركزاً مع الحل لمعالجة تعثرات المتعلمين.`;
           } else if (task === "GENERATE_OLYMPIAD_CHALLENGE") {
             taskInstructions = `المهمة: صياغة مسألة تميز وأولمبياد (Olympiades Nationales / Concours Général — مستوى N3+) مستلهمة من الموضوع المدخل، مرفقة بإرشادات جورج بوليا الاستكشافية الأربع (Polya's 4-Step Heuristics: فهم المسألة، بناء الخطة، تنفيذ البرهان، التعميم) مع الحل الرياضي الكامل.`;
+          } else if (task === "SIMPLIFY_COMPLEX_WORDING") {
+            taskInstructions = `المهمة: تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة في التمرين المدخل إلى أسئلة فرعية متدرجة وواضحة (Scaffolding / Étayage didactique)، مع إعطاء الصيغ الوسطية صراحة ("بين أن..."، "تحقق أن...") وإضافة إرشادات منهجية مقتضبة بين قوسين تمنع توقف التلميذ وتضمن استقلالية الأسئلة وفق المذكرة الوزارية 142-08، ووضع النسخة المبسطة الكاملة في الحقل variantExercise مع حلها المفصل.`;
           } else {
             taskInstructions = `المهمة: تدقيق ديداكتيكي شامل (Audit Didactique) للمسألة وفق المذكرة الوزارية 142-08 والمنهاج الوطني: تقييم التوزيع المئوي للمستويات المهارية (N1 تطبيق مباشر، N2 تعبئة وتوليف، N3 بحث ومبادرة)، المدة الزمنية التقديرية، ومدى ملاءمة التمرين لسقف 20 نقطة.`;
           }

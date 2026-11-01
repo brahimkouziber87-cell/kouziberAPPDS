@@ -13,12 +13,15 @@ import {
   FolderOpen,
   Laptop,
   Layers,
+  Lock,
   Scale,
+  ShieldCheck,
   Sparkles,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
+import { isLocalEncryptionEnabled } from "../utils/cryptoStorage";
 import { CURRICULUM_DB } from "../data/curriculum";
 import {
   capturePortableLocalStorageSnapshot,
@@ -818,6 +821,18 @@ export const ExamConfigStorageModal: React.FC<ExamConfigStorageModalProps> = ({
                   </button>
                 </div>
               </div>
+
+              {isLocalEncryptionEnabled() && (
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 font-bold">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>الخزانة المحلية محمية بنظام التشفير التلقائي المعتمد AES-GCM (256-bit).</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                    Encrypted Web Crypto
+                  </span>
+                </div>
+              )}
 
               {vaultPresets.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-2">

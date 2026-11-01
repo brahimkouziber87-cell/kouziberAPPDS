@@ -13,20 +13,17 @@ import {
   ShieldCheck,
   Sliders,
   Sparkles,
-  Key,
-  Eye,
-  EyeOff,
   Terminal,
   Wand2,
   X,
   Zap,
 } from "lucide-react";
 import { MathText } from "./MathRenderer";
-import { getClientGeminiApiKey, setClientGeminiApiKey, testGeminiApiKey } from "../services/geminiClient";
 
 export type AiPedagogicalTask =
   | "SOLVE_STEP_BY_STEP"
   | "GENERATE_ISOMORPHIC_VARIANT"
+  | "SIMPLIFY_COMPLEX_WORDING"
   | "GENERATE_SYNTHESIS_PROBLEM"
   | "GENERATE_BILINGUAL_RUBRIC"
   | "GENERATE_PYTHON_DIDACTIC"
@@ -100,8 +97,16 @@ interface PedagogicalAiAssistantModalProps {
   onChangeModelChoice?: (model: "gemini-3.8-flash" | "gemini-4-argon") => void;
   selectedAiModel?: "gemini-3.8-flash" | "gemini-4-argon";
   onSelectAiModel?: (model: "gemini-3.8-flash" | "gemini-4-argon") => void;
-  lessons?: Array<{ lessonAr: string; lessonFr: string }>;
+  lessons?: Array<{
+    lessonAr: string;
+    lessonFr: string;
+    weight?: number;
+    sampleExerciseAr?: string[];
+    sampleExerciseFr?: string[];
+  }>;
   initialView?: "WORKSPACE" | "SETTINGS_DOCS";
+  initialTask?: AiPedagogicalTask;
+  initialLessonIndex?: number;
   onApplyVariantToDoc?: (statement: string, solution: string) => void;
   onNotify?: (type: "success" | "error" | "info", text: string) => void;
   onInsertExerciseToExam?: (payload: {
@@ -112,6 +117,15 @@ interface PedagogicalAiAssistantModalProps {
     solutionFr: string;
     points: number;
     level: "N1" | "N2" | "N3";
+  }) => void;
+  onReplaceExerciseInExam?: (payload: {
+    targetLessonIndex: number;
+    questionsAr: string[];
+    questionsFr: string[];
+    solutionAr: string;
+    solutionFr: string;
+    titleAr?: string;
+    titleFr?: string;
   }) => void;
   onAttachPythonScenario?: (algo: {
     id: string;
@@ -180,9 +194,15 @@ const AI_TASKS: Array<{
   },
   {
     id: "GENERATE_ISOMORPHIC_VARIANT",
-    labelAr: "توليد النموذج الموازي المتكافئ (Sujet B Anti-Triche)",
-    labelFr: "Génération d'un sujet isomorphe équivalent",
-    badge: "منع الغش",
+    labelAr: "اقتراح أسئلة موازية وتوليد نموذج متكافئ (Sujet B Anti-Triche)",
+    labelFr: "Génération d'un sujet isomorphe équivalent (Questions parallèles)",
+    badge: "أسئلة موازية",
+  },
+  {
+    id: "SIMPLIFY_COMPLEX_WORDING",
+    labelAr: "تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة (Scaffolding)",
+    labelFr: "Simplification de l'énoncé et décomposition en sous-questions guidées",
+    badge: "تبسيط الصياغة",
   },
   {
     id: "GENERATE_SYNTHESIS_PROBLEM",
@@ -235,9 +255,12 @@ export const PedagogicalAiAssistantModal: React.FC<
   onSelectAiModel: onSelectAiModelProp,
   lessons = [],
   initialView = "WORKSPACE",
+  initialTask,
+  initialLessonIndex,
   onApplyVariantToDoc,
   onNotify,
   onInsertExerciseToExam,
+  onReplaceExerciseInExam,
   onAttachPythonScenario,
 }) => {
   const selectedAiModel =
@@ -282,37 +305,6 @@ export const PedagogicalAiAssistantModal: React.FC<
   );
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
-  const [clientKeyInput, setClientKeyInput] = useState<string>(() => getClientGeminiApiKey() || "");
-  const [showClientKey, setShowClientKey] = useState<boolean>(false);
-  const [isTestingClientKey, setIsTestingClientKey] = useState<boolean>(false);
-  const [clientKeyTestStatus, setClientKeyTestStatus] = useState<{ success: boolean; message: string } | null>(null);
-
-  const handleSaveClientKey = () => {
-    setClientGeminiApiKey(clientKeyInput);
-    if (clientKeyInput.trim()) {
-      onNotify?.("success", "تم حفظ وتفعيل مفتاح Google Gemini API في المتصفح بنجاح!");
-      setClientKeyTestStatus({ success: true, message: "✓ تم حفظ المفتاح وتفعيله في المتصفح." });
-    } else {
-      onNotify?.("info", "تم حذف المفتاح من المتصفح والاعتماد على المحرك المدمج.");
-      setClientKeyTestStatus(null);
-    }
-  };
-
-  const handleTestClientKey = async () => {
-    setIsTestingClientKey(true);
-    setClientKeyTestStatus(null);
-    try {
-      const res = await testGeminiApiKey(clientKeyInput);
-      setClientKeyTestStatus(res);
-      if (res.success) {
-        onNotify?.("success", res.message);
-      } else {
-        onNotify?.("error", res.message);
-      }
-    } finally {
-      setIsTestingClientKey(false);
-    }
-  };
 
   const [result, setResult] = useState<AiPedagogicalResponse>({
     task: "SOLVE_STEP_BY_STEP",
@@ -531,99 +523,152 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
     fetchDiagnostics();
   }, [isOpen, fetchDiagnostics]);
 
-  if (!isOpen) return null;
+  const buildLessonProblemPrompt = useCallback(
+    (lessonIdx: number, taskForPrompt?: AiPedagogicalTask) => {
+      const targetLesson = lessons[lessonIdx];
+      if (!targetLesson) return SAMPLE_PROBLEMS_PRESETS[0].text;
+      const existingQuestions =
+        Array.isArray(targetLesson.sampleExerciseAr) &&
+        targetLesson.sampleExerciseAr.length > 0
+          ? `\nأسئلة التمرين الحالي في الفرض:\n${targetLesson.sampleExerciseAr.join(
+              "\n"
+            )}`
+          : "";
+      const actionDirective =
+        taskForPrompt === "SIMPLIFY_COMPLEX_WORDING"
+          ? "المطلوب تبسيط صياغة هذا التمرين وتفكيك أسئلته المركبة إلى خطوات فرعية متدرجة (أ، ب) مع إعطاء الصيغ الوسطية للتحقق وإرشادات منهجية."
+          : taskForPrompt === "GENERATE_ISOMORPHIC_VARIANT"
+          ? "المطلوب اقتراح أسئلة موازية وتمرين متكافئ (Sujet B) بنفس الكفايات والوزن المهاري مع تغيير الدالة أو المتتالية والمعطيات العددية."
+          : "المطلوب صياغة وحل تمرين نموذجي يغطي الكفايات الأساسية لهذا الدرس مع سلم التنقيط المفصل.";
+      return `تمرين في درس "${targetLesson.lessonAr}" (${
+        targetLesson.lessonFr
+      })${
+        targetLesson.weight ? ` — الوزن المخصص: ${targetLesson.weight}%` : ""
+      }:${existingQuestions}\n${actionDirective}`;
+    },
+    [lessons]
+  );
 
-  const handleRunAiTask = async (overrideTask?: AiPedagogicalTask) => {
-    const activeTask = overrideTask || selectedTask;
-    if (overrideTask) setSelectedTask(overrideTask);
+  const handleRunAiTask = useCallback(
+    async (overrideTask?: AiPedagogicalTask, overrideProblemText?: string) => {
+      const activeTask = overrideTask || selectedTask;
+      const activeText = (overrideProblemText ?? problemText).trim() || SAMPLE_PROBLEMS_PRESETS[0].text;
+      if (overrideTask) setSelectedTask(overrideTask);
+      if (overrideProblemText) setProblemText(overrideProblemText);
 
-    setIsLoading(true);
-    setBannerMsg(null);
-    const t0 = performance.now();
+      setIsLoading(true);
+      setBannerMsg(null);
+      const t0 = performance.now();
 
-    try {
-      const res = await fetch("/api/ai-math-assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: activeTask,
-          problemText,
-          trackLabel,
-          educationSystem,
-          modelChoice: selectedAiModel,
-          thinkingLevel,
-        }),
-      });
+      try {
+        const res = await fetch("/api/ai-math-assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            task: activeTask,
+            problemText: activeText,
+            trackLabel,
+            educationSystem,
+            modelChoice: selectedAiModel,
+            thinkingLevel,
+          }),
+        });
 
-      const data = await res.json();
-      const elapsed = Math.round(performance.now() - t0);
-      setPingLatencyMs(elapsed);
+        const data = await res.json();
+        const elapsed = Math.round(performance.now() - t0);
+        setPingLatencyMs(elapsed);
 
-      if (!res.ok || !data.result) {
-        throw new Error(data.error || "تعذر الاتصال بمحرك الذكاء الاصطناعي");
+        if (!res.ok || !data.result) {
+          throw new Error(data.error || "تعذر الاتصال بمحرك الذكاء الاصطناعي");
+        }
+
+        setResult((prev) => ({
+          ...prev,
+          ...data.result,
+          variantExercise: data.result.variantExercise || prev.variantExercise,
+          gradingRubric:
+            Array.isArray(data.result.gradingRubric) &&
+            data.result.gradingRubric.length > 0
+              ? data.result.gradingRubric
+              : prev.gradingRubric,
+          pythonScenario: data.result.pythonScenario || prev.pythonScenario,
+          didacticAudit: data.result.didacticAudit || prev.didacticAudit,
+        }));
+        setModelUsedLabel(data.modelUsed || selectedAiModel);
+
+        if (
+          activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
+          activeTask === "SIMPLIFY_COMPLEX_WORDING" ||
+          activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
+          activeTask === "GENERATE_EPIS_REMEDIATION" ||
+          activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
+        ) {
+          setActiveResultTab("VARIANT");
+        } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
+          setActiveResultTab("RUBRIC");
+        } else if (activeTask === "GENERATE_PYTHON_DIDACTIC") {
+          setActiveResultTab("PYTHON");
+        } else if (activeTask === "DIDACTIC_AUDIT_142_08") {
+          setActiveResultTab("AUDIT");
+        } else {
+          setActiveResultTab("PROOF");
+        }
+
+        setBannerMsg(
+          `✓ تم إنجاز المهمة الديداكتيكية والبرهان الرياضي بنجاح عبر ${
+            data.modelUsed || selectedAiModel
+          } (${elapsed} ms)!`
+        );
+      } catch {
+        setResult((prev) => ({ ...prev, task: activeTask, trackLabel }));
+        if (
+          activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
+          activeTask === "SIMPLIFY_COMPLEX_WORDING" ||
+          activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
+          activeTask === "GENERATE_EPIS_REMEDIATION" ||
+          activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
+        ) {
+          setActiveResultTab("VARIANT");
+        } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
+          setActiveResultTab("RUBRIC");
+        } else if (activeTask === "GENERATE_PYTHON_DIDACTIC") {
+          setActiveResultTab("PYTHON");
+        } else if (activeTask === "DIDACTIC_AUDIT_142_08") {
+          setActiveResultTab("AUDIT");
+        } else {
+          setActiveResultTab("PROOF");
+        }
+        setBannerMsg(
+          "✓ تم توليد الحل النموذجي والنموذج الموازي وسلم التنقيط عبر المحرك الرياضي الهجين المدمج (وضع العمل المحلي المستقل) بنجاح!"
+        );
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [selectedTask, problemText, trackLabel, educationSystem, selectedAiModel, thinkingLevel]
+  );
 
-      setResult((prev) => ({
-        ...prev,
-        ...data.result,
-        variantExercise: data.result.variantExercise || prev.variantExercise,
-        gradingRubric:
-          Array.isArray(data.result.gradingRubric) &&
-          data.result.gradingRubric.length > 0
-            ? data.result.gradingRubric
-            : prev.gradingRubric,
-        pythonScenario: data.result.pythonScenario || prev.pythonScenario,
-        didacticAudit: data.result.didacticAudit || prev.didacticAudit,
-      }));
-      setModelUsedLabel(data.modelUsed || selectedAiModel);
-
-      if (
-        activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
-        activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
-        activeTask === "GENERATE_EPIS_REMEDIATION" ||
-        activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
-      ) {
-        setActiveResultTab("VARIANT");
-      } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
-        setActiveResultTab("RUBRIC");
-      } else if (activeTask === "GENERATE_PYTHON_DIDACTIC") {
-        setActiveResultTab("PYTHON");
-      } else if (activeTask === "DIDACTIC_AUDIT_142_08") {
-        setActiveResultTab("AUDIT");
-      } else {
-        setActiveResultTab("PROOF");
-      }
-
-      setBannerMsg(
-        `✓ تم إنجاز المهمة الديداكتيكية والبرهان الرياضي بنجاح عبر ${
-          data.modelUsed || selectedAiModel
-        } (${elapsed} ms)!`
-      );
-    } catch {
-      setResult((prev) => ({ ...prev, task: activeTask, trackLabel }));
-      if (
-        activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
-        activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
-        activeTask === "GENERATE_EPIS_REMEDIATION" ||
-        activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
-      ) {
-        setActiveResultTab("VARIANT");
-      } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
-        setActiveResultTab("RUBRIC");
-      } else if (activeTask === "GENERATE_PYTHON_DIDACTIC") {
-        setActiveResultTab("PYTHON");
-      } else if (activeTask === "DIDACTIC_AUDIT_142_08") {
-        setActiveResultTab("AUDIT");
-      } else {
-        setActiveResultTab("PROOF");
-      }
-      setBannerMsg(
-        "✓ تم توليد الحل النموذجي والنموذج الموازي وسلم التنقيط عبر المحرك الرياضي الهجين المدمج (وضع العمل المحلي المستقل) بنجاح!"
-      );
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    const lessonIdx =
+      typeof initialLessonIndex === "number" &&
+      initialLessonIndex >= 0 &&
+      initialLessonIndex < lessons.length
+        ? initialLessonIndex
+        : 0;
+    setTargetLessonIdx(lessonIdx);
+    if (initialTask) {
+      const promptText =
+        lessons.length > 0
+          ? buildLessonProblemPrompt(lessonIdx, initialTask)
+          : SAMPLE_PROBLEMS_PRESETS[0].text;
+      setSelectedTask(initialTask);
+      setProblemText(promptText);
+      void handleRunAiTask(initialTask, promptText);
     }
-  };
+  }, [isOpen, initialTask, initialLessonIndex, lessons.length, buildLessonProblemPrompt]);
+
+  if (!isOpen) return null;
 
   const handlePingGeminiTest = async () => {
     setIsTestingPing(true);
@@ -746,6 +791,61 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
     }
     const msg =
       "✓ تم إدراج التمرين الموازي / المسألة التوليفية مع عناصر الإجابة مباشرة في الفرض المحروس!";
+    setBannerMsg(msg);
+    if (onNotify) {
+      onNotify("success", msg);
+    }
+  };
+
+  const handleReplaceVariantInExam = () => {
+    const splitStatementIntoQuestions = (raw: string): string[] => {
+      const lines = raw
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length <= 1) return [raw.trim()];
+      const grouped: string[] = [];
+      for (const line of lines) {
+        if (/^(?:\d+[\.\-\)]|[أ-ي][\.\)]|[a-z][\.\)])\s+/i.test(line) || grouped.length === 0) {
+          grouped.push(line);
+        } else {
+          grouped[grouped.length - 1] += `\n${line}`;
+        }
+      }
+      return grouped.length > 0 ? grouped : [raw.trim()];
+    };
+
+    const questionsAr = splitStatementIntoQuestions(
+      result.variantExercise.statementAr
+    );
+    const questionsFr = splitStatementIntoQuestions(
+      result.variantExercise.statementFr
+    );
+
+    if (onReplaceExerciseInExam) {
+      onReplaceExerciseInExam({
+        targetLessonIndex: targetLessonIdx,
+        questionsAr,
+        questionsFr,
+        solutionAr: result.variantExercise.solutionAr,
+        solutionFr: result.variantExercise.solutionFr,
+        titleAr: result.variantExercise.titleAr,
+        titleFr: result.variantExercise.titleFr,
+      });
+    } else if (onInsertExerciseToExam) {
+      onInsertExerciseToExam({
+        targetLessonIndex: targetLessonIdx,
+        questionAr: result.variantExercise.statementAr,
+        questionFr: result.variantExercise.statementFr,
+        solutionAr: result.variantExercise.solutionAr,
+        solutionFr: result.variantExercise.solutionFr,
+        points: result.didacticAudit.suggestedPoints || 6,
+        level: "N2",
+      });
+    }
+    const targetLessonName =
+      lessons[targetLessonIdx]?.lessonAr || `التمرين ${targetLessonIdx + 1}`;
+    const msg = `✓ تم تطبيق التعديل البيداغوجي واستبدال أسئلة "${targetLessonName}" في الفرض المحروس بنجاح!`;
     setBannerMsg(msg);
     if (onNotify) {
       onNotify("success", msg);
@@ -946,66 +1046,6 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                     </span>
                   </button>
                 </div>
-              </div>
-
-              {/* إعداد مفتاح API للمتصفح والأجهزة الذكية دون خادم */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 border border-indigo-700/60 text-slate-100 space-y-3 shadow-lg">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-800/60 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs font-black text-white">
-                      مفتاح Google Gemini API للمتصفح والأجهزة الذكية (Client-Side Direct Key)
-                    </span>
-                  </div>
-                  <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-mono px-2.5 py-0.5 rounded-full border border-cyan-400/30">
-                    PWA & Mobile & Desktop Ready
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
-                  أدخل مفتاح Gemini الخاص بك لتشغيل الذكاء الاصطناعي مباشرة من المتصفح في أي وقت ودون الحاجة لتشغيل خادم Node.js محلي. يتم تخزين المفتاح بأمان داخل متصفحك فقط.
-                </p>
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type={showClientKey ? "text" : "password"}
-                      value={clientKeyInput}
-                      onChange={(e) => setClientKeyInput(e.target.value)}
-                      placeholder="AIzaSy..."
-                      dir="ltr"
-                      className="w-full bg-slate-950 border border-indigo-700/80 rounded-xl px-3.5 py-2.5 text-xs font-mono text-cyan-200 placeholder-slate-500 focus:outline-hidden focus:border-cyan-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowClientKey(!showClientKey)}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
-                      title={showClientKey ? "إخفاء المفتاح" : "إظهار المفتاح"}
-                    >
-                      {showClientKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSaveClientKey}
-                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shrink-0"
-                  >
-                    حفظ وتفعيل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTestClientKey}
-                    disabled={isTestingClientKey || !clientKeyInput.trim()}
-                    className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shrink-0 disabled:opacity-50"
-                  >
-                    {isTestingClientKey ? "جاري الاختبار..." : "اختبار الاتصال الحي"}
-                  </button>
-                </div>
-                {clientKeyTestStatus && (
-                  <div className={`text-xs font-bold p-2.5 rounded-xl flex items-center gap-2 ${
-                    clientKeyTestStatus.success ? "bg-emerald-950/80 border border-emerald-500/50 text-emerald-300" : "bg-rose-950/80 border border-rose-500/50 text-rose-300"
-                  }`}>
-                    <span>{clientKeyTestStatus.message}</span>
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1304,7 +1344,7 @@ const response = await ai.models.generateContent({
                     <span>1. اختر المهمة البيداغوجية للذكاء الاصطناعي:</span>
                   </span>
                   <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-                    6 مهام متخصصة
+                    8 مهام متخصصة
                   </span>
                 </label>
 
@@ -1315,7 +1355,7 @@ const response = await ai.models.generateContent({
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setSelectedTask(t.id)}
+                        onClick={() => handleRunAiTask(t.id)}
                         className={`p-2.5 rounded-xl border text-right transition flex items-center justify-between gap-2 cursor-pointer ${
                           active
                             ? "bg-indigo-950 text-white border-indigo-900 shadow-xs"
@@ -1400,6 +1440,38 @@ const response = await ai.models.generateContent({
                     </button>
                   ))}
                 </div>
+
+                {lessons.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    <span className="text-[10px] font-bold text-indigo-800">
+                      أو استيراد من دروس الفرض الحالي:
+                    </span>
+                    {lessons.map((l, idx) => (
+                      <button
+                        key={`lesson_import_${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setTargetLessonIdx(idx);
+                          const existingQuestions =
+                            Array.isArray(l.sampleExerciseAr) &&
+                            l.sampleExerciseAr.length > 0
+                              ? `\nأسئلة التمرين الحالي:\n${l.sampleExerciseAr.join(
+                                  "\n"
+                                )}`
+                              : "";
+                          setProblemText(
+                            `تمرين في درس "${l.lessonAr}" (${l.lessonFr})${
+                              l.weight ? ` — الوزن المخصص: ${l.weight}%` : ""
+                            }:${existingQuestions}\nالمطلوب صياغة وحل تمرين نموذجي يغطي الكفايات الأساسية لهذا الدرس مع سلم التنقيط المفصل.`
+                          );
+                        }}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition cursor-pointer"
+                      >
+                        ت{idx + 1}: {l.lessonAr}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <textarea
                   rows={6}
@@ -1725,16 +1797,46 @@ const response = await ai.models.generateContent({
                           {result.variantExercise.titleFr}
                         </div>
                       </div>
-                      {onInsertExerciseToExam && (
-                        <button
-                          type="button"
-                          onClick={handleInsertVariantToExam}
-                          className="px-3 py-1.5 rounded-lg text-xs font-black bg-indigo-900 hover:bg-indigo-950 text-white transition flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <FilePlus2 className="w-3.5 h-3.5 text-cyan-300" />
-                          <span>إدراج مباشر في الفرض المحروس</span>
-                        </button>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {lessons.length > 1 && (
+                          <select
+                            value={targetLessonIdx}
+                            onChange={(e) =>
+                              setTargetLessonIdx(Number(e.target.value))
+                            }
+                            className="border border-indigo-200 rounded-lg px-2 py-1 text-[11px] font-bold bg-white text-indigo-950"
+                            title="اختر التمرين المستهدف في الفرض لتطبيق التعديل عليه"
+                          >
+                            {lessons.map((l, idx) => (
+                              <option key={`target_ex_${idx}`} value={idx}>
+                                التمرين {idx + 1}: {l.lessonAr}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {onReplaceExerciseInExam && (
+                          <button
+                            type="button"
+                            onClick={handleReplaceVariantInExam}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black bg-teal-700 hover:bg-teal-800 text-white transition flex items-center gap-1.5 cursor-pointer"
+                            title="استبدال أسئلة التمرين المحدد في الفرض بهذه الصياغة المعدلة أو الموازية"
+                          >
+                            <Wand2 className="w-3.5 h-3.5 text-amber-200" />
+                            <span>تطبيق التعديل واستبدال التمرين بالفرض</span>
+                          </button>
+                        )}
+                        {onInsertExerciseToExam && (
+                          <button
+                            type="button"
+                            onClick={handleInsertVariantToExam}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black bg-indigo-900 hover:bg-indigo-950 text-white transition flex items-center gap-1.5 cursor-pointer"
+                            title="إضافة هذا التمرين الموازي أو المبسط كسؤال إضافي في التمرين المستهدف"
+                          >
+                            <FilePlus2 className="w-3.5 h-3.5 text-cyan-300" />
+                            <span>إدراج كسؤال إضافي بالفرض</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

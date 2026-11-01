@@ -33,6 +33,12 @@ import {
 import { AppliedTitleCalligraphyConfig } from "../components/ArabicCalligraphySimulator";
 import { GridGranularity } from "./evaluationGridExporter";
 import { PythonAlgorithmPreset } from "../data/pythonAlgorithms";
+import {
+  secureGetItem,
+  secureGetItemSync,
+  secureSetItem,
+  isEncryptedPayload,
+} from "./cryptoStorage";
 
 export interface ExamConfigBlueprintJSON {
   meta: {
@@ -396,12 +402,30 @@ export async function exportAllArchivesBackupJSON(
 
 export function loadSavedConfigVault(): SavedLocalConfigPreset[] {
   try {
-    const raw = localStorage.getItem(LOCAL_VAULT_STORAGE_KEY);
+    const raw = secureGetItemSync(LOCAL_VAULT_STORAGE_KEY) || localStorage.getItem(LOCAL_VAULT_STORAGE_KEY);
     if (!raw) return [];
+    if (isEncryptedPayload(raw)) {
+      // إذا كان مشفراً ولم يُفك بعد بالذاكرة، سيتم جلبه لاحقاً عبر loadSavedConfigVaultAsync
+      return [];
+    }
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * جلب الأرشيف المحلي مع فك التشفير التلقائي عند تفعيل نظام الحماية المشفر
+ */
+export async function loadSavedConfigVaultAsync(): Promise<SavedLocalConfigPreset[]> {
+  try {
+    const raw = await secureGetItem(LOCAL_VAULT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return loadSavedConfigVault();
   }
 }
 
@@ -411,7 +435,11 @@ export function saveConfigToLocalVault(
   try {
     const existing = loadSavedConfigVault().filter((p) => p.id !== preset.id);
     const updated = [preset, ...existing].slice(0, 50);
-    localStorage.setItem(LOCAL_VAULT_STORAGE_KEY, JSON.stringify(updated));
+    const jsonStr = JSON.stringify(updated);
+    // تشفير وحفظ فوري في LocalStorage
+    secureSetItem(LOCAL_VAULT_STORAGE_KEY, jsonStr).catch((e) =>
+      console.warn("Secure vault async save warning:", e)
+    );
     return updated;
   } catch {
     return loadSavedConfigVault();
@@ -423,12 +451,16 @@ export function deleteConfigFromLocalVault(
 ): SavedLocalConfigPreset[] {
   try {
     const updated = loadSavedConfigVault().filter((p) => p.id !== id);
-    localStorage.setItem(LOCAL_VAULT_STORAGE_KEY, JSON.stringify(updated));
+    const jsonStr = JSON.stringify(updated);
+    secureSetItem(LOCAL_VAULT_STORAGE_KEY, jsonStr).catch((e) =>
+      console.warn("Secure vault async delete warning:", e)
+    );
     return updated;
   } catch {
     return loadSavedConfigVault();
   }
 }
+
 
 export function downloadExamConfigAsJSON(
   blueprint: ExamConfigBlueprintJSON,

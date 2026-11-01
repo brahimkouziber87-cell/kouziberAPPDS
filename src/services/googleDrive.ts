@@ -236,3 +236,209 @@ export async function deleteDriveDocument(
     throw new Error("تعذر حذف الملف من Google Drive");
   }
 }
+
+export const SETTINGS_FILE_NAME = "math_exam_studio_settings.json";
+
+export interface SyncSettingsPayload {
+  schemaVersion: "3.0.0";
+  updatedAt: string;
+  sourceDevice: string;
+  teacherIdentity: {
+    educationSystem?: string;
+    school: string;
+    prof: string;
+    year: string;
+    academy: string;
+    direction: string;
+    headerStyle: string;
+    logoVariant: string;
+    includeTeacherLogo: boolean;
+    includeLogoWatermark: boolean;
+    includeStudentBox: boolean;
+    includeGradeBox: boolean;
+    calculatorAllowed: boolean;
+    includeCompetencies: boolean;
+  };
+  pedagogicalPreferences: {
+    docLang: string;
+    bilingualLayout: string;
+    exportFormat: string;
+    docFontFamily: string;
+    docFontSize: string;
+    latexPackageTheme: string;
+    paperSurface: string;
+    tcolorboxConfig?: unknown;
+    appliedTitleCalligraphy?: unknown;
+    studentGridStyle: string;
+    dsStructureMode: string;
+    dsQuestionDensity: string;
+    enableBranchColorGradient: boolean;
+    branchColorMode: string;
+    qcmQuestionCount: number;
+    qcmScoringMode: string;
+    selectedAiModel: string;
+  };
+  customLessonsMap?: {
+    customWeightsMap?: Record<string, number>;
+    customLessonIconsMap?: Record<string, string>;
+  };
+}
+
+/**
+ * البحث عن ملف الإعدادات المتزامنة داخل مجلد المنصة
+ */
+export async function findSettingsFileId(
+  accessToken: string,
+  folderId: string
+): Promise<string | null> {
+  const query = encodeURIComponent(
+    `name='${SETTINGS_FILE_NAME}' and '${folderId}' in parents and trashed=false`
+  );
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (searchRes.status === 401 || searchRes.status === 403) {
+    cachedAccessToken = null;
+    throw new Error("AUTH_REQUIRED");
+  }
+
+  if (searchRes.ok) {
+    const data = await searchRes.json();
+    if (data.files && data.files.length > 0) {
+      return data.files[0].id;
+    }
+  }
+  return null;
+}
+
+/**
+ * مزامنة وحفظ الإعدادات المفضلة للأستاذ في Google Drive
+ */
+export async function syncSettingsToDrive(
+  accessToken: string,
+  settings: SyncSettingsPayload
+): Promise<{ fileId: string; modifiedTime: string; isNew: boolean }> {
+  const folderId = await findOrCreatePedagogicalFolder(accessToken);
+  const existingFileId = await findSettingsFileId(accessToken, folderId);
+  const contentString = JSON.stringify(settings, null, 2);
+
+  if (existingFileId) {
+    // تحديث المحتوى القائم
+    const updateRes = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=media`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: contentString,
+      }
+    );
+
+    if (updateRes.status === 401 || updateRes.status === 403) {
+      cachedAccessToken = null;
+      throw new Error("AUTH_REQUIRED");
+    }
+
+    if (!updateRes.ok) {
+      throw new Error("تعذر تحديث ملف الإعدادات في Google Drive");
+    }
+
+    const updatedData = await updateRes.json();
+    return {
+      fileId: existingFileId,
+      modifiedTime: updatedData.modifiedTime || new Date().toISOString(),
+      isNew: false,
+    };
+  } else {
+    // إنشاء ملف الإعدادات لأول مرة
+    const metadata = {
+      name: SETTINGS_FILE_NAME,
+      mimeType: "application/json",
+      parents: [folderId],
+      description:
+        "إعدادات وتفضيلات أستاذ الرياضيات المفضلة - مزامنة سحابية تلقائية لمنصة الهندسة البيداغوجية",
+    };
+
+    const boundary = "-------314159265358979323846";
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelim = `\r\n--${boundary}--`;
+
+    const multipartBody =
+      delimiter +
+      "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+      JSON.stringify(metadata) +
+      delimiter +
+      "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+      contentString +
+      closeDelim;
+
+    const createRes = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": `multipart/related; boundary=${boundary}`,
+        },
+        body: multipartBody,
+      }
+    );
+
+    if (createRes.status === 401 || createRes.status === 403) {
+      cachedAccessToken = null;
+      throw new Error("AUTH_REQUIRED");
+    }
+
+    if (!createRes.ok) {
+      throw new Error("تعذر إنشاء ملف الإعدادات في Google Drive");
+    }
+
+    const createdData = await createRes.json();
+    return {
+      fileId: createdData.id,
+      modifiedTime: createdData.modifiedTime || new Date().toISOString(),
+      isNew: true,
+    };
+  }
+}
+
+/**
+ * جلب الإعدادات المفضلة المحفوظة في Google Drive
+ */
+export async function fetchSettingsFromDrive(
+  accessToken: string
+): Promise<{ settings: SyncSettingsPayload; fileId: string; modifiedTime: string } | null> {
+  const folderId = await findOrCreatePedagogicalFolder(accessToken);
+  const fileId = await findSettingsFileId(accessToken, folderId);
+  if (!fileId) return null;
+
+  const contentRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (contentRes.status === 401 || contentRes.status === 403) {
+    cachedAccessToken = null;
+    throw new Error("AUTH_REQUIRED");
+  }
+
+  if (!contentRes.ok) {
+    throw new Error("تعذر قراءة محتوى ملف الإعدادات من Google Drive");
+  }
+
+  const settingsJson = (await contentRes.json()) as SyncSettingsPayload;
+  return {
+    settings: settingsJson,
+    fileId,
+    modifiedTime: settingsJson.updatedAt || new Date().toISOString(),
+  };
+}
+

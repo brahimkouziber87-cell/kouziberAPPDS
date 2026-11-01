@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { RotateCcw, ZoomIn, ZoomOut, Move, Eye, Sparkles } from "lucide-react";
+import { RotateCcw, ZoomIn, ZoomOut, Eye } from "lucide-react";
 import { SpaceGeometry3DPresetType } from "../utils/mathjsValidator";
 
 export interface Interactive3DSpaceCanvasProps {
   presetType: SpaceGeometry3DPresetType;
   paramA: number; // e.g. R for sphere or side a for cube
   paramB: number; // e.g. distance d for sphere or height h for pyramid
+  showSection?: boolean;
   planeEquation?: string;
 }
 
@@ -13,7 +14,7 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
   presetType,
   paramA,
   paramB,
-  planeEquation = "x + 2y + 2z - 5 = 0",
+  showSection = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -191,38 +192,40 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
         ctx.stroke();
       }
 
-      // 2. رسم المستوي القاطع (P) كشبه منحرف مظلل شفاف
-      const pSize = R * 1.5;
-      const p1 = project(-pSize, d, -pSize);
-      const p2 = project(pSize, d, -pSize);
-      const p3 = project(pSize, d, pSize);
-      const p4 = project(-pSize, d, pSize);
+      if (showSection) {
+        // 2. رسم المستوي القاطع (P) كشبه منحرف مظلل شفاف
+        const pSize = R * 1.5;
+        const p1 = project(-pSize, d, -pSize);
+        const p2 = project(pSize, d, -pSize);
+        const p3 = project(pSize, d, pSize);
+        const p4 = project(-pSize, d, pSize);
 
-      ctx.fillStyle = "rgba(14, 165, 233, 0.15)";
-      ctx.beginPath();
-      ctx.moveTo(p1.px, p1.py);
-      ctx.lineTo(p2.px, p2.py);
-      ctx.lineTo(p3.px, p3.py);
-      ctx.lineTo(p4.px, p4.py);
-      ctx.closePath();
-      ctx.fill();
+        ctx.fillStyle = "rgba(14, 165, 233, 0.15)";
+        ctx.beginPath();
+        ctx.moveTo(p1.px, p1.py);
+        ctx.lineTo(p2.px, p2.py);
+        ctx.lineTo(p3.px, p3.py);
+        ctx.lineTo(p4.px, p4.py);
+        ctx.closePath();
+        ctx.fill();
 
-      ctx.strokeStyle = "#0ea5e9";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+        ctx.strokeStyle = "#0ea5e9";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-      // 3. رسم دائرة التقاطع (Γ)
-      ctx.strokeStyle = "#10b981";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      const cSegments = 48;
-      for (let i = 0; i <= cSegments; i++) {
-        const theta = (i / cSegments) * 2 * Math.PI;
-        const pt = project(rCircle * Math.cos(theta), d, rCircle * Math.sin(theta));
-        if (i === 0) ctx.moveTo(pt.px, pt.py);
-        else ctx.lineTo(pt.px, pt.py);
+        // 3. رسم دائرة التقاطع (Γ)
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        const cSegments = 48;
+        for (let i = 0; i <= cSegments; i++) {
+          const theta = (i / cSegments) * 2 * Math.PI;
+          const pt = project(rCircle * Math.cos(theta), d, rCircle * Math.sin(theta));
+          if (i === 0) ctx.moveTo(pt.px, pt.py);
+          else ctx.lineTo(pt.px, pt.py);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
 
       // 4. رسم المركز Ω والنقطة H والمسافة d
       const pOmega = project(0, 0, 0);
@@ -283,7 +286,7 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
       ctx.fillStyle = "#10b981";
       ctx.fillText(`r = ${rCircle.toFixed(2)}`, (pH.px + pEdge.px) / 2, pH.py + 14);
     } else if (presetType === "CUBE") {
-      const a = Math.max(1, paramA);
+      const a = Math.min(3.2, Math.max(1, paramA * 0.45));
       // 8 رؤوس المكعب
       const v = [
         project(-a, -a, -a), // 0: A
@@ -302,18 +305,20 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
         [0, 4], [1, 5], [2, 6], [3, 7], // أحرف عمودية
       ];
 
-      // مقطع مستوٍ (BDE) مظلل
-      ctx.fillStyle = "rgba(245, 158, 11, 0.25)";
-      ctx.beginPath();
-      ctx.moveTo(v[1].px, v[1].py); // B
-      ctx.lineTo(v[3].px, v[3].py); // D
-      ctx.lineTo(v[4].px, v[4].py); // E
-      ctx.closePath();
-      ctx.fill();
+      if (showSection) {
+        // مقطع مستوٍ (BDE) مظلل
+        ctx.fillStyle = "rgba(245, 158, 11, 0.25)";
+        ctx.beginPath();
+        ctx.moveTo(v[1].px, v[1].py); // B
+        ctx.lineTo(v[3].px, v[3].py); // D
+        ctx.lineTo(v[4].px, v[4].py); // E
+        ctx.closePath();
+        ctx.fill();
 
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
 
       // رسم الأحرف
       edges.forEach(([i, j]) => {
@@ -334,12 +339,88 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
       v.forEach((pt, idx) => {
         ctx.fillText(labels[idx], pt.px + 4, pt.py - 4);
       });
-    } else {
-      // هرم أو رباعي الأوجه
-      const a = Math.max(1, paramA);
-      const h = Math.max(1, paramB);
+    } else if (presetType === "TETRAHEDRON") {
+      // رباعي الأوجه المنتظم ABCD مع مقطع المنتصفات (IJK)
+      const a = Math.min(3.2, Math.max(1.2, paramA * 0.55));
+      const h = Math.min(3.5, Math.max(1.2, paramB * 0.65));
 
-      const s = project(0, h, 0); // القمة
+      const coordsA = { x: 0, y: h, z: 0 };
+      const coordsB = { x: -a, y: -0.8, z: -a * 0.65 };
+      const coordsC = { x: a, y: -0.8, z: -a * 0.65 };
+      const coordsD = { x: 0, y: -0.8, z: a * 0.95 };
+
+      const pA = project(coordsA.x, coordsA.y, coordsA.z);
+      const pB = project(coordsB.x, coordsB.y, coordsB.z);
+      const pC = project(coordsC.x, coordsC.y, coordsC.z);
+      const pD = project(coordsD.x, coordsD.y, coordsD.z);
+
+      // أحرف رباعي الأوجه ABCD
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.6;
+      [
+        [pA, pB],
+        [pA, pC],
+        [pA, pD],
+        [pB, pC],
+        [pC, pD],
+        [pD, pB],
+      ].forEach(([u, vPt]) => {
+        ctx.beginPath();
+        ctx.moveTo(u.px, u.py);
+        ctx.lineTo(vPt.px, vPt.py);
+        ctx.stroke();
+      });
+
+      if (showSection) {
+        // منتصفات الأحرف I, J, K
+        const pI = project(
+          (coordsA.x + coordsB.x) / 2,
+          (coordsA.y + coordsB.y) / 2,
+          (coordsA.z + coordsB.z) / 2
+        );
+        const pJ = project(
+          (coordsA.x + coordsC.x) / 2,
+          (coordsA.y + coordsC.y) / 2,
+          (coordsA.z + coordsC.z) / 2
+        );
+        const pK = project(
+          (coordsA.x + coordsD.x) / 2,
+          (coordsA.y + coordsD.y) / 2,
+          (coordsA.z + coordsD.z) / 2
+        );
+
+        ctx.fillStyle = "rgba(16, 185, 129, 0.25)";
+        ctx.beginPath();
+        ctx.moveTo(pI.px, pI.py);
+        ctx.lineTo(pJ.px, pJ.py);
+        ctx.lineTo(pK.px, pK.py);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = "#34d399";
+        ctx.font = "bold 10px sans-serif";
+        ctx.fillText("I", pI.px - 10, pI.py);
+        ctx.fillText("J", pJ.px + 6, pJ.py);
+        ctx.fillText("K", pK.px + 6, pK.py + 10);
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText("A", pA.px + 4, pA.py - 6);
+      ctx.fillText("B", pB.px - 12, pB.py + 4);
+      ctx.fillText("C", pC.px + 6, pC.py + 4);
+      ctx.fillText("D", pD.px + 4, pD.py + 12);
+    } else {
+      // هرم منتظم SABCD مع الارتفاع SO
+      const a = Math.min(3.0, Math.max(1, paramA * 0.5));
+      const h = Math.min(3.5, Math.max(1, paramB * 0.6));
+
+      const s = project(0, h, 0); // القمة S
+      const oBase = project(0, 0, 0); // مركز القاعدة O
       const aPt = project(-a, 0, -a);
       const bPt = project(a, 0, -a);
       const cPt = project(a, 0, a);
@@ -353,6 +434,36 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
       ctx.lineTo(dPt.px, dPt.py);
       ctx.closePath();
       ctx.fill();
+
+      if (showSection) {
+        // المقطع الموازي للقاعدة في منتصف الارتفاع
+        const mA = project(-a / 2, h / 2, -a / 2);
+        const mB = project(a / 2, h / 2, -a / 2);
+        const mC = project(a / 2, h / 2, a / 2);
+        const mD = project(-a / 2, h / 2, a / 2);
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+        ctx.beginPath();
+        ctx.moveTo(mA.px, mA.py);
+        ctx.lineTo(mB.px, mB.py);
+        ctx.lineTo(mC.px, mC.py);
+        ctx.lineTo(mD.px, mD.py);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+
+      // الارتفاع SO المتقطع
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(s.px, s.py);
+      ctx.lineTo(oBase.px, oBase.py);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
       // أحرف الهرم
       ctx.strokeStyle = "#c084fc";
@@ -377,12 +488,13 @@ export const Interactive3DSpaceCanvas: React.FC<Interactive3DSpaceCanvasProps> =
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 11px sans-serif";
       ctx.fillText("S", s.px + 4, s.py - 4);
+      ctx.fillText("O", oBase.px + 5, oBase.py - 3);
       ctx.fillText("A", aPt.px - 10, aPt.py);
       ctx.fillText("B", bPt.px + 4, bPt.py);
       ctx.fillText("C", cPt.px + 4, cPt.py + 8);
       ctx.fillText("D", dPt.px - 10, dPt.py + 8);
     }
-  }, [presetType, paramA, paramB, rotX, rotY, zoom]);
+  }, [presetType, paramA, paramB, showSection, rotX, rotY, zoom]);
 
   return (
     <div className="relative w-full rounded-2xl border border-slate-700 bg-slate-950 overflow-hidden shadow-2xl flex flex-col">

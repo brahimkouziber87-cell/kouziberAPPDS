@@ -1123,17 +1123,17 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
                 <span>{isExamSimulationActive ? "محاكاة نشطة" : "محاكاة"}</span>
               </button>
 
-              {/* سحابة Google Drive */}
+              {/* سحابة Google Drive والتشفير المحلي */}
               {!driveConnected ? (
                 <button
                   type="button"
-                  onClick={onDriveSignIn}
+                  onClick={onToggleDrivePanel}
                   disabled={isLoggingInDrive}
                   className="h-7 bg-white hover:bg-slate-100 text-slate-700 font-bold px-2 rounded-lg border border-slate-200 transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
-                  title="ربط Google Drive لحفظ الفروض والجذاذات سحابياً"
+                  title="سحابة Google Drive والمزامنة التلقائية والتشفير المحلي AES-256"
                 >
                   <Cloud className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                  <span>{isLoggingInDrive ? "جاري..." : "Drive"}</span>
+                  <span>{isLoggingInDrive ? "جاري..." : "Drive & تشفير"}</span>
                 </button>
               ) : (
                 <div className="h-7 flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 rounded-lg shrink-0">

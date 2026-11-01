@@ -86,6 +86,9 @@ export interface SideNavigationMenuProps {
   onOpenInteractiveQuiz?: () => void;
   onOpenPythonLab?: () => void;
   onOpenAiAssistant?: () => void;
+  onOpenAiPedagogicalAction?: (
+    task: "GENERATE_ISOMORPHIC_VARIANT" | "SIMPLIFY_COMPLEX_WORDING"
+  ) => void;
   onOpenWolframVerifier?: () => void;
   onOpenBatchPrint?: () => void;
   onOpenExportDashboard?: () => void;
@@ -156,6 +159,7 @@ export const SideNavigationMenu: React.FC<SideNavigationMenuProps> = ({
   onOpenInteractiveQuiz,
   onOpenPythonLab,
   onOpenAiAssistant,
+  onOpenAiPedagogicalAction,
   onOpenWolframVerifier,
   onOpenBatchPrint,
   onOpenExportDashboard,
@@ -570,31 +574,64 @@ export const SideNavigationMenu: React.FC<SideNavigationMenuProps> = ({
               </button>
             )}
 
-            {/* المساعد الديداكتيكي والرياضياتي الذكي (Gemini) */}
+            {/* المساعد الديداكتيكي والرياضياتي الذكي (Gemini) + التعديلات البيداغوجية المقترحة */}
             {onOpenAiAssistant && (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenAiAssistant();
-                  if (forMobile) onCloseMobile();
-                }}
-                className={`w-full rounded-xl p-2 transition-all flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent ${
-                  collapsedState ? "justify-center" : "justify-between"
-                }`}
-                title="المساعد الرياضي والديداكتيكي الذكي (Gemini) للبرهان خطوة بخطوة وتوليد التمارين التوأمية"
-              >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <BrainCircuit className="w-4 h-4 text-cyan-400 shrink-0" />
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenAiAssistant();
+                    if (forMobile) onCloseMobile();
+                  }}
+                  className={`w-full rounded-xl p-2 transition-all flex items-center gap-2 cursor-pointer text-slate-200 hover:text-white bg-cyan-950/35 hover:bg-cyan-950/60 border border-cyan-800/50 ${
+                    collapsedState ? "justify-center" : "justify-between"
+                  }`}
+                  title="المساعد الرياضي والديداكتيكي الذكي (Gemini) لطلب تعديلات بيداغوجية مقترحة على الفرض، مثل اقتراح أسئلة موازية أو تبسيط صياغة المسائل المعقدة"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <BrainCircuit className="w-4 h-4 text-cyan-400 shrink-0" />
+                    {!collapsedState && (
+                      <span className="text-xs font-bold truncate">
+                        المساعد الذكي (تعديلات الفرض)
+                      </span>
+                    )}
+                  </div>
                   {!collapsedState && (
-                    <span className="text-xs font-bold truncate">المساعد الذكي (Gemini)</span>
+                    <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      IA
+                    </span>
                   )}
-                </div>
-                {!collapsedState && (
-                  <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
-                    IA
-                  </span>
+                </button>
+
+                {!collapsedState && onOpenAiPedagogicalAction && (
+                  <div className="grid grid-cols-2 gap-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenAiPedagogicalAction("GENERATE_ISOMORPHIC_VARIANT");
+                        if (forMobile) onCloseMobile();
+                      }}
+                      className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-slate-900 hover:bg-indigo-950 text-cyan-300 border border-slate-800 hover:border-cyan-700/60 transition flex items-center justify-center gap-1 cursor-pointer truncate"
+                      title="اقتراح أسئلة موازية وتوليد نموذج متكافئ (Sujet B) للفرض الحالي"
+                    >
+                      <Sparkles className="w-3 h-3 text-cyan-400 shrink-0" />
+                      <span className="truncate">أسئلة موازية</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenAiPedagogicalAction("SIMPLIFY_COMPLEX_WORDING");
+                        if (forMobile) onCloseMobile();
+                      }}
+                      className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-slate-900 hover:bg-teal-950 text-teal-300 border border-slate-800 hover:border-teal-700/60 transition flex items-center justify-center gap-1 cursor-pointer truncate"
+                      title="تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة في الفرض"
+                    >
+                      <Edit3 className="w-3 h-3 text-teal-400 shrink-0" />
+                      <span className="truncate">تبسيط المسائل</span>
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
             )}
 
             {/* مختبر WolframAlpha للتحقق الرمزي من الصيغ والمعادلات */}

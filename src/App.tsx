@@ -194,21 +194,31 @@ import {
   TcolorboxCustomConfig,
 } from "./utils/latexPackagesAndMath";
 import { PythonAlgorithmLabModal } from "./components/PythonAlgorithmLabModal";
-import { PedagogicalAiAssistantModal } from "./components/PedagogicalAiAssistantModal";
-import { GeminiApiKeyModal } from "./components/GeminiApiKeyModal";
+import {
+  AiPedagogicalTask,
+  PedagogicalAiAssistantModal,
+} from "./components/PedagogicalAiAssistantModal";
 import { PythonAlgorithmPreset } from "./data/pythonAlgorithms";
 import { generateOverleafZipBundle } from "./utils/overleafZipExporter";
-import { getClientGeminiApiKey, generateDocumentWithClientGemini } from "./services/geminiClient";
 import {
   deleteDriveDocument,
   DriveFileItem,
+  fetchSettingsFromDrive,
   getAccessToken,
   googleSignIn,
   initAuth,
   listSavedDriveDocuments,
   logout,
+  SETTINGS_FILE_NAME,
+  syncSettingsToDrive,
+  SyncSettingsPayload,
   uploadDocumentToDrive,
 } from "./services/googleDrive";
+import { GoogleDriveSyncModal } from "./components/GoogleDriveSyncModal";
+import {
+  isLocalEncryptionEnabled,
+  setLocalEncryptionEnabled,
+} from "./utils/cryptoStorage";
 import {
   DEFAULT_LONGITUDINAL_COHORT_CONFIG,
   DifferentiatedPathConfig,
@@ -816,16 +826,30 @@ export default function App() {
   // 18. مختبر بايثون ومساعد الذكاء الاصطناعي البيداغوجي المطور وحزمة Overleaf ZIP ولوحة الملفات المصدرة
   const [showPythonLabModal, setShowPythonLabModal] = useState<boolean>(false);
   const [showPedagogicalAiModal, setShowPedagogicalAiModal] = useState<boolean>(false);
-  const [showGeminiApiKeyModal, setShowGeminiApiKeyModal] = useState<boolean>(false);
   const [pedagogicalAiInitialView, setPedagogicalAiInitialView] = useState<
     "WORKSPACE" | "SETTINGS_DOCS"
   >("WORKSPACE");
+  const [pedagogicalAiInitialTask, setPedagogicalAiInitialTask] = useState<
+    AiPedagogicalTask | undefined
+  >(undefined);
+  const [pedagogicalAiInitialLessonIdx, setPedagogicalAiInitialLessonIdx] =
+    useState<number>(0);
   const [attachedPythonAlgorithms, setAttachedPythonAlgorithms] = useState<PythonAlgorithmPreset[]>([]);
   const [isExportDashboardOpen, setIsExportDashboardOpen] = useState<boolean>(false);
   const [showFourProposalsModal, setShowFourProposalsModal] = useState<boolean>(false);
   const [fourProposalsTab, setFourProposalsTab] = useState<InnovationProposalTabId>("INTERACTIVE_CF_SPLINE");
   const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>(() =>
     loadExportHistory(CURRICULUM_DB[initial.selectedTrackCode], initial.semester)
+  );
+
+  const handleOpenPedagogicalAiWithTask = useCallback(
+    (task?: AiPedagogicalTask, lessonIdx: number = 0) => {
+      setPedagogicalAiInitialView("WORKSPACE");
+      setPedagogicalAiInitialTask(task);
+      setPedagogicalAiInitialLessonIdx(lessonIdx);
+      setShowPedagogicalAiModal(true);
+    },
+    []
   );
 
   const handleInsertPythonAlgorithm = useCallback((preset: PythonAlgorithmPreset) => {
@@ -1051,6 +1075,287 @@ export default function App() {
       setFileToDelete(null);
     }
   };
+
+  // 11. ب: خيار المزامنة التلقائية للإعدادات المفضلة مع Google Drive عند التغيير
+  const [driveAutoSyncEnabled, setDriveAutoSyncEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("prof_math_drive_auto_sync_enabled");
+      return stored === null ? true : stored === "true";
+    } catch {
+      return true;
+    }
+  });
+  const [lastDriveSyncTime, setLastDriveSyncTime] = useState<Date | null>(null);
+  const [isSyncingDriveSettings, setIsSyncingDriveSettings] = useState<boolean>(false);
+  const autoSyncDebounceTimerRef = useRef<number | null>(null);
+  const isInitialMountRef = useRef<boolean>(true);
+
+  const handleToggleDriveAutoSync = useCallback((enabled: boolean) => {
+    setDriveAutoSyncEnabled(enabled);
+    try {
+      localStorage.setItem("prof_math_drive_auto_sync_enabled", String(enabled));
+    } catch {}
+    setStatusMessage({
+      type: enabled ? "success" : "info",
+      text: enabled
+        ? "تم تفعيل مزامنة الإعدادات المفضلة تلقائياً مع Google Drive."
+        : "تم تعطيل مزامنة الإعدادات التلقائية مع Google Drive.",
+    });
+  }, []);
+
+  const handleSyncSettingsToDriveNow = useCallback(async () => {
+    const tok = driveToken || (await getAccessToken());
+    if (!tok) {
+      setStatusMessage({
+        type: "error",
+        text: "يرجى تسجيل الدخول بحساب Google أولاً لمزامنة الإعدادات.",
+      });
+      return;
+    }
+
+    setIsSyncingDriveSettings(true);
+    try {
+      const payload: SyncSettingsPayload = {
+        schemaVersion: "3.0.0",
+        updatedAt: new Date().toISOString(),
+        sourceDevice: typeof navigator !== "undefined" ? navigator.platform || "Web" : "Web",
+        teacherIdentity: {
+          educationSystem,
+          school,
+          prof,
+          year,
+          academy,
+          direction,
+          headerStyle,
+          logoVariant,
+          includeTeacherLogo,
+          includeLogoWatermark,
+          includeStudentBox,
+          includeGradeBox,
+          calculatorAllowed,
+          includeCompetencies,
+        },
+        pedagogicalPreferences: {
+          docLang,
+          bilingualLayout,
+          exportFormat,
+          docFontFamily,
+          docFontSize,
+          latexPackageTheme,
+          paperSurface,
+          tcolorboxConfig,
+          appliedTitleCalligraphy,
+          studentGridStyle,
+          dsStructureMode,
+          dsQuestionDensity,
+          enableBranchColorGradient,
+          branchColorMode,
+          qcmQuestionCount,
+          qcmScoringMode,
+          selectedAiModel,
+        },
+        customLessonsMap: {
+          customWeightsMap,
+          customLessonIconsMap,
+        },
+      };
+
+      const result = await syncSettingsToDrive(tok, payload);
+      setLastDriveSyncTime(new Date());
+      setStatusMessage({
+        type: "success",
+        text: result.isNew
+          ? "تم إنشاء وحفظ ملف الإعدادات المفضلة في Google Drive بنجاح!"
+          : "تم تحديث ومزامنة الإعدادات المفضلة في Google Drive بنجاح!",
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "AUTH_REQUIRED") {
+        setDriveToken(null);
+      }
+      const msg = err instanceof Error ? err.message : "خطأ أثناء المزامنة";
+      setStatusMessage({
+        type: "error",
+        text: `تعذر مزامنة الإعدادات مع Google Drive: ${msg}`,
+      });
+    } finally {
+      setIsSyncingDriveSettings(false);
+    }
+  }, [
+    driveToken,
+    educationSystem,
+    school,
+    prof,
+    year,
+    academy,
+    direction,
+    headerStyle,
+    logoVariant,
+    includeTeacherLogo,
+    includeLogoWatermark,
+    includeStudentBox,
+    includeGradeBox,
+    calculatorAllowed,
+    includeCompetencies,
+    docLang,
+    bilingualLayout,
+    exportFormat,
+    docFontFamily,
+    docFontSize,
+    latexPackageTheme,
+    paperSurface,
+    tcolorboxConfig,
+    appliedTitleCalligraphy,
+    studentGridStyle,
+    dsStructureMode,
+    dsQuestionDensity,
+    enableBranchColorGradient,
+    branchColorMode,
+    qcmQuestionCount,
+    qcmScoringMode,
+    selectedAiModel,
+    customWeightsMap,
+    customLessonIconsMap,
+  ]);
+
+  const handleRestoreSettingsFromDrive = useCallback(async () => {
+    const tok = driveToken || (await getAccessToken());
+    if (!tok) {
+      setStatusMessage({
+        type: "error",
+        text: "يرجى تسجيل الدخول بحساب Google أولاً لاسترجاع الإعدادات.",
+      });
+      return;
+    }
+
+    setIsSyncingDriveSettings(true);
+    try {
+      const data = await fetchSettingsFromDrive(tok);
+      if (!data || !data.settings) {
+        setStatusMessage({
+          type: "info",
+          text: "لم يتم العثور على ملف إعدادات محفوظ سابقاً في مجلد المنصة على Google Drive.",
+        });
+        return;
+      }
+
+      const { teacherIdentity, pedagogicalPreferences, customLessonsMap } = data.settings;
+      if (teacherIdentity) {
+        if (teacherIdentity.prof) setProf(teacherIdentity.prof);
+        if (teacherIdentity.school) setSchool(teacherIdentity.school);
+        if (teacherIdentity.year) setYear(teacherIdentity.year);
+        if (teacherIdentity.academy) setAcademy(teacherIdentity.academy);
+        if (teacherIdentity.direction) setDirection(teacherIdentity.direction);
+        if (teacherIdentity.headerStyle) setHeaderStyle(teacherIdentity.headerStyle as HeaderStyle);
+        if (teacherIdentity.logoVariant) setLogoVariant(teacherIdentity.logoVariant as TeacherLogoVariant);
+        if (typeof teacherIdentity.includeTeacherLogo === "boolean") setIncludeTeacherLogo(teacherIdentity.includeTeacherLogo);
+        if (typeof teacherIdentity.includeLogoWatermark === "boolean") setIncludeLogoWatermark(teacherIdentity.includeLogoWatermark);
+        if (typeof teacherIdentity.includeStudentBox === "boolean") setIncludeStudentBox(teacherIdentity.includeStudentBox);
+        if (typeof teacherIdentity.includeGradeBox === "boolean") setIncludeGradeBox(teacherIdentity.includeGradeBox);
+        if (typeof teacherIdentity.calculatorAllowed === "boolean") setCalculatorAllowed(teacherIdentity.calculatorAllowed);
+        if (typeof teacherIdentity.includeCompetencies === "boolean") setIncludeCompetencies(teacherIdentity.includeCompetencies);
+      }
+
+      if (pedagogicalPreferences) {
+        if (pedagogicalPreferences.docLang) setDocLang(pedagogicalPreferences.docLang as DocLanguage);
+        if (pedagogicalPreferences.bilingualLayout) setBilingualLayout(pedagogicalPreferences.bilingualLayout as BilingualLayout);
+        if (pedagogicalPreferences.exportFormat) setExportFormat(pedagogicalPreferences.exportFormat as ExportFormat);
+        if (pedagogicalPreferences.docFontFamily) setDocFontFamily(pedagogicalPreferences.docFontFamily as DocFontFamily);
+        if (pedagogicalPreferences.docFontSize) setDocFontSize(pedagogicalPreferences.docFontSize as DocFontSize);
+        if (pedagogicalPreferences.latexPackageTheme) setLatexPackageTheme(pedagogicalPreferences.latexPackageTheme as LatexPackageTheme);
+        if (pedagogicalPreferences.paperSurface) setPaperSurface(pedagogicalPreferences.paperSurface as PaperSurfaceTexture);
+        if (pedagogicalPreferences.tcolorboxConfig) setTcolorboxConfig(pedagogicalPreferences.tcolorboxConfig as TcolorboxCustomConfig);
+        if (pedagogicalPreferences.appliedTitleCalligraphy) setAppliedTitleCalligraphy(pedagogicalPreferences.appliedTitleCalligraphy as AppliedTitleCalligraphyConfig);
+        if (pedagogicalPreferences.studentGridStyle) setStudentGridStyle(pedagogicalPreferences.studentGridStyle as StudentGridStyle);
+        if (pedagogicalPreferences.dsStructureMode) setDsStructureMode(pedagogicalPreferences.dsStructureMode as MoroccanDSStructureMode);
+        if (pedagogicalPreferences.dsQuestionDensity) setDsQuestionDensity(pedagogicalPreferences.dsQuestionDensity as DSQuestionDensity);
+        if (typeof pedagogicalPreferences.enableBranchColorGradient === "boolean") setEnableBranchColorGradient(pedagogicalPreferences.enableBranchColorGradient);
+        if (pedagogicalPreferences.branchColorMode) setBranchColorMode(pedagogicalPreferences.branchColorMode as BranchColorGradientMode);
+        if (pedagogicalPreferences.qcmQuestionCount) setQcmQuestionCount(pedagogicalPreferences.qcmQuestionCount);
+        if (pedagogicalPreferences.qcmScoringMode) setQcmScoringMode(pedagogicalPreferences.qcmScoringMode as QCMScoringMode);
+        if (pedagogicalPreferences.selectedAiModel) setSelectedAiModel(pedagogicalPreferences.selectedAiModel as "gemini-3.8-flash" | "gemini-4-argon");
+      }
+
+      if (customLessonsMap) {
+        if (customLessonsMap.customWeightsMap) setCustomWeightsMap(customLessonsMap.customWeightsMap);
+        if (customLessonsMap.customLessonIconsMap) setCustomLessonIconsMap(customLessonsMap.customLessonIconsMap as Record<string, LessonHeaderIconId>);
+      }
+
+      setLastDriveSyncTime(new Date());
+      setStatusMessage({
+        type: "success",
+        text: `تم استرجاع وتطبيق الإعدادات بنجاح من Google Drive (آخر تعديل: ${new Date(data.modifiedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}).`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "خطأ أثناء الاسترجاع";
+      setStatusMessage({
+        type: "error",
+        text: `تعذر استرجاع الإعدادات من Google Drive: ${msg}`,
+      });
+    } finally {
+      setIsSyncingDriveSettings(false);
+    }
+  }, [driveToken]);
+
+  // تأثير المزامنة التلقائية اللحظية عند تغيير أي إعداد مفضل مع تأخير (Debounce 2500ms)
+  useEffect(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    if (!driveAutoSyncEnabled || !driveToken) return;
+
+    if (autoSyncDebounceTimerRef.current) {
+      window.clearTimeout(autoSyncDebounceTimerRef.current);
+    }
+
+    autoSyncDebounceTimerRef.current = window.setTimeout(() => {
+      handleSyncSettingsToDriveNow();
+    }, 2500);
+
+    return () => {
+      if (autoSyncDebounceTimerRef.current) {
+        window.clearTimeout(autoSyncDebounceTimerRef.current);
+      }
+    };
+  }, [
+    driveAutoSyncEnabled,
+    driveToken,
+    prof,
+    school,
+    year,
+    academy,
+    direction,
+    headerStyle,
+    logoVariant,
+    includeTeacherLogo,
+    includeLogoWatermark,
+    includeStudentBox,
+    includeGradeBox,
+    calculatorAllowed,
+    includeCompetencies,
+    docLang,
+    bilingualLayout,
+    exportFormat,
+    docFontFamily,
+    docFontSize,
+    latexPackageTheme,
+    paperSurface,
+    tcolorboxConfig,
+    appliedTitleCalligraphy,
+    studentGridStyle,
+    dsStructureMode,
+    dsQuestionDensity,
+    enableBranchColorGradient,
+    branchColorMode,
+    qcmQuestionCount,
+    qcmScoringMode,
+    selectedAiModel,
+    customWeightsMap,
+    customLessonIconsMap,
+    handleSyncSettingsToDriveNow,
+  ]);
+
 
   // التبديل بين النظام المغربي ونظام البعثة الفرنسية
   const handleSystemChange = (sys: EducationSystem) => {
@@ -3586,6 +3891,56 @@ export default function App() {
     [activeCustomLessons, allTrackLessons, currentTrack.code, dsQuestionDensity]
   );
 
+  // استبدال أسئلة التمرين المحدد في الفرض بالتعديل البيداغوجي المقترح من المساعد الذكي (أسئلة موازية أو صياغة مبسطة)
+  const handleReplaceExerciseFromAi = useCallback(
+    (payload: {
+      targetLessonIndex: number;
+      questionsAr: string[];
+      questionsFr: string[];
+      solutionAr: string;
+      solutionFr: string;
+      titleAr?: string;
+      titleFr?: string;
+    }) => {
+      const targetLesson =
+        activeCustomLessons[payload.targetLessonIndex] ||
+        activeCustomLessons[0] ||
+        allTrackLessons[0];
+      if (!targetLesson) return;
+
+      const key = `${currentTrack.code}_${targetLesson.lessonFr}`;
+      const cleanAr =
+        Array.isArray(payload.questionsAr) && payload.questionsAr.length > 0
+          ? payload.questionsAr
+          : ["1. حل التمرين المعدل بيداغوجياً."];
+      const cleanFr =
+        Array.isArray(payload.questionsFr) && payload.questionsFr.length > 0
+          ? payload.questionsFr
+          : cleanAr;
+
+      setCustomQuestionsMap((prev) => ({
+        ...prev,
+        [key]: {
+          ar: cleanAr,
+          fr: cleanFr,
+        },
+      }));
+
+      setCustomQuestionBaremesMap((prev) => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+
+      setStatusMessage({
+        type: "success",
+        text: `✓ تم تحديث تمرين « ${targetLesson.lessonAr} » في الفرض المحروس بالتعديل البيداغوجي المقترح (${cleanAr.length} أسئلة متدرجة)!`,
+      });
+    },
+    [activeCustomLessons, allTrackLessons, currentTrack.code]
+  );
+
   // إدراج تمرين رسمي من بنك امتحانات البكالوريا الوطنية أو البعثة الفرنسية (Annales) مباشرة في الفرض الحالي
   const handleInsertOfficialAnnaleExercise = useCallback(
     (annaleLesson: LessonItem) => {
@@ -4259,7 +4614,7 @@ export default function App() {
     setIsGeneratingAI(true);
     setStatusMessage({
       type: "info",
-      text: "جاري صياغة التمارين والحلول المفصلة وفق الدروس والنسب المختارة...",
+      text: "جاري صياغة التمارين الرياضية والحلول المفصلة وفق الدروس والنسب المختارة عبر محرك الذكاء الاصطناعي...",
     });
 
     const targetLessons =
@@ -4270,7 +4625,6 @@ export default function App() {
         : allTrackLessons;
 
     try {
-
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: {
@@ -4328,61 +4682,49 @@ export default function App() {
         throw new Error(data.error || "تعذر استلام الكود المصدري من الخادم");
       }
 
-      setGeneratedCode(data.code);
-      setViewMode("CODE");
-      setStatusMessage({
-        type: "success",
-        text: `تم توليد الوثيقة الكاملة بالتمارين والحلول المفصلة بنجاح عبر ${data.modelUsed || selectedAiModel}.`,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "خطأ في الاتصال";
-      let clientSuccess = false;
-      const clientKey = getClientGeminiApiKey();
-
-      if (clientKey) {
-        try {
-          const clientRes = await generateDocumentWithClientGemini({
-            school,
-            prof,
-            year,
-            academy,
-            direction,
-            trackLabelAr: currentTrack.labelAr,
-            trackLabelFr: currentTrack.labelFr,
-            durationAr: currentTrack.durationAr,
-            durationFr: currentTrack.durationFr,
-            exportFormat: exportFormat === "TYPST" ? "TYPST" : "LATEX",
-            examModel,
-            activeModule,
-            semester,
-            dsKey,
-            lessons: targetLessons,
-            customTopicNote,
-            modelChoice: selectedAiModel,
+      if (
+        Array.isArray(data.generatedExercises) &&
+        data.generatedExercises.length > 0
+      ) {
+        setCustomQuestionsMap((prev) => {
+          const updated = { ...prev };
+          targetLessons.forEach((lesson, idx) => {
+            const genEx =
+              data.generatedExercises[idx] || data.generatedExercises[0];
+            if (
+              lesson &&
+              genEx &&
+              Array.isArray(genEx.questionsAr) &&
+              genEx.questionsAr.length > 0
+            ) {
+              const key = `${currentTrack.code}_${lesson.lessonFr}`;
+              updated[key] = {
+                ar: genEx.questionsAr,
+                fr:
+                  Array.isArray(genEx.questionsFr) &&
+                  genEx.questionsFr.length > 0
+                    ? genEx.questionsFr
+                    : genEx.questionsAr,
+              };
+            }
           });
-          setGeneratedCode(clientRes.code);
-          setViewMode("CODE");
-          setStatusMessage({
-            type: "success",
-            text: `تم توليد الوثيقة الكاملة بالذكاء الاصطناعي بنجاح عبر Gemini (${clientRes.modelUsed}).`,
-          });
-          clientSuccess = true;
-        } catch (clientErr) {
-          console.warn("Client-side Gemini generation attempt encountered an error:", clientErr);
-        }
-      }
-
-      if (!clientSuccess) {
-        triggerOfflineGeneration();
-        setViewMode("CODE");
-        if (!clientKey) {
-          setShowGeminiApiKeyModal(true);
-        }
-        setStatusMessage({
-          type: "info",
-          text: `تم توليد الفرض والحلول المفصلة بنجاح عبر المحرك البيداغوجي المدمج. لتفعيل التوليد الذكي التلقائي عبر Gemini، يرجى إدخال مفتاح API المجاني.`,
+          return updated;
         });
       }
+
+      setGeneratedCode(data.code);
+      setStatusMessage({
+        type: "success",
+        text: `✓ تم توليد وتحديث التمارين الرياضية والحلول المفصلة في المعاينة الورقية (A4) والكود المصدري بنجاح عبر ${
+          data.modelUsed || selectedAiModel
+        }!`,
+      });
+    } catch {
+      triggerOfflineGeneration();
+      setStatusMessage({
+        type: "success",
+        text: "✓ تم توليد الفرض المحروس والحلول المفصلة وتحديث المعاينة الورقية والكود المصدري عبر المحرك الرياضي المدمج بنجاح!",
+      });
     } finally {
       setIsGeneratingAI(false);
     }
@@ -5679,7 +6021,13 @@ export default function App() {
           onOpenCrossPlatformSync={() => setShowCrossPlatformSyncModal(true)}
           onOpenInteractiveQuiz={handleOpenInteractiveQuiz}
           onOpenPythonLab={() => setShowPythonLabModal(true)}
-          onOpenAiAssistant={() => setShowPedagogicalAiModal(true)}
+          onOpenAiAssistant={() => {
+            setPedagogicalAiInitialTask(undefined);
+            setShowPedagogicalAiModal(true);
+          }}
+          onOpenAiPedagogicalAction={(task) =>
+            handleOpenPedagogicalAiWithTask(task, pedagogicalAiInitialLessonIdx)
+          }
           onOpenWolframVerifier={() => setShowWolframVerifierModal(true)}
           onOpenBatchPrint={() => setIsBatchPrintModalOpen(true)}
           onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
@@ -5981,6 +6329,17 @@ export default function App() {
             <span className="text-[10.5px] font-black text-slate-400 whitespace-nowrap shrink-0 pl-1">
               المختبرات التخصصية:
             </span>
+
+            {/* زر تحويل التمارين الحالية إلى اختبار تفاعلي مع تصحيح آلي فوري (Interactive Quiz) */}
+            <button
+              type="button"
+              onClick={handleOpenInteractiveQuiz}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-amber-600 shadow-2xs whitespace-nowrap shrink-0"
+              title="تحويل التمارين الحالية إلى اختبار تفاعلي (Interactive Quiz) مع تصحيح آلي فوري وسجل نقط عبر مكتبة quizGenerator"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-100 fill-current shrink-0" />
+              <span>اختبار تفاعلي وتصحيح آلي (Quiz /20)</span>
+            </button>
 
             {activeModule === "DS_142_08" && (
               <button
@@ -10117,6 +10476,79 @@ export default function App() {
                       : `توليد ذكي متقدم عبر Gemini (${isMission ? "Type Bac" : "الأطر المرجعية"})`}
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPedagogicalAiInitialTask(undefined);
+                    setPedagogicalAiInitialView("WORKSPACE");
+                    setShowPedagogicalAiModal(true);
+                  }}
+                  className="w-full bg-gradient-to-r from-cyan-900 to-indigo-950 hover:from-cyan-800 hover:to-indigo-900 text-cyan-200 border border-cyan-700/50 font-black py-2 px-4 rounded-xl transition text-xs flex justify-center items-center gap-2 whitespace-nowrap active:scale-98 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                  <span>استوديو المساعد الديداكتيكي والبرهان (9 مهام ذكية)</span>
+                </button>
+
+                {/* بطاقة التعديلات البيداغوجية الذكية المقترحة على الفرض (PedagogicalAiAssistantModal Quick Actions) */}
+                <div className="bg-slate-900/95 border border-cyan-800/50 rounded-xl p-2.5 space-y-2 text-white">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-black text-cyan-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>تعديلات بيداغوجية مقترحة على الفرض:</span>
+                    </span>
+                    {activeCustomLessons.length > 1 && (
+                      <select
+                        value={pedagogicalAiInitialLessonIdx}
+                        onChange={(e) =>
+                          setPedagogicalAiInitialLessonIdx(
+                            Number(e.target.value)
+                          )
+                        }
+                        className="bg-slate-800 text-cyan-200 border border-slate-700 rounded-md px-1.5 py-0.5 text-[10px] font-bold max-w-[135px] truncate"
+                        title="اختر التمرين المستهدف في الفرض لطلب تعديل بيداغوجي عليه"
+                      >
+                        {activeCustomLessons.map((l, idx) => (
+                          <option key={`ai_side_target_${idx}`} value={idx}>
+                            ت{idx + 1}: {l.lessonAr}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleOpenPedagogicalAiWithTask(
+                          "GENERATE_ISOMORPHIC_VARIANT",
+                          pedagogicalAiInitialLessonIdx
+                        )
+                      }
+                      className="px-2.5 py-1.5 rounded-lg text-[10.5px] font-black bg-indigo-950/90 hover:bg-indigo-900 text-cyan-200 border border-cyan-700/50 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="اقتراح أسئلة موازية وتوليد نموذج متكافئ (Sujet B) للتمرين المحدد"
+                    >
+                      <RefreshCw className="w-3 h-3 text-cyan-300 shrink-0" />
+                      <span>اقتراح أسئلة موازية</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleOpenPedagogicalAiWithTask(
+                          "SIMPLIFY_COMPLEX_WORDING",
+                          pedagogicalAiInitialLessonIdx
+                        )
+                      }
+                      className="px-2.5 py-1.5 rounded-lg text-[10.5px] font-black bg-teal-950/90 hover:bg-teal-900 text-teal-200 border border-teal-700/50 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="تبسيط صياغة المسائل المعقدة وتفكيك الأسئلة المركبة إلى خطوات متدرجة ميسرة"
+                    >
+                      <Edit3 className="w-3 h-3 text-teal-300 shrink-0" />
+                      <span>تبسيط صياغة المسائل</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
               </div>
@@ -11489,6 +11921,10 @@ export default function App() {
             trackCode={currentTrack.code}
             trackLabelAr={currentTrack.labelAr}
             trackLabelFr={currentTrack.labelFr}
+            school={school}
+            prof={prof}
+            year={year}
+            semester={semester}
             dsQuestionDensity={dsQuestionDensity}
             isFr={isMission || docLang === "FR"}
             onUpdateCustomQuestions={handleUpdateCustomQuestions}
@@ -11586,32 +12022,24 @@ export default function App() {
       )}
 
       {/* نافذة المساعد الرياضي والديداكتيكي المطور للذكاء الاصطناعي (Gemini) */}
-      <GeminiApiKeyModal
-        isOpen={showGeminiApiKeyModal}
-        onClose={() => setShowGeminiApiKeyModal(false)}
-        onSuccessActivated={handleAIGenerate}
-        onUseBuiltinFallback={() => {
-          triggerOfflineGeneration();
-          setStatusMessage({
-            type: "success",
-            text: "تم الاعتماد على المحرك التربوي المدمج لتوليد الوثيقة بنجاح.",
-          });
-        }}
-        onNotify={(type, text) => setStatusMessage({ type, text })}
-      />
-
       {showPedagogicalAiModal && (
         <PedagogicalAiAssistantModal
           isOpen={showPedagogicalAiModal}
-          onClose={() => setShowPedagogicalAiModal(false)}
+          onClose={() => {
+            setShowPedagogicalAiModal(false);
+            setPedagogicalAiInitialTask(undefined);
+          }}
           trackLabel={`${currentTrack.labelAr} (${currentTrack.labelFr})`}
           educationSystem={educationSystem}
           currentModelChoice={selectedAiModel}
           onChangeModelChoice={setSelectedAiModel}
           lessons={activeCustomLessons}
           initialView={pedagogicalAiInitialView}
+          initialTask={pedagogicalAiInitialTask}
+          initialLessonIndex={pedagogicalAiInitialLessonIdx}
           onApplyVariantToDoc={handleApplyAiVariant}
           onInsertExerciseToExam={handleInsertVerifiedWolframQuestion}
+          onReplaceExerciseInExam={handleReplaceExerciseFromAi}
           onAttachPythonScenario={(algo) => {
             const newPreset: PythonAlgorithmPreset = {
               id: algo.id || `ai_py_${Date.now()}`,
@@ -11700,6 +12128,30 @@ export default function App() {
           onNotify={(type, msg) => setStatusMessage({ type, text: msg })}
         />
       )}
+
+      {/* نافذة السحابة ومزامنة الإعدادات مع Google Drive ونظام التشفير المحلي AES-256 */}
+      <GoogleDriveSyncModal
+        isOpen={showDrivePanel}
+        onClose={() => setShowDrivePanel(false)}
+        driveUser={driveUser}
+        driveToken={driveToken}
+        isLoggingIn={isLoggingInDrive}
+        isUploading={isUploadingDrive}
+        driveFiles={driveFiles}
+        isLoadingFiles={isLoadingDriveFiles}
+        autoSyncEnabled={driveAutoSyncEnabled}
+        onToggleAutoSync={handleToggleDriveAutoSync}
+        onSignIn={handleGoogleDriveSignIn}
+        onLogout={handleGoogleDriveLogout}
+        onUploadCurrentDoc={handleSaveToGoogleDrive}
+        onSyncSettingsNow={handleSyncSettingsToDriveNow}
+        onRestoreSettingsFromDrive={handleRestoreSettingsFromDrive}
+        onDeleteFile={confirmDeleteDriveFile}
+        onNotify={(type, text) => setStatusMessage({ type, text })}
+        lastSyncTime={lastDriveSyncTime}
+        isSyncingSettings={isSyncingDriveSettings}
+      />
+
       {/* شريط التحكم السفلي العائم للجوال (Mobile Bottom Dock) للوصول السريع دون مزاحمة معاينة الورقة A4 */}
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 no-print shadow-2xl">
         <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">

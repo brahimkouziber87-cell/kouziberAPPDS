@@ -184,7 +184,7 @@ export const ClassCouncilReportModal: React.FC<ClassCouncilReportModalProps> = (
             </div>
 
             {/* بطاقة المعطيات والمؤشرات الكبرى */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
               <div>
                 <span className="text-slate-500 font-bold block">الأستاذ(ة) المشرف(ة):</span>
                 <span className="font-black text-slate-900">{profName}</span>
@@ -204,6 +204,12 @@ export const ClassCouncilReportModal: React.FC<ClassCouncilReportModalProps> = (
                 <span className="font-mono font-black text-cyan-700 text-sm">
                   {meanProgressionDelta > 0 ? "+" : ""}
                   {meanProgressionDelta.toFixed(2)} نقطة
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-bold block">مؤشر نجاعة الدعم الفارقي:</span>
+                <span className="font-mono font-black text-indigo-800 text-sm">
+                  {netRemediationEfficiencyScore}% / 100
                 </span>
               </div>
             </div>
@@ -249,6 +255,28 @@ export const ClassCouncilReportModal: React.FC<ClassCouncilReportModalProps> = (
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* مبيان التطور الطولي وقرار تأشيرة التفتيش التربوي */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              <div
+                className="md:col-span-7 border border-slate-200 rounded-xl p-2 bg-white overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: analytics.svgEvolutionChart }}
+              />
+              <div className="md:col-span-5 border border-emerald-200 rounded-xl p-3.5 bg-emerald-50/70 space-y-2 text-xs">
+                <div className="font-black text-emerald-950 flex items-center justify-between">
+                  <span>خلاصة التجانس وتأشيرة المفتش التربوي:</span>
+                  <span className="font-mono text-[11px] bg-emerald-800 text-white px-2 py-0.5 rounded">
+                    ΔNA: {analytics.deltaNonAcquis}%
+                  </span>
+                </div>
+                <p className="text-[11px] font-bold text-slate-800 leading-relaxed">
+                  {analytics.homogeneityTrendAr}
+                </p>
+                <p className="text-[11px] text-emerald-950 leading-relaxed border-t border-emerald-200/80 pt-1.5">
+                  {analytics.inspectorVisaStatusAr}
+                </p>
+              </div>
             </div>
 
             {/* تشخيص التعثرات والتوصيات المعتمدة لمجلس القسم */}

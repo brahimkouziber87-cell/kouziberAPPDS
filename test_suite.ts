@@ -14,6 +14,10 @@ import {
 
 import { CURRICULUM_DB, getVariantQuestions, LessonItem } from './src/data/curriculum.ts';
 import { renderQrSvgString } from './src/utils/qrCodeHelper.ts';
+import {
+  convertExercisesToInteractiveQuiz,
+  evaluateStudentQuiz,
+} from './src/utils/quizGenerator.ts';
 
 let passCount = 0;
 let failCount = 0;
@@ -249,6 +253,106 @@ try {
   assert(false, `Curriculum check crashed: ${e.message}`);
 }
 
+// ----------------------------------------------------------------------
+// 11. TEST INTERACTIVE QUIZ GENERATOR & AUTOMATED GRADING (quizGenerator)
+// ----------------------------------------------------------------------
+console.log("\n--- 11. Testing Interactive Quiz Generator & Automated Grading ---");
+try {
+  const sampleTrack = CURRICULUM_DB["2BAC_PC"];
+  const sampleLessons = Object.values(sampleTrack.semesters.S1).flat().slice(0, 2);
+  const quiz = convertExercisesToInteractiveQuiz({
+    lessons: sampleLessons,
+    titleAr: "فرض محروس تجريبي رقم 1",
+    titleFr: "Devoir Surveillé N°1",
+    schoolAr: "ثانوية مولاي يوسف التأهيلية",
+    schoolFr: "Lycée Moulay Youssef",
+    prof: "ذ. كوزيبر",
+    trackCode: "2BAC_PC",
+    system: "MAROC_NATIONAL",
+    durationMinutes: 45,
+    calculatorAllowed: true,
+  });
+
+  assert(quiz.totalQuestions > 0, `Interactive Quiz generated ${quiz.totalQuestions} questions`);
+  assert(Math.abs(quiz.totalPoints - 20) < 0.05, `Quiz total points normalized to 20/20 (got ${quiz.totalPoints})`);
+  assert(quiz.questions.every((q) => q.choices.length === 4), `Every quiz question has 4 choices with mathematical distractors`);
+
+  // Simulate 100% correct student answers
+  const perfectAnswers: Record<string, string> = {};
+  quiz.questions.forEach((q) => {
+    const correctOpt = q.choices.find((o) => o.isCorrect);
+    if (correctOpt) perfectAnswers[q.id] = correctOpt.id;
+  });
+
+  const evalPerfect = evaluateStudentQuiz(quiz, {
+    candidateName: "ياسين العلمي",
+    candidateClass: "2BAC PC 1",
+    candidateNumber: "14",
+    answers: perfectAnswers,
+    flaggedQuestionIds: [],
+    elapsedSeconds: 420,
+    completedAt: new Date().toISOString(),
+  });
+  assert(Math.abs(evalPerfect.scoreOut20 - 20) < 0.01, `Automated grading gives 20/20 for all-correct answers (got ${evalPerfect.scoreOut20})`);
+  assert(evalPerfect.correctCount === quiz.totalQuestions, `Automated grading counts ${evalPerfect.correctCount}/${quiz.totalQuestions} correct answers`);
+} catch (e: any) {
+  assert(false, `Interactive Quiz generator crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 12. TEST LOCAL AES-GCM 256-BIT ENCRYPTION ENGINE (cryptoStorage)
+// ----------------------------------------------------------------------
+console.log("\n--- 12. Testing Local AES-GCM 256-bit Storage Encryption Engine ---");
+try {
+  const {
+    encryptTextAESGCM,
+    decryptTextAESGCM,
+    isEncryptedPayload,
+    runCryptoEngineSelfTest,
+  } = await import("./src/utils/cryptoStorage.ts");
+
+  const sampleSecretExamText = JSON.stringify({
+    title: "فرض محروس رقم 2 - الأسدس الأول",
+    track: "2BAC_SM",
+    gradingKey: { Q1: 3.5, Q2: 4.5, Q3: 12.0 },
+    studentGrades: [{ name: "فاطمة الزهراء", grade: 19.75 }],
+  });
+
+  const encrypted = await encryptTextAESGCM(sampleSecretExamText);
+  assert(isEncryptedPayload(encrypted), `Encrypted payload starts with secure header __ENC_AES256_GCM__`);
+  assert(encrypted.includes(":"), `Encrypted payload contains salt, IV, and ciphertext segments`);
+
+  const decrypted = await decryptTextAESGCM(encrypted);
+  assert(decrypted === sampleSecretExamText, `AES-GCM decryption reproduces original plaintext verbatim`);
+
+  // Test PIN protected encryption
+  const pin = "7392";
+  const pinEncrypted = await encryptTextAESGCM(sampleSecretExamText, pin);
+  assert(isEncryptedPayload(pinEncrypted), `PIN-protected encrypted payload is valid`);
+
+  const pinDecrypted = await decryptTextAESGCM(pinEncrypted, pin);
+  assert(pinDecrypted === sampleSecretExamText, `PIN-protected decryption reproduces original with correct PIN`);
+
+  // Test self test benchmark
+  const selfTest = await runCryptoEngineSelfTest();
+  assert(selfTest.success, `Crypto Engine self-test passed: ${selfTest.details}`);
+  assert(selfTest.durationMs < 100, `AES-GCM latency is ultra-fast: ${selfTest.durationMs}ms`);
+} catch (e: any) {
+  assert(false, `Crypto Storage test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 13. TEST GOOGLE DRIVE SETTINGS SYNCHRONIZATION PAYLOAD & CONTRACT
+// ----------------------------------------------------------------------
+console.log("\n--- 13. Testing Google Drive Settings Synchronization Contract ---");
+try {
+  const { SETTINGS_FILE_NAME, SCOPES } = await import("./src/services/googleDrive.ts");
+  assert(SETTINGS_FILE_NAME === "math_exam_studio_settings.json", `Settings file name defined as math_exam_studio_settings.json`);
+  assert(SCOPES.includes("https://www.googleapis.com/auth/drive.file"), `OAuth least-privilege scope includes drive.file`);
+} catch (e: any) {
+  assert(false, `Google Drive contract test crashed: ${e.message}`);
+}
+
 console.log("\n=================================================");
 console.log(`=== TEST SUMMARY: ${passCount} PASSED, ${failCount} FAILED ===`);
 console.log("=================================================");
@@ -256,3 +360,5 @@ console.log("=================================================");
 if (failCount > 0) {
   process.exit(1);
 }
+
+
