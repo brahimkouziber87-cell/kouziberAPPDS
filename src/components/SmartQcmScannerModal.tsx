@@ -231,7 +231,7 @@ export const SmartQcmScannerModal: React.FC<SmartQcmScannerModalProps> = ({
     if (rosterIndex + 1 < DEFAULT_MOROCCAN_CLASS_ROSTER.length) {
       const nextIdx = rosterIndex + 1;
       setRosterIndex(nextIdx);
-      setStudentName(DEFAULT_MOROCCAN_CLASS_ROSTER[nextIdx].nomFr);
+      setStudentName(DEFAULT_MOROCCAN_CLASS_ROSTER[nextIdx].fullNameFr || DEFAULT_MOROCCAN_CLASS_ROSTER[nextIdx].nomFr || "");
     }
   };
 

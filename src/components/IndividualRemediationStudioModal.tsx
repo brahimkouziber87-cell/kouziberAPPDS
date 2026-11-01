@@ -187,15 +187,17 @@ export const IndividualRemediationStudioModal: React.FC<IndividualRemediationStu
                   />
                   <select
                     onChange={(e) => {
-                      const item = DEFAULT_MOROCCAN_CLASS_ROSTER.find((r) => r.codeMassar === e.target.value);
-                      if (item) setSelectedStudentName(item.nomFr);
+                      const item = DEFAULT_MOROCCAN_CLASS_ROSTER.find(
+                        (r) => r.massarCode === e.target.value || r.codeMassar === e.target.value
+                      );
+                      if (item) setSelectedStudentName(item.fullNameFr || item.nomFr || "");
                     }}
                     className="bg-slate-800 border border-slate-700 rounded-lg px-2 text-xs font-mono text-slate-300"
                   >
                     <option value="">لائحة مسار...</option>
                     {DEFAULT_MOROCCAN_CLASS_ROSTER.map((st) => (
-                      <option key={st.codeMassar} value={st.codeMassar}>
-                        {st.nomFr}
+                      <option key={st.massarCode} value={st.massarCode}>
+                        {st.fullNameFr || st.nomFr || st.fullNameAr} ({st.massarCode})
                       </option>
                     ))}
                   </select>

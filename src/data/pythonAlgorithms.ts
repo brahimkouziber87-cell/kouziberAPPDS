@@ -103,7 +103,7 @@ def seuil_suite(epsilon: float) -> int:
     levelBadgeAr: "2 باك علوم تجريبية ورياضية / Terminale",
     levelBadgeFr: "Terminale Spécialité / 2BAC",
     objectiveAr:
-      "تطبيق مبرهنة القيم الوسطية وخوارزمية التفرع الثنائي لحساب قيمة مقربة لحل المعادلة f(x) = 0 على مجال [a, b] بسعة ε.",
+      "تطبيق مبرهنة القيم الوسيطية وخوارزمية التفرع الثنائي (Dichotomie) لحساب قيمة مقربة لحل المعادلة f(x) = 0 على مجال [a, b] بسعة ε.",
     objectiveFr:
       "Appliquer le théorème des valeurs intermédiaires et encadrer la solution unique α de f(x)=0 à une précision ε.",
     pythonCode: `def f(x: float) -> float:

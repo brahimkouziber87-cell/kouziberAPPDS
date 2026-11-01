@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { AppliedTitleCalligraphyConfig } from "../components/ArabicCalligraphySimulator";
 
 export interface OverleafBundleConfig {
   docTitle: string;
@@ -17,6 +18,7 @@ export interface OverleafBundleConfig {
   hasQcm?: boolean;
   hasPython?: boolean;
   hasGeoGebra?: boolean;
+  appliedTitleCalligraphy?: AppliedTitleCalligraphyConfig;
 }
 
 /**
@@ -27,6 +29,20 @@ export async function generateOverleafZipBundle(
 ): Promise<Blob> {
   const zip = new JSZip();
 
+  const calligraphyCfg = config.appliedTitleCalligraphy;
+  const xeLatexLetterSpace = Number(
+    ((calligraphyCfg?.customLetterSpacingEm ?? 0.025) * 100).toFixed(1)
+  );
+  const xeLatexFontFamilyName =
+    calligraphyCfg?.fontId === "KUFI_GEOMETRIC"
+      ? "Reem Kufi"
+      : calligraphyCfg?.fontId === "DIWANI_JALI"
+      ? "Rakkas"
+      : calligraphyCfg?.fontId === "DIWANI_SULTANI" ||
+        calligraphyCfg?.fontId === "RUQAA_INK"
+      ? "Aref Ruqaa"
+      : "Amiri";
+
   // 1. ملف README.md الإرشادي
   const readmeContent = `# ${config.docTitle} - Overleaf LaTeX Package
 ## Projet LaTeX Officiel pour Overleaf (Lycée & Baccalauréat)
@@ -36,7 +52,7 @@ export async function generateOverleafZipBundle(
 2. اضغط على **"New Project"** ثم اختر **"Upload Project"**.
 3. قم بسحب وإفلات هذا الملف المضغوط (\`.zip\`) بالكامل.
 4. من القائمة العلوية **Menu** في Overleaf:
-   - **Compiler** : اختر **XeLaTeX** (مستحسن للوثائق المزدوجة اللغة أو الخطوط العربية) أو **pdfLaTeX** (للوثائق بالفرنسية).
+   - **Compiler** : اختر **XeLaTeX** (مستحسن للوثائق المزدوجة اللغة أو الخط الأندلسي المغربي \`${xeLatexFontFamilyName}\` بتباعد \`LetterSpace=${xeLatexLetterSpace}\`) أو **pdfLaTeX** (للوثائق بالفرنسية الصرفة).
    - **TeX Live version** : 2024 أو أحدث.
    - **Main document** : تأكد من اختياره لـ \`main.tex\`.
 5. اضغط على الزر الأخضر **Recompile** للحصول على ملف PDF عالي الدقة 300 DPI.
@@ -45,6 +61,7 @@ export async function generateOverleafZipBundle(
 
 ### 📦 الحزم المضمنة في هذا المشروع (Packages Inclus) :
 - \`amsmath\`, \`amssymb\`, \`amsfonts\`, \`mathtools\` : الرموز الرياضية والصيغ المتقدمة.
+- \`fontspec\` & \`polyglossia\` : دعم الخط الأندلسي المغربي والتقليدي (\`${xeLatexFontFamilyName}\`, \`LetterSpace=${xeLatexLetterSpace}\`) في محرك XeLaTeX.
 - \`tcolorbox\` (skins, breakable, listingsutf8) : إطارات التمارين الرياضية والأسئلة.
 - \`tikz\` & \`tkz-tab\` : جداول تغيرات الدوال (Tableaux de variations) وإشارة الدوال.
 - \`listings\` : تلوين كود خوارزميات بايثون (Coloration syntaxique Python).
@@ -59,12 +76,23 @@ export async function generateOverleafZipBundle(
 
   // 2. ملف preamble.tex النمطي
   const preambleContent = `% ==============================================================================
-% Preamble officiel : Configuration & Styles Graphiques tcolorbox
+% Preamble officiel : Configuration & Styles Graphiques tcolorbox + XeLaTeX Maghribi
 % Plateforme d'Ingénierie Pédagogique des Mathématiques - Prof Kouziber Brahim
+% Police de titre configurée : ${xeLatexFontFamilyName} (LetterSpace=${xeLatexLetterSpace})
 % ==============================================================================
 
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
+\\usepackage{iftex}
+\\ifPDFTeX
+  \\usepackage[utf8]{inputenc}
+  \\usepackage[T1]{fontenc}
+\\else
+  \\usepackage{fontspec}
+  \\usepackage{polyglossia}
+  \\setmainlanguage{french}
+  \\setotherlanguage{arabic}
+  \\newfontfamily\\arabicfont[Script=Arabic]{Amiri}
+  \\newfontfamily\\maghribititlefont[Script=Arabic,LetterSpace=${xeLatexLetterSpace}]{${xeLatexFontFamilyName}}
+\\fi
 \\usepackage{amsmath,amssymb,amsfonts,mathtools}
 \\usepackage[top=1.8cm,bottom=1.8cm,left=1.5cm,right=1.5cm]{geometry}
 \\usepackage{xcolor}

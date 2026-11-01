@@ -18,6 +18,7 @@ import {
   getQuestionBaremesAndLevels,
   getVariantQuestions,
 } from "../data/curriculum";
+import { validateCustomQuestionWithMathJS } from "../utils/mathjsValidator";
 
 export interface ExamBaremeManagerModalProps {
   isOpen: boolean;
@@ -240,13 +241,19 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
     });
   };
 
-  // حفظ تعديل نص السؤال
+  // حفظ تعديل نص السؤال بعد التحقق والتنقية التلقائية بواسطة مكتبة mathjs قبل عرضه في معاينة الورقة
   const handleSaveEditedQuestion = (ex: (typeof exercisesData)[number], qIdx: number) => {
     if (!onUpdateCustomQuestions) return;
     const nextAr = [...ex.questionsAr];
     const nextFr = [...ex.questionsFr];
-    if (draftAr.trim()) nextAr[qIdx] = draftAr.trim();
-    if (draftFr.trim()) nextFr[qIdx] = draftFr.trim();
+    if (draftAr.trim()) {
+      const validatedAr = validateCustomQuestionWithMathJS(draftAr.trim());
+      nextAr[qIdx] = validatedAr.sanitizedText;
+    }
+    if (draftFr.trim()) {
+      const validatedFr = validateCustomQuestionWithMathJS(draftFr.trim());
+      nextFr[qIdx] = validatedFr.sanitizedText;
+    }
     onUpdateCustomQuestions(ex.lessonKey, nextAr, nextFr);
     setEditingQuestionKey(null);
   };
@@ -483,8 +490,33 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                           </span>
                         </div>
 
-                        {/* شارة المستوى المهاري القابلة للنقر للتبديل N1 / N2 / N3 */}
+                        {/* شارة المستوى المهاري + شارة فحص MathJS القابلة للنقر */}
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {(() => {
+                            const mathCheck = validateCustomQuestionWithMathJS(
+                              isFr ? qTextFr : qTextAr
+                            );
+                            return (
+                              <span
+                                title={
+                                  mathCheck.issues.length > 0
+                                    ? mathCheck.issues
+                                        .map((i) => (isFr ? i.messageFr : i.messageAr))
+                                        .join(" | ")
+                                    : "تم التحقق من سلامة التعبيرات الرياضية بواسطة MathJS"
+                                }
+                                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${
+                                  mathCheck.isValid && !mathCheck.hasWarnings
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                    : "bg-amber-50 text-amber-900 border-amber-300"
+                                }`}
+                              >
+                                {mathCheck.isValid && !mathCheck.hasWarnings
+                                  ? "MathJS ✓"
+                                  : "MathJS ⚠"}
+                              </span>
+                            );
+                          })()}
                           <button
                             type="button"
                             onClick={() => handleCycleQuestionLevel(ex.lessonKey, ex.metas, qIdx)}
@@ -599,13 +631,33 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                         </div>
                       </div>
 
-                      {/* منطقة تحرير نص السؤال عند تفعيل زر التعديل */}
-                      {isEditingThis && (
+                      {/* منطقة تحرير نص السؤال عند تفعيل زر التعديل مع مدقق MathJS الفوري */}
+                      {isEditingThis && (() => {
+                        const draftCheckAr = validateCustomQuestionWithMathJS(draftAr);
+                        const draftCheckFr = validateCustomQuestionWithMathJS(draftFr);
+                        const allDraftIssues = [
+                          ...draftCheckAr.issues,
+                          ...draftCheckFr.issues,
+                        ];
+                        return (
                         <div className="pt-2 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white p-2.5 rounded-lg">
                           <div>
-                            <label className="block text-[10.5px] font-bold text-slate-600 mb-1">
-                              صياغة السؤال بالعربية :
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10.5px] font-bold text-slate-600">
+                                صياغة السؤال بالعربية :
+                              </label>
+                              <span
+                                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                  draftCheckAr.isValid && !draftCheckAr.hasWarnings
+                                    ? "bg-emerald-50 text-emerald-800"
+                                    : "bg-amber-100 text-amber-900"
+                                }`}
+                              >
+                                {draftCheckAr.isValid && !draftCheckAr.hasWarnings
+                                  ? "MathJS AR ✓"
+                                  : "تنقية تلقائية متاحة"}
+                              </span>
+                            </div>
                             <textarea
                               rows={2}
                               value={draftAr}
@@ -614,9 +666,22 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                             />
                           </div>
                           <div dir="ltr">
-                            <label className="block text-[10.5px] font-bold text-slate-600 mb-1 text-left">
-                              Énoncé de la question (Français) :
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10.5px] font-bold text-slate-600 text-left">
+                                Énoncé de la question (Français) :
+                              </label>
+                              <span
+                                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                  draftCheckFr.isValid && !draftCheckFr.hasWarnings
+                                    ? "bg-emerald-50 text-emerald-800"
+                                    : "bg-amber-100 text-amber-900"
+                                }`}
+                              >
+                                {draftCheckFr.isValid && !draftCheckFr.hasWarnings
+                                  ? "MathJS FR ✓"
+                                  : "Auto-Fix Ready"}
+                              </span>
+                            </div>
                             <textarea
                               rows={2}
                               value={draftFr}
@@ -624,24 +689,57 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                               className="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-cyan-600"
                             />
                           </div>
-                          <div className="md:col-span-2 flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditingQuestionKey(null)}
-                              className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
-                            >
-                              إلغاء
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveEditedQuestion(ex, qIdx)}
-                              className="px-3.5 py-1 rounded-lg text-xs font-black bg-slate-900 hover:bg-slate-800 text-cyan-300 cursor-pointer"
-                            >
-                              حفظ صياغة السؤال
-                            </button>
+                          {allDraftIssues.length > 0 && (
+                            <div className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1">
+                              {allDraftIssues.slice(0, 3).map((iss, idxIss) => (
+                                <div
+                                  key={idxIss}
+                                  className={`text-[11px] font-medium ${
+                                    iss.type === "ERROR"
+                                      ? "text-rose-800"
+                                      : iss.type === "WARNING"
+                                      ? "text-amber-800"
+                                      : "text-emerald-800"
+                                  }`}
+                                >
+                                  • {isFr ? iss.messageFr : iss.messageAr}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-2">
+                            {(draftCheckAr.wasAutoFixed || draftCheckFr.wasAutoFixed) ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDraftAr(draftCheckAr.sanitizedText);
+                                  setDraftFr(draftCheckFr.sanitizedText);
+                                }}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 cursor-pointer"
+                              >
+                                إصلاح الأقواس والصيغ الرياضية تلقائياً (MathJS)
+                              </button>
+                            ) : <div />}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingQuestionKey(null)}
+                                className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+                              >
+                                إلغاء
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditedQuestion(ex, qIdx)}
+                                className="px-3.5 py-1 rounded-lg text-xs font-black bg-slate-900 hover:bg-slate-800 text-cyan-300 cursor-pointer"
+                              >
+                                فحص بـ MathJS وحفظ في الورقة
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   );
                 })}

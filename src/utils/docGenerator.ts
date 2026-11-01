@@ -18,6 +18,7 @@ import {
   ModuleType,
   MoroccanDSStructureMode,
   QCMGeneratorConfig,
+  resolveLessonHeaderIcon,
   SemesterType,
   SolutionDisplayMode,
   TrackData,
@@ -33,6 +34,7 @@ import {
   MOROCCAN_DM_PRESETS,
 } from "./seriesGenerator";
 import {
+  StudentGridStyle,
   analyzeFullAnswerWorkspaceRequirement,
   buildCustomTcolorboxLatexPreamble,
   DEFAULT_TCOLORBOX_CONFIG,
@@ -46,8 +48,11 @@ import {
   build2DSpecificationMatrix,
   generate2DSpecMatrixLatex,
   generate2DSpecMatrixTypst,
+  getTypicalErrorsForLessons,
 } from "./advancedPedagogicalTools";
 import { PythonAlgorithmPreset } from "../data/pythonAlgorithms";
+import { sanitizeAndValidateQuestionsList } from "./mathjsValidator";
+import { AppliedTitleCalligraphyConfig } from "../components/ArabicCalligraphySimulator";
 
 export interface GeneratorParams {
   track: TrackData;
@@ -103,6 +108,7 @@ export interface GeneratorParams {
   includeGradingScaleTable?: boolean;
   include2DSpecMatrix?: boolean;
   includeAnswerWorkspace?: boolean;
+  studentGridStyle?: StudentGridStyle;
   moroccanDMType?: MoroccanDMType;
   includeLessonMemo?: boolean;
   includeDMContract?: boolean;
@@ -112,6 +118,13 @@ export interface GeneratorParams {
   includeInteractiveQrFooter?: boolean;
   interactiveExamUrl?: string;
   attachedPythonAlgorithms?: PythonAlgorithmPreset[];
+  appliedTitleCalligraphy?: AppliedTitleCalligraphyConfig;
+  includeCommonErrorsInSolutions?: boolean;
+  pageMarginsMm?: {
+    topMm: number;
+    bottomMm: number;
+    xMm: number;
+  } | null;
 }
 
 function formatQuarterPoints(pts: number): string {
@@ -231,6 +244,7 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
     showQuestionBareme = true,
     include2DSpecMatrix = true,
     includeAnswerWorkspace = false,
+    studentGridStyle = "SEYES_FRENCH",
     includeSelfEvalGrid = true,
     geoGebraResourcesMap = {},
     autoAttachGeoGebra = true,
@@ -241,7 +255,25 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
     tcolorboxConfig = DEFAULT_TCOLORBOX_CONFIG,
     qcmConfig,
     attachedPythonAlgorithms = [],
+    pageMarginsMm = null,
   } = params;
+
+  // تحديد هوامش الصفحة تلقائياً بناءً على نوع الوثيقة (فرض محروس: 16×15mm، سلسلة تمارين: 8×8mm، فرض منزلي: 12×12mm، رائز: 11×10mm، جذاذة: 10×9mm) أو التخصيص اليدوي
+  const defaultMarginsMm =
+    activeModule === "DS_142_08"
+      ? { topMm: 16, bottomMm: 16, xMm: 15 }
+      : activeModule === "DM_SERIE"
+      ? dmSubType === "SERIE_TD"
+        ? { topMm: 8, bottomMm: 8, xMm: 8 }
+        : { topMm: 12, bottomMm: 12, xMm: 12 }
+      : activeModule === "DIAGNOSTIC"
+      ? { topMm: 11, bottomMm: 11, xMm: 10 }
+      : { topMm: 10, bottomMm: 10, xMm: 9 };
+
+  const activeMarginsMm = pageMarginsMm || defaultMarginsMm;
+  const resolvedTopCm = (activeMarginsMm.topMm / 10).toFixed(1);
+  const resolvedBottomCm = (activeMarginsMm.bottomMm / 10).toFixed(1);
+  const resolvedXCm = (activeMarginsMm.xMm / 10).toFixed(1);
 
   const isMission =
     track.system === "MISSION_FRANCAISE" || params.system === "MISSION_FRANCAISE";
@@ -257,6 +289,16 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
   const isAr = docLang === "AR" && !isMission;
   const isPureFr = docLang === "FR" || isMission;
   const isDM = dmSubType === "DEVOIR_MAISON";
+  const gridStyleBadge =
+    studentGridStyle === "SEYES_FRENCH"
+      ? "Seyès"
+      : studentGridStyle === "LINED_RULED"
+      ? "Ligné"
+      : studentGridStyle === "MILLIMETER_GRID"
+      ? "Millimétré"
+      : studentGridStyle === "DOTTED_BOX"
+      ? "Pointé"
+      : "Cadre";
 
   const modelsToRender: Array<"A" | "B"> =
     examModel === "BOTH" ? ["A", "B"] : [examModel];
@@ -270,7 +312,8 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
   const hasSynthesisProblemGlobal =
     activeModule === "DS_142_08" &&
     (dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-      dsStructureMode === "COMPLETE_EXAM_MAROC");
+      dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+      dsStructureMode === "EXAMEN_BLANC_2BAC");
   const fixedQcmPts = hasQCMGlobal
     ? Number(((qcmConfig?.questionCount || 4) * 1.0).toFixed(1))
     : 0;
@@ -537,8 +580,8 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
                     const wsTypst = includeAnswerWorkspace
                       ? `\n  #block(width: 100%, height: ${wsSpec.heightCmTypst}, stroke: (left: 1.5pt + rgb("#f43f5e"), rest: 0.4pt + luma(200)), inset: 5pt, radius: 3pt, fill: rgb("#fcfcff"))[#text(size: 7.5pt, fill: luma(120))[${
                           isMission || isPureFr
-                            ? `${wsSpec.taskBadgeFr} (${wsSpec.recommendedLines} lignes — ${wsSpec.methodStepsFr.join(" · ")})`
-                            : `${wsSpec.taskBadgeAr} (${wsSpec.recommendedLines} أسطر — ${wsSpec.methodStepsAr.join(" · ")})`
+                            ? `[${gridStyleBadge}] ${wsSpec.taskBadgeFr} (${wsSpec.recommendedLines} lignes — ${wsSpec.methodStepsFr.join(" · ")})`
+                            : `[${gridStyleBadge}] ${wsSpec.taskBadgeAr} (${wsSpec.recommendedLines} أسطر — ${wsSpec.methodStepsAr.join(" · ")})`
                         }]]`
                       : "";
                     return `+ ${q}${wsTypst}`;
@@ -563,13 +606,19 @@ ${gradingStripTypst}
 ${qcmTypst}
 ${orderedLessons
   .map((l, idx) => {
-    const { questionsAr, questionsFr } = getVariantQuestions(
+    const rawVariantQs = getVariantQuestions(
       l,
       m,
       shuffleQuestions,
       0,
       dsQuestionDensity
     );
+    const questionsAr = sanitizeAndValidateQuestionsList(
+      rawVariantQs.questionsAr
+    ).sanitizedQuestions;
+    const questionsFr = sanitizeAndValidateQuestionsList(
+      rawVariantQs.questionsFr
+    ).sanitizedQuestions;
     const scaledPts = getScaledLessonPoints(l.weight, l, idx, orderedLessons);
     const scaledWeightPct = getScaledLessonWeightPercent(
       l.weight,
@@ -590,11 +639,13 @@ ${orderedLessons
     const customExTitle = customExerciseTitles[idx]?.trim();
     const displayExNum = idx + 1 + exOffset;
     const ptsStr = formatQuarterPoints(scaledPts);
+    const resolvedIcon = resolveLessonHeaderIcon(l);
+    const iconTypst = resolvedIcon?.typstPrefix ? `${resolvedIcon.typstPrefix} ` : "";
     const title = customExTitle
-      ? `${customExTitle} (${ptsStr} ${isMission || isPureFr ? "points" : "نقط"})`
+      ? `${iconTypst}${customExTitle} (${ptsStr} ${isMission || isPureFr ? "points" : "نقط"})`
       : isMission || isPureFr
-      ? `Exercice ${displayExNum} : ${l.lessonFr} (${ptsStr} points)`
-      : `التمرين ${displayExNum} : ${l.lessonAr} (${ptsStr} نقط)`;
+      ? `${iconTypst}Exercice ${displayExNum} : ${l.lessonFr} (${ptsStr} points)`
+      : `${iconTypst}التمرين ${displayExNum} : ${l.lessonAr} (${ptsStr} نقط)`;
 
     const ggbRes = getAutoGeoGebraResourceForLesson(
       l,
@@ -629,8 +680,8 @@ ${activeQuestions
     const workspaceTypst = includeAnswerWorkspace
       ? `\n  #block(width: 100%, height: ${wsSpec.heightCmTypst}, stroke: (left: 1.5pt + rgb("#f43f5e"), rest: 0.4pt + luma(200)), inset: 5pt, radius: 3pt, fill: rgb("#fcfcff"))[#text(size: 7.5pt, fill: luma(120))[${
           isMission || isPureFr
-            ? `${wsSpec.taskBadgeFr} · ${wsSpec.recommendedLines} lignes (${meta?.level || "N1"}) — ${wsSpec.methodStepsFr.join(" | ")}`
-            : `${wsSpec.taskBadgeAr} · ${wsSpec.recommendedLines} أسطر (${meta?.level || "N1"}) — ${wsSpec.methodStepsAr.join(" | ")}`
+            ? `[${gridStyleBadge}] ${wsSpec.taskBadgeFr} · ${wsSpec.recommendedLines} lignes (${meta?.level || "N1"}) — ${wsSpec.methodStepsFr.join(" | ")}`
+            : `[${gridStyleBadge}] ${wsSpec.taskBadgeAr} · ${wsSpec.recommendedLines} أسطر (${meta?.level || "N1"}) — ${wsSpec.methodStepsAr.join(" | ")}`
         }]]`
       : "";
     return `+ ${
@@ -656,6 +707,8 @@ ${activeQuestions
             .map((block, exIdx) => {
               const associatedLesson =
                 baseDsLessons[exIdx % Math.max(1, baseDsLessons.length)];
+              const resolvedIcon = resolveLessonHeaderIcon(associatedLesson);
+              const iconTypst = resolvedIcon?.typstPrefix ? `${resolvedIcon.typstPrefix} ` : "";
               const customTitle = customExerciseTitles[exIdx]?.trim();
               const headerTitle =
                 customTitle ||
@@ -664,7 +717,7 @@ ${activeQuestions
                 isMission || isPureFr ? block.questionsFr : block.questionsAr;
               const hint = isMission || isPureFr ? block.hintFr : block.hintAr;
 
-              return `=== ${headerTitle} (${block.stars})
+              return `=== ${iconTypst}${headerTitle} (${block.stars})
 ${qs.map((q) => `+ ${q}`).join("\n")}${
                 includeHints && hint ? `\n#emph[${hint}]` : ""
               }`;
@@ -674,12 +727,14 @@ ${qs.map((q) => `+ ${q}`).join("\n")}${
             .map((l, idx) => {
               const blocks = getSerieAndDMExercises(l, dmSubType, m);
               const pts = ((l.weight * 20) / 100).toFixed(1);
+              const resolvedIcon = resolveLessonHeaderIcon(l);
+              const iconTypst = resolvedIcon?.typstPrefix ? `${resolvedIcon.typstPrefix} ` : "";
               const headerTitle =
                 customExerciseTitles[idx]?.trim()
-                  ? `== ${customExerciseTitles[idx].trim()} (${pts} ${isMission || isPureFr ? "points" : "نقط"} — ${l.weight}%)`
+                  ? `== ${iconTypst}${customExerciseTitles[idx].trim()} (${pts} ${isMission || isPureFr ? "points" : "نقط"} — ${l.weight}%)`
                   : isMission || isPureFr
-                  ? `== Problème ${idx + 1} : ${l.lessonFr} (${pts} points — ${l.weight}%)`
-                  : `== التمرين التوليفي ${idx + 1} : ${l.lessonAr} (${pts} نقط — ${l.weight}%)`;
+                  ? `== ${iconTypst}Problème ${idx + 1} : ${l.lessonFr} (${pts} points — ${l.weight}%)`
+                  : `== ${iconTypst}التمرين التوليفي ${idx + 1} : ${l.lessonAr} (${pts} نقط — ${l.weight}%)`;
 
               const dmGgbRes = getAutoGeoGebraResourceForLesson(
                 l,
@@ -821,7 +876,7 @@ ${bodyContent}${
 // النظام التعليمي: ${isMission ? "مدارس البعثة الفرنسية بالمغرب (AEFE / OSUI)" : "السلك الثانوي التأهيلي المغربي"}
 // ============================================================================
 
-#set page(paper: "a4", margin: (top: 1.5cm, bottom: 1.5cm, x: 1.4cm))
+#set page(paper: "a4", margin: (top: ${resolvedTopCm}cm, bottom: ${resolvedBottomCm}cm, x: ${resolvedXCm}cm))
 #set text(font: "${isAr ? "Amiri" : "Linux Libertine"}", size: 11pt, lang: "${isAr ? "ar" : "fr"}", dir: ${isAr ? "rtl" : "ltr"})
 
 ${
@@ -924,13 +979,19 @@ ${
             qcmSolTypst +
             orderedLessons
               .map((l, idx) => {
-                const { questionsAr, questionsFr } = getVariantQuestions(
+                const rawVariantQs = getVariantQuestions(
                   l,
                   m,
                   shuffleQuestions,
                   0,
                   dsQuestionDensity
                 );
+                const questionsAr = sanitizeAndValidateQuestionsList(
+                  rawVariantQs.questionsAr
+                ).sanitizedQuestions;
+                const questionsFr = sanitizeAndValidateQuestionsList(
+                  rawVariantQs.questionsFr
+                ).sanitizedQuestions;
                 const scaledWeightPct = getScaledLessonWeightPercent(
                   l.weight,
                   l,
@@ -1174,6 +1235,20 @@ ${allLessons
       ? buildCustomTcolorboxLatexPreamble(tcolorboxConfig)
       : selectedLatexPkg.latexPreambleSnippet;
 
+  const titleCalligraphyCfg = params.appliedTitleCalligraphy;
+  const xeLatexLetterSpace = Number(
+    ((titleCalligraphyCfg?.customLetterSpacingEm ?? 0.025) * 100).toFixed(1)
+  );
+  const xeLatexFontFamilyName =
+    titleCalligraphyCfg?.fontId === "KUFI_GEOMETRIC"
+      ? "Reem Kufi"
+      : titleCalligraphyCfg?.fontId === "DIWANI_JALI"
+      ? "Rakkas"
+      : titleCalligraphyCfg?.fontId === "DIWANI_SULTANI" ||
+        titleCalligraphyCfg?.fontId === "RUQAA_INK"
+      ? "Aref Ruqaa"
+      : "Amiri";
+
   const preamble = isPureFr
     ? `\\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
@@ -1181,29 +1256,33 @@ ${allLessons
 \\usepackage[french]{babel}
 \\usepackage{amsmath,amssymb,amsfonts}
 \\usepackage{geometry,array,multirow,booktabs,fancyhdr,xcolor}
-\\geometry{top=1.5cm, bottom=1.5cm, left=1.4cm, right=1.4cm}
+\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedXCm}cm, right=${resolvedXCm}cm}
 ${activeLatexPkgSnippet}`
     : `% ============================================================================
 % ملاحظة هامة: يُترجم هذا الملف باستخدام محرك XeLaTeX لدعم العربية والفرنسية معاً
 % الحزمة التنسيقية المختارة: ${selectedLatexPkg.packageCmd}
+% قالب خط الترويسة المغربية: ${titleCalligraphyCfg?.fontId || "ANDALUSI_MAGHRIBI_SCRIPT"} (LetterSpace=${xeLatexLetterSpace})
 % ============================================================================
 \\documentclass[11pt,a4paper]{article}
 \\usepackage{amsmath,amssymb,amsfonts}
 \\usepackage{geometry,array,multirow,booktabs,fancyhdr,xcolor}
+\\usepackage{fontspec}
 \\usepackage{polyglossia}
-\\geometry{top=1.5cm, bottom=1.5cm, left=1.4cm, right=1.4cm}
+\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedXCm}cm, right=${resolvedXCm}cm}
 ${activeLatexPkgSnippet}
 ${
   docLang === "AR"
-    ? `\\setmainlanguage{arabic}\n\\setotherlanguage{french}\n\\newfontfamily\\arabicfont[Script=Arabic]{Amiri}`
-    : `\\setmainlanguage{french}\n\\setotherlanguage{arabic}\n\\newfontfamily\\arabicfont[Script=Arabic]{Amiri}`
+    ? `\\setmainlanguage{arabic}\n\\setotherlanguage{french}\n\\newfontfamily\\arabicfont[Script=Arabic]{Amiri}\n\\newfontfamily\\maghribititlefont[Script=Arabic,LetterSpace=${xeLatexLetterSpace}]{${xeLatexFontFamilyName}}`
+    : `\\setmainlanguage{french}\n\\setotherlanguage{arabic}\n\\newfontfamily\\arabicfont[Script=Arabic]{Amiri}\n\\newfontfamily\\maghribititlefont[Script=Arabic,LetterSpace=${xeLatexLetterSpace}]{${xeLatexFontFamilyName}}`
 }`;
 
   const renderLatexCartouche = (modelLabel?: "A" | "B") => {
     const sujTitle = modelLabel ? ` — \\textbf{Sujet ${modelLabel}}` : "";
     const defaultLatexDocTitle =
       activeModule === "DS_142_08"
-        ? isMission
+        ? dsStructureMode === "EXAMEN_BLANC_2BAC"
+          ? `Examen Blanc du Baccalauréat (${track.code})${sujTitle}`
+          : isMission
           ? `Devoir Surveillé N° ${dsKey.replace("DS", "")} (${sem})${sujTitle}`
           : `Devoir Surveillé ${dsKey} (${sem})${sujTitle}`
         : activeModule === "DM_SERIE"
@@ -1218,9 +1297,16 @@ ${
         ? `Test Diagnostique (${diagDuration})`
         : "Répartition Annuelle du Programme";
 
-    const latexDocTitle = customDocTitle.trim()
+    const rawLatexDocTitle = customDocTitle.trim()
       ? `${customDocTitle.trim()}${sujTitle}`
       : defaultLatexDocTitle;
+    const isOrnamentActive =
+      (titleCalligraphyCfg?.enableMoroccanHeaderOrnament ?? true) &&
+      titleCalligraphyCfg?.ornament !== "NONE";
+    const latexDocTitle =
+      !isPureFr && isOrnamentActive
+        ? `{\\maghribititlefont ❁ ﴾ ${rawLatexDocTitle} ﴿ ❁}`
+        : rawLatexDocTitle;
 
     const defaultLatexSubMeta =
       activeModule === "DM_SERIE"
@@ -1357,7 +1443,7 @@ ${
                     points: 1.5,
                   });
                   const wsLatex = includeAnswerWorkspace
-                    ? `\n  \\par\\vspace{0.12cm}\\noindent\\fcolorbox{gray!45}{white}{\\parbox{0.95\\linewidth}{\\vspace{0.1cm}{\\tiny\\color{gray} [${
+                    ? `\n  \\par\\vspace{0.12cm}\\noindent\\fcolorbox{gray!45}{white}{\\parbox{0.95\\linewidth}{\\vspace{0.1cm}{\\tiny\\color{gray} [${gridStyleBadge} $\\cdot$ ${
                         isMission || isPureFr ? wsSpec.taskBadgeFr : wsSpec.taskBadgeAr
                       } $\\cdot$ ${wsSpec.recommendedLines} ${
                         isMission || isPureFr ? "lignes" : "أسطر"
@@ -1391,13 +1477,19 @@ ${gradingStripLatex}
 ${qcmLatex}
 ${orderedLessons
   .map((l, idx) => {
-    const { questionsAr, questionsFr } = getVariantQuestions(
+    const rawVariantQs = getVariantQuestions(
       l,
       m,
       shuffleQuestions,
       0,
       dsQuestionDensity
     );
+    const questionsAr = sanitizeAndValidateQuestionsList(
+      rawVariantQs.questionsAr
+    ).sanitizedQuestions;
+    const questionsFr = sanitizeAndValidateQuestionsList(
+      rawVariantQs.questionsFr
+    ).sanitizedQuestions;
     const activeQs = isMission || isPureFr ? questionsFr : questionsAr;
     const scaledPts = getScaledLessonPoints(l.weight, l, idx, orderedLessons);
     const scaledWeightPct = getScaledLessonWeightPercent(
@@ -1435,11 +1527,13 @@ ${orderedLessons
     const displayExNum = idx + 1 + exOffset;
     const customExTitle = customExerciseTitles[idx]?.trim();
     const ptsStr = formatQuarterPoints(scaledPts);
+    const resolvedIcon = resolveLessonHeaderIcon(l);
+    const iconLatex = resolvedIcon?.latexPrefix ? `${resolvedIcon.latexPrefix} ` : "";
     const exHeader = customExTitle
-      ? `${customExTitle} (${ptsStr} points — ${scaledWeightPct}\\%)`
+      ? `${iconLatex}${customExTitle} (${ptsStr} points — ${scaledWeightPct}\\%)`
       : isMission || isPureFr
-      ? `Exercice ${displayExNum} : ${l.lessonFr} (${ptsStr} points — ${scaledWeightPct}\\%)`
-      : `التمرين ${displayExNum} : ${l.lessonAr} (${ptsStr} نقط — ${scaledWeightPct}\\%)`;
+      ? `${iconLatex}Exercice ${displayExNum} : ${l.lessonFr} (${ptsStr} points — ${scaledWeightPct}\\%)`
+      : `${iconLatex}التمرين ${displayExNum} : ${l.lessonAr} (${ptsStr} نقط — ${scaledWeightPct}\\%)`;
 
     const enumItems = `\\begin{enumerate}
 ${activeQs
@@ -1455,7 +1549,7 @@ ${activeQs
       points: meta?.points,
     });
     const workspaceLatex = includeAnswerWorkspace
-      ? `\n  \\par\\vspace{0.12cm}\\noindent\\fcolorbox{gray!45}{white}{\\parbox{0.95\\linewidth}{\\vspace{0.1cm}{\\tiny\\color{gray} [${
+      ? `\n  \\par\\vspace{0.12cm}\\noindent\\fcolorbox{gray!45}{white}{\\parbox{0.95\\linewidth}{\\vspace{0.1cm}{\\tiny\\color{gray} [${gridStyleBadge} $\\cdot$ ${
           isMission || isPureFr ? wsSpec.taskBadgeFr : wsSpec.taskBadgeAr
         } $\\cdot$ ${wsSpec.recommendedLines} ${
           isMission || isPureFr ? "lignes" : "أسطر"
@@ -1490,8 +1584,12 @@ ${enumItems}`;
           m
         )
           .map((b, exIdx) => {
+            const associatedLesson =
+              baseDsLessons[exIdx % Math.max(1, baseDsLessons.length)];
+            const resolvedIcon = resolveLessonHeaderIcon(associatedLesson);
+            const iconLatex = resolvedIcon?.latexPrefix ? `${resolvedIcon.latexPrefix} ` : "";
             const customTitle = customExerciseTitles[exIdx]?.trim();
-            const header = `${
+            const header = `${iconLatex}${
               customTitle ||
               (isMission || isPureFr ? b.badgeFr : b.badgeAr)
             } (${b.stars})`;
@@ -1514,12 +1612,14 @@ ${qs.map((q) => `  \\item ${q}`).join("\n")}
           .map((l, idx) => {
             const blocks = getSerieAndDMExercises(l, dmSubType, m);
             const pts = ((l.weight * 20) / 100).toFixed(1);
+            const resolvedIcon = resolveLessonHeaderIcon(l);
+            const iconLatex = resolvedIcon?.latexPrefix ? `${resolvedIcon.latexPrefix} ` : "";
             const customTitle = customExerciseTitles[idx]?.trim();
             const probHeader = customTitle
-              ? `${customTitle} (${pts} points — ${l.weight}\\%)`
+              ? `${iconLatex}${customTitle} (${pts} points — ${l.weight}\\%)`
               : isMission || isPureFr
-              ? `Problème ${idx + 1} : ${l.lessonFr} (${pts} points — ${l.weight}\\%)`
-              : `التمرين التوليفي ${idx + 1} : ${l.lessonAr} (${pts} نقط — ${l.weight}\\%)`;
+              ? `${iconLatex}Problème ${idx + 1} : ${l.lessonFr} (${pts} points — ${l.weight}\\%)`
+              : `${iconLatex}التمرين التوليفي ${idx + 1} : ${l.lessonAr} (${pts} نقط — ${l.weight}\\%)`;
             const probInner = blocks
               .map(
                 (b) => `\\subsubsection*{${isMission || isPureFr ? b.badgeFr : b.badgeAr}}
@@ -1753,13 +1853,19 @@ ${
             qcmSolLatex +
             orderedLessons
               .map((l, idx) => {
-                const { questionsAr, questionsFr } = getVariantQuestions(
+                const rawVariantQs = getVariantQuestions(
                   l,
                   m,
                   shuffleQuestions,
                   0,
                   dsQuestionDensity
                 );
+                const questionsAr = sanitizeAndValidateQuestionsList(
+                  rawVariantQs.questionsAr
+                ).sanitizedQuestions;
+                const questionsFr = sanitizeAndValidateQuestionsList(
+                  rawVariantQs.questionsFr
+                ).sanitizedQuestions;
                 const scaledWeightPct = getScaledLessonWeightPercent(
                   l.weight,
                   l,
@@ -1780,6 +1886,29 @@ ${
                   questionsFr
                 );
                 const displayExNum = idx + 1 + exOffset;
+                const typicalErr =
+                  params.includeCommonErrorsInSolutions !== false
+                    ? getTypicalErrorsForLessons([l])[0]
+                    : undefined;
+                const didacticErrorLatex = typicalErr
+                  ? `\n\\vspace{0.15cm}\n\\noindent\\fbox{\\parbox{0.97\\textwidth}{\\footnotesize \\textbf{${
+                      isMission || isPureFr
+                        ? "Grille des Erreurs Fréquentes \\& Vigilance Didactique :"
+                        : "بطاقة تشخيص الأخطاء الشائعة للمتعلمين واليقظة الديداكتيكية :"
+                    }} ${
+                      isMission || isPureFr
+                        ? typicalErr.frequentMistakeFr
+                        : typicalErr.frequentMistakeAr
+                    } \\newline \\textbf{${
+                      isMission || isPureFr ? "Expression erronée :" : "الخطأ الشائع :"
+                    }} $${typicalErr.wrongExpressionLatex}$ $\\longrightarrow$ \\textbf{${
+                      isMission || isPureFr ? "Formulation correcte :" : "الصواب :"
+                    }} $${typicalErr.correctExpressionLatex}$ \\newline \\textit{${
+                      isMission || isPureFr
+                        ? `Remédiation : ${typicalErr.teacherRemediationTipFr}`
+                        : `توجيه بيداغوجي للدعم : ${typicalErr.teacherRemediationTipAr}`
+                    }}}}`
+                  : "";
                 return (
                   `\\subsubsection*{${
                     isMission || isPureFr
@@ -1796,7 +1925,8 @@ ${
                         ).replace(/\n/g, "\n  \\newline ")}`
                     )
                     .join("\n\n") +
-                  `\n\\end{enumerate}`
+                  `\n\\end{enumerate}` +
+                  didacticErrorLatex
                 );
               })
               .join("\n\n\\vspace{0.4cm}\n") +

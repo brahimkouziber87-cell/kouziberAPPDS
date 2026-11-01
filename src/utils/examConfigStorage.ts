@@ -13,6 +13,7 @@ import {
   GeoGebraResource,
   HeaderStyle,
   InsertedFigure,
+  LessonHeaderIconId,
   ModuleType,
   MoroccanDSStructureMode,
   MoroccanQCMItem,
@@ -26,6 +27,7 @@ import {
   DEFAULT_TCOLORBOX_CONFIG,
   LatexPackageTheme,
   PaperSurfaceTexture,
+  StudentGridStyle,
   TcolorboxCustomConfig,
 } from "./latexPackagesAndMath";
 import { AppliedTitleCalligraphyConfig } from "../components/ArabicCalligraphySimulator";
@@ -96,6 +98,7 @@ export interface ExamConfigBlueprintJSON {
       weight: number;
     }>;
     customWeightsMap: Record<string, number>;
+    customLessonIconsMap?: Record<string, LessonHeaderIconId>;
     customQuestionBaremesMap: Record<string, number[]>;
     customQuestionLevelsMap: Record<string, Array<"N1" | "N2" | "N3">>;
     customQuestionsMap: Record<string, { ar: string[]; fr: string[] }>;
@@ -143,12 +146,7 @@ export interface ExamConfigBlueprintJSON {
     branchColorMode?: BranchColorGradientMode;
     tcolorboxConfig?: TcolorboxCustomConfig;
     appliedTitleCalligraphy?: AppliedTitleCalligraphyConfig;
-    studentGridStyle?:
-      | "SEYES_FRENCH"
-      | "LINED_RULED"
-      | "MILLIMETER_GRID"
-      | "DOTTED_BOX"
-      | "PLAIN_BOX";
+    studentGridStyle?: StudentGridStyle;
     workspaceHeightMode?: "ADAPTIVE" | "COMPACT" | "GENEROUS";
     includeCustomEvalGridSheet?: boolean;
     evalGridGranularity?: GridGranularity;
@@ -724,6 +722,14 @@ export function validateAndNormalizeExamConfigJSON(
           ? obj.gradingAndLessons.customWeightsMap
           : obj.customWeightsMap && typeof obj.customWeightsMap === "object"
           ? obj.customWeightsMap
+          : {},
+      customLessonIconsMap:
+        obj.gradingAndLessons?.customLessonIconsMap &&
+        typeof obj.gradingAndLessons.customLessonIconsMap === "object"
+          ? obj.gradingAndLessons.customLessonIconsMap
+          : obj.customLessonIconsMap &&
+            typeof obj.customLessonIconsMap === "object"
+          ? obj.customLessonIconsMap
           : {},
       customQuestionBaremesMap:
         obj.gradingAndLessons?.customQuestionBaremesMap &&

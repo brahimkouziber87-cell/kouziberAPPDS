@@ -10,7 +10,7 @@ export interface MathSymbolItem {
 }
 
 export const MATH_SYMBOLS_LIBRARY: MathSymbolItem[] = [
-  // 1. التحليل والتفاضل والتكامل (Analyse & Calcul)
+  // 1. التحليل الرياضي والاشتقاق والتكامل (Analyse & Calcul Intégral)
   { glyph: "∫", latex: "\\int", nameAr: "تكامل", nameFr: "Intégrale", category: "ANALYSIS" },
   { glyph: "∑", latex: "\\sum", nameAr: "مجموع", nameFr: "Somme", category: "ANALYSIS" },
   { glyph: "lim", latex: "\\lim_{x \\to +\\infty}", nameAr: "نهاية", nameFr: "Limite", category: "ANALYSIS" },
@@ -68,7 +68,7 @@ export const MATH_SYMBOLS_LIBRARY: MathSymbolItem[] = [
   { glyph: "θ", latex: "\\theta", nameAr: "ثيتا (عمدة/زاوية)", nameFr: "Thêta", category: "GREEK" },
   { glyph: "λ", latex: "\\lambda", nameAr: "لامدا (معامل)", nameFr: "Lambda", category: "GREEK" },
   { glyph: "Δ", latex: "\\Delta", nameAr: "دلتا (مميز المعادلة)", nameFr: "Discriminant Delta", category: "GREEK" },
-  { glyph: "σ", latex: "\\sigma", nameAr: "سيغما (انحراف معياري)", nameFr: "Écart-type Sigma", category: "GREEK" },
+  { glyph: "σ", latex: "\\sigma", nameAr: "سيغما (انحراف طرازي / معياري)", nameFr: "Écart-type Sigma", category: "GREEK" },
   { glyph: "φ", latex: "\\varphi", nameAr: "فاي (النسبة الذهبية)", nameFr: "Phi", category: "GREEK" },
 ];
 
@@ -90,7 +90,7 @@ export const MathSymbolPaletteBar: React.FC<MathSymbolPaletteBarProps> = ({
 
   const categories = [
     { id: "ALL" as const, labelAr: "الكل (∫, ∑, ℝ, u⃗)", labelFr: "Tous" },
-    { id: "ANALYSIS" as const, labelAr: "تفاضل وتكامل (∫, ∑, lim)", labelFr: "Analyse" },
+    { id: "ANALYSIS" as const, labelAr: "التحليل والاشتقاق والتكامل (∫, ∑, lim)", labelFr: "Analyse" },
     { id: "GEOMETRY" as const, labelAr: "متجهات وهندسة (u⃗, ⊥, ‖‖)", labelFr: "Géométrie" },
     { id: "SETS_LOGIC" as const, labelAr: "مجموعات ومنطق (ℝ, ⇒, ∀)", labelFr: "Logique" },
     { id: "GREEK" as const, labelAr: "حروف إغريقية (α, θ, Δ)", labelFr: "Grec" },

@@ -22,7 +22,8 @@ export type MoroccanDSStructureMode =
   | "STANDARD_142_08"
   | "QCM_ET_EXERCICES"
   | "EXERCICES_ET_PROBLEME"
-  | "COMPLETE_EXAM_MAROC";
+  | "COMPLETE_EXAM_MAROC"
+  | "EXAMEN_BLANC_2BAC";
 export type DSQuestionDensity = "STANDARD" | "INTENSIVE";
 
 export interface DocFontOption {
@@ -95,6 +96,7 @@ export const DOC_FONT_OPTIONS: DocFontOption[] = [
 
 export type TraditionalTitleFontId =
   | "DEFAULT_DOC"
+  | "ANDALUSI_MAGHRIBI_SCRIPT"
   | "THULUTH_ROYAL"
   | "DIWANI_SULTANI"
   | "DIWANI_JALI"
@@ -104,7 +106,12 @@ export type TraditionalTitleFontId =
   | "NASKH_AMIRI";
 
 export type TitleCalligraphyScale = "COMPACT" | "BALANCED" | "GRAND";
-export type TitleOrnamentStyle = "NONE" | "KASHIDA" | "ROYAL_BRACKETS" | "FULL_SULTANI";
+export type TitleOrnamentStyle =
+  | "NONE"
+  | "KASHIDA"
+  | "ROYAL_BRACKETS"
+  | "FULL_SULTANI"
+  | "ANDALUSI_MOROCCAN";
 export type TitleCalligraphyScope = "MAIN_TITLE_ONLY" | "HEADER_TITLES" | "ALL_TITLES";
 
 export interface TraditionalTitleFontOption {
@@ -118,6 +125,11 @@ export interface TraditionalTitleFontOption {
   cssClass: string;
   sampleVerseAr: string;
   recommendedScale: TitleCalligraphyScale;
+  recommendedOrnament?: TitleOrnamentStyle;
+  letterSpacing?: string;
+  wordSpacing?: string;
+  lineHeight?: string;
+  moroccanHeaderFramePreset?: boolean;
   harmonyBaseScore: number;
 }
 
@@ -133,7 +145,31 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "",
     sampleVerseAr: "الفرض المحروس الأول في مادة الرياضيات",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "NONE",
+    letterSpacing: "0em",
+    wordSpacing: "0.04em",
+    lineHeight: "1.6",
     harmonyBaseScore: 92,
+  },
+  {
+    id: "ANDALUSI_MAGHRIBI_SCRIPT",
+    nameAr: "الخط الأندلسي المغربي (Maghribi Script)",
+    nameFr: "Calligraphie Andalouse-Maghrébine (Maghribi Script)",
+    shortAr: "الأندلسي المغربي",
+    schoolOriginAr: "المدرسة الأندلسية المغربية الرسمية (فاس · قرطبة · مراكش)",
+    descriptionAr:
+      "خط أندلسي مغربي أصيل مضبوط التباعد والمدود مع زخرفة التاج المغربي الأندلسي، معاير خصيصاً ليتناسب مع الترويسة المغربية الرسمية (AREF).",
+    bestForAr:
+      "الترويسة المغربية الرسمية (المملكة المغربية · الأكاديمية الجهوية) وعناوين الفروض والامتحانات الإشهادية",
+    cssClass: "calligraphy-title-andalusi-maghribi-script",
+    sampleVerseAr: "❁ ﴾ الفرض المحروس الرّسمي في مادّة الرّياضيات ﴿ ❁",
+    recommendedScale: "BALANCED",
+    recommendedOrnament: "ANDALUSI_MOROCCAN",
+    letterSpacing: "0.025em",
+    wordSpacing: "0.14em",
+    lineHeight: "1.82",
+    moroccanHeaderFramePreset: true,
+    harmonyBaseScore: 99,
   },
   {
     id: "THULUTH_ROYAL",
@@ -147,6 +183,10 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-thuluth",
     sampleVerseAr: "الفرض المحروس الرّسمي في مادة الرّياضيات",
     recommendedScale: "GRAND",
+    recommendedOrnament: "FULL_SULTANI",
+    letterSpacing: "0.01em",
+    wordSpacing: "0.08em",
+    lineHeight: "1.75",
     harmonyBaseScore: 97,
   },
   {
@@ -161,6 +201,10 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-diwani",
     sampleVerseAr: "الفرض المحروس الأوّل — مسلك العلوم الفيزيائية",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "ROYAL_BRACKETS",
+    letterSpacing: "0.01em",
+    wordSpacing: "0.1em",
+    lineHeight: "1.85",
     harmonyBaseScore: 94,
   },
   {
@@ -175,13 +219,17 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-diwani-jali",
     sampleVerseAr: "سلسلة تمارين التّميّز والأولمبياد في الرّياضيات",
     recommendedScale: "GRAND",
+    recommendedOrnament: "FULL_SULTANI",
+    letterSpacing: "0.015em",
+    wordSpacing: "0.12em",
+    lineHeight: "1.95",
     harmonyBaseScore: 91,
   },
   {
     id: "MAGHRIBI_ANDALUSI",
     nameAr: "الخط المغربي المبسوط والثلث الأندلسي (Maghribi)",
     nameFr: "Calligraphie Marocaine & Andalouse",
-    shortAr: "مغربي أصيل",
+    shortAr: "مغربي مبسوط",
     schoolOriginAr: "المدرسة الفاسية والأندلسية العريقة بالمملكة المغربية",
     descriptionAr:
       "يعكس الهوية المغربية الأصيلة باستداراته الواسعة في النون والقاف والواو ووضوحه العالي في الطباعة.",
@@ -189,6 +237,11 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-maghribi",
     sampleVerseAr: "المملكة المغربية · الفرض المحروس رقم 1",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "ANDALUSI_MOROCCAN",
+    letterSpacing: "0.015em",
+    wordSpacing: "0.1em",
+    lineHeight: "1.75",
+    moroccanHeaderFramePreset: true,
     harmonyBaseScore: 98,
   },
   {
@@ -203,6 +256,10 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-ruqaa-ink",
     sampleVerseAr: "التمرين الأول : اتّصال واشتقاق دالة عددية",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "NONE",
+    letterSpacing: "0.01em",
+    wordSpacing: "0.06em",
+    lineHeight: "1.65",
     harmonyBaseScore: 96,
   },
   {
@@ -217,6 +274,10 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-kufi",
     sampleVerseAr: "شبكة التّخصيص والتّقويم — المذكّرة 142-08",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "KASHIDA",
+    letterSpacing: "0.02em",
+    wordSpacing: "0.08em",
+    lineHeight: "1.68",
     harmonyBaseScore: 95,
   },
   {
@@ -231,12 +292,16 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     cssClass: "calligraphy-title-naskh",
     sampleVerseAr: "فرض محروس رقم 1 — الدّورة الأولى (S1)",
     recommendedScale: "BALANCED",
+    recommendedOrnament: "NONE",
+    letterSpacing: "0.01em",
+    wordSpacing: "0.06em",
+    lineHeight: "1.7",
     harmonyBaseScore: 99,
   },
 ];
 
 /**
- * تنسيق العنوان بالكشيدة العربية التقليدية (التطويل الخطي ـ) أو الأقواس السلطانية لمعاينة تناسق خط الثلث والديواني
+ * تنسيق العنوان بالكشيدة العربية التقليدية (التطويل الخطي ـ) أو الزخرفة الأندلسية المغربية أو الأقواس السلطانية
  */
 export function formatTitleWithCalligraphyOrnaments(
   rawText: string,
@@ -265,7 +330,241 @@ export function formatTitleWithCalligraphyOrnaments(
   if (ornament === "FULL_SULTANI") {
     return `۞ ﴾ ${applyKashida(trimmed)} ﴿ ۞`;
   }
+  if (ornament === "ANDALUSI_MOROCCAN") {
+    return `❁ ﴾ ${applyKashida(trimmed)} ﴿ ❁`;
+  }
   return trimmed;
+}
+
+export interface TitleOrnamentMiniPreview {
+  id: TitleOrnamentStyle;
+  miniIconGlyph: string;
+  labelAr: string;
+  shortBadgeAr: string;
+  descriptionAr: string;
+}
+
+export function getTitleOrnamentMiniPreview(
+  ornament: TitleOrnamentStyle,
+  enabled: boolean = true
+): TitleOrnamentMiniPreview {
+  if (!enabled || ornament === "NONE") {
+    return {
+      id: "NONE",
+      miniIconGlyph: "أبجد",
+      labelAr: "بدون زخرفة إضافية (نص صافي)",
+      shortBadgeAr: "نص صافي",
+      descriptionAr: "عرض ترويسة الفرض بنص خطي صافٍ دون أقواس أو شمسات زخرفية",
+    };
+  }
+  switch (ornament) {
+    case "ANDALUSI_MOROCCAN":
+      return {
+        id: "ANDALUSI_MOROCCAN",
+        miniIconGlyph: "❁﴾ـ﴿❁",
+        labelAr: "زخرفة أندلسية مغربية رسمية ❁ ﴾ ... ﴿ ❁",
+        shortBadgeAr: "تاج أندلسي ❁",
+        descriptionAr: "تاج الوردة الأندلسية المغربية مع أقواس سلطانية وكشيدة متزنة لترويسة AREF",
+      };
+    case "FULL_SULTANI":
+      return {
+        id: "FULL_SULTANI",
+        miniIconGlyph: "۞﴾ـ﴿۞",
+        labelAr: "ترويسة سلطانية كاملة ۞ ﴾ ... ﴿ ۞",
+        shortBadgeAr: "شمسة سلطانية ۞",
+        descriptionAr: "شمسة مصحفية مذهبة مع أقواس سلطانية وتطويل الحروف بالكشيدة",
+      };
+    case "ROYAL_BRACKETS":
+      return {
+        id: "ROYAL_BRACKETS",
+        miniIconGlyph: "﴾ ... ﴿",
+        labelAr: "أقواس سلطانية مزخرفة ﴾ ... ﴿",
+        shortBadgeAr: "أقواس ﴾...﴿",
+        descriptionAr: "تأطير العنوان الرئيسي بأقواس قرآنية وسلطانية رصينة بدون كشيدة",
+      };
+    case "KASHIDA":
+      return {
+        id: "KASHIDA",
+        miniIconGlyph: "بـسـم",
+        labelAr: "تطويل الحروف بالكشيدة الخطية (ـ)",
+        shortBadgeAr: "كشيدة خطية ـ",
+        descriptionAr: "تمديد أفقي متناغم للحروف المتصلة وفق ميزان السطر المغربي",
+      };
+  }
+}
+
+export type MoroccanHeaderSvgFrame =
+  | "NONE"
+  | "ZELLIGE_FEZ"
+  | "ANDALUSI_ARCH"
+  | "SULTANI_STAR";
+
+export interface MoroccanHeaderSvgFrameOption {
+  id: MoroccanHeaderSvgFrame;
+  labelAr: string;
+  shortAr: string;
+  descriptionAr: string;
+}
+
+export const MOROCCAN_HEADER_SVG_FRAME_OPTIONS: MoroccanHeaderSvgFrameOption[] = [
+  {
+    id: "NONE",
+    labelAr: "بدون إطار هندسي SVG",
+    shortAr: "بدون إطار",
+    descriptionAr: "الاكتفاء بالزخرفة النصية والخط الأندلسي دون إطار هندسي شعاعي",
+  },
+  {
+    id: "ZELLIGE_FEZ",
+    labelAr: "إفريز الزليج الفاسي المثمن (Zellige de Fès)",
+    shortAr: "زليج فاسي ❖",
+    descriptionAr: "شريط علوي وسفلي وزوايا هندسية بنجمة الزليج الفاسي المثمنة عالية الدقة للطباعة",
+  },
+  {
+    id: "ANDALUSI_ARCH",
+    labelAr: "قوس المحراب الأندلسي المغربي (Arc Andalou)",
+    shortAr: "قوس أندلسي  arches",
+    descriptionAr: "تأطير علوي مقوس مستوحى من الأقواس الأندلسية المغربية في مدارس فاس ومراكش",
+  },
+  {
+    id: "SULTANI_STAR",
+    labelAr: "الشمسة السلطانية المتماثلة (Rosace Sultanie)",
+    shortAr: "شمسة سلطانية ۞",
+    descriptionAr: "شمسات هندسية جانبية متناظرة بدقة Vector SVG تحيط بعنوان الفرض أو الامتحان",
+  },
+];
+
+export interface ExamenBlanc2BacDomainWeight {
+  domainAr: string;
+  domainFr: string;
+  targetPoints: number;
+  percentage: number;
+  detailsAr: string;
+}
+
+export interface ExamenBlanc2BacSpec {
+  trackCode: string;
+  cadreReferenceTitleAr: string;
+  cadreReferenceTitleFr: string;
+  officialDurationAr: string;
+  officialDurationFr: string;
+  coefficient: number;
+  domains: ExamenBlanc2BacDomainWeight[];
+}
+
+export function getExamenBlanc2BacConfig(trackCode: string): ExamenBlanc2BacSpec {
+  const normalized = (trackCode || "").toUpperCase();
+  if (normalized.includes("SM")) {
+    return {
+      trackCode: normalized,
+      cadreReferenceTitleAr: "الإطار المرجعي للامتحان الوطني الموحد للبكالوريا — مسلك العلوم الرياضية (أ & ب)",
+      cadreReferenceTitleFr: "Cadre de Référence de l'Examen National — 2BAC Sciences Mathématiques (A & B)",
+      officialDurationAr: "4 ساعات",
+      officialDurationFr: "4 heures",
+      coefficient: 9,
+      domains: [
+        {
+          domainAr: "التحليل (المتتاليات، التكامل، المعادلات التفاضلية، مسألة الدوال)",
+          domainFr: "Analyse (Suites, Intégrales, Éq. Différentielles & Problème de synthèse)",
+          targetPoints: 10,
+          percentage: 50,
+          detailsAr: "مسألة شاملة + تمرين تحليل معمق (10 نقط / 20)",
+        },
+        {
+          domainAr: "الأعداد العقدية والتطبيقات الهندسية",
+          domainFr: "Nombres Complexes & Transformations Géométriques",
+          targetPoints: 3.5,
+          percentage: 17.5,
+          detailsAr: "الأعداد العقدية والتحويلات الاعتيادية في المستوى (3.5 نقط / 20)",
+        },
+        {
+          domainAr: "الحسابيات في Z والبنيات الجبرية",
+          domainFr: "Arithmétique dans Z & Structures Algébriques",
+          targetPoints: 3.5,
+          percentage: 17.5,
+          detailsAr: "الموافقات والأعداد الأولية + الزمر والحلقات والفضاءات المتجهية (3.5 نقط / 20)",
+        },
+        {
+          domainAr: "حساب الاحتمالات والمتغيرات العشوائية",
+          domainFr: "Calcul des Probabilités & Variables Aléatoires",
+          targetPoints: 3,
+          percentage: 15,
+          detailsAr: "الاحتمالات الشرطية، الاستقلالية، والقانون الحداني (3 نقط / 20)",
+        },
+      ],
+    };
+  }
+  if (normalized.includes("ECO") || normalized.includes("SGC")) {
+    return {
+      trackCode: normalized,
+      cadreReferenceTitleAr: "الإطار المرجعي للامتحان الوطني الموحد للبكالوريا — مسلك العلوم الاقتصادية والتدبير",
+      cadreReferenceTitleFr: "Cadre de Référence de l'Examen National — 2BAC Sciences Économiques & Gestion",
+      officialDurationAr: "ساعتان (2 س)",
+      officialDurationFr: "2 heures",
+      coefficient: 4,
+      domains: [
+        {
+          domainAr: "التحليل ودراسة الدوال العددية واللوغاريتمية والأسية",
+          domainFr: "Analyse & Étude de fonctions (ln, exp, calcul intégral)",
+          targetPoints: 11,
+          percentage: 55,
+          detailsAr: "مسألة تركيبية لدراسة دالة وتأويلاتها الاقتصادية والهندسية (11 نقطة / 20)",
+        },
+        {
+          domainAr: "المتتاليات العددية",
+          domainFr: "Suites Numériques",
+          targetPoints: 4.5,
+          percentage: 22.5,
+          detailsAr: "المتتاليات الترجعية والهندسية والحسابية والنهايات (4.5 نقط / 20)",
+        },
+        {
+          domainAr: "حساب الاحتمالات",
+          domainFr: "Calcul des Probabilités",
+          targetPoints: 4.5,
+          percentage: 22.5,
+          detailsAr: "التعداد، الاحتمالات الشرطية، المتغير العشوائي والأمل الرياضي (4.5 نقط / 20)",
+        },
+      ],
+    };
+  }
+  // Default: 2BAC PC / SVT / STE / STM
+  return {
+    trackCode: normalized || "2BAC_PC",
+    cadreReferenceTitleAr: "الإطار المرجعي للامتحان الوطني الموحد للبكالوريا — شعب العلوم التجريبية والتكنولوجيات (PC / SVT)",
+    cadreReferenceTitleFr: "Cadre de Référence de l'Examen National — 2BAC Sciences Expérimentales (PC / SVT)",
+    officialDurationAr: "3 ساعات",
+    officialDurationFr: "3 heures",
+    coefficient: 7,
+    domains: [
+      {
+        domainAr: "التحليل (المتتاليات العددية، التكامل، ومسألة الدوال اللوغاريتمية/الأسية)",
+        domainFr: "Analyse (Suites numériques, Calcul intégral & Problème de synthèse ln/exp)",
+        targetPoints: 11,
+        percentage: 55,
+        detailsAr: "مسألة تركيبية (8 إلى 8.5 ن) + تمرين المتتاليات أو التكامل (2.5 إلى 3 ن)",
+      },
+      {
+        domainAr: "الأعداد العقدية وتطبيقاتها الهندسية",
+        domainFr: "Nombres Complexes & Interprétation Géométrique",
+        targetPoints: 3,
+        percentage: 15,
+        detailsAr: "الشكل المثلثي والأسّي، المعادلات في C، والإزاحة/التحاكي/الدوران (3 نقط / 20)",
+      },
+      {
+        domainAr: "الهندسة الفضائية (الجداء السلمي والمتجهي، الفلكة والمستوى)",
+        domainFr: "Géométrie dans l'Espace (Produit scalaire & vectoriel, Sphère et Plan)",
+        targetPoints: 3,
+        percentage: 15,
+        detailsAr: "معادلة مستوى، الفلكة، المسافة والتقاطعات في الفضاء (3 نقط / 20)",
+      },
+      {
+        domainAr: "حساب الاحتمالات والمتغيرات العشوائية",
+        domainFr: "Calcul des Probabilités & Loi Binomiale",
+        targetPoints: 3,
+        percentage: 15,
+        detailsAr: "السحب، الاحتمال الشرطي، المتغير العشوائي والقانون الحداني (3 نقط / 20)",
+      },
+    ],
+  };
 }
 
 export interface CalligraphyHarmonyReport {
@@ -280,7 +579,7 @@ export interface CalligraphyHarmonyReport {
 }
 
 /**
- * تحليل تناسق العنوان مع الخط العربي التقليدي المختار (الديواني / الثلث / الكوفي / المغربي...) قبل الاعتماد النهائي
+ * تحليل تناسق العنوان مع الخط العربي التقليدي المختار (الأندلسي المغربي / الديواني / الثلث / الكوفي / المغربي...) قبل الاعتماد النهائي
  */
 export function evaluateTitleCalligraphyHarmony(
   title: string,
@@ -305,7 +604,17 @@ export function evaluateTitleCalligraphyHarmony(
   let score = fontMeta.harmonyBaseScore;
   const notesAr: string[] = [];
 
-  if (fontId === "DIWANI_SULTANI" || fontId === "DIWANI_JALI") {
+  if (fontId === "ANDALUSI_MAGHRIBI_SCRIPT") {
+    notesAr.push(
+      "ضبط مثالي لتباعد الحروف (0.025em) وتباعد الكلمات (0.14em) وارتفاع السطر (1.82) مع زخرفة التاج الأندلسي المغربي ❁ ﴾ ... ﴿ ❁ المتناغمة مع الترويسة المغربية الرسمية (AREF)."
+    );
+    if (latinChars > 10) {
+      score -= 4;
+      notesAr.push(
+        "يُستحسن إبراز العنوان بالعربية الفصحى لإظهار تقوسات النون والقاف الأندلسية المغربية في أبهى حلة."
+      );
+    }
+  } else if (fontId === "DIWANI_SULTANI" || fontId === "DIWANI_JALI") {
     if (latinChars > 4) {
       score -= 14;
       notesAr.push(
@@ -365,8 +674,8 @@ export function evaluateTitleCalligraphyHarmony(
 
   const recommendationAr =
     status === "WARNING"
-      ? "جرّب خط «الثلث السلطاني» أو «المغربي الأصيل» أو «النسخ الأميري» إذا كان العنوان مزدوج اللغة (عربي/فرنسي)."
-      : `الخط «${fontMeta.shortAr}» بالحجم الحالي متناسق تماماً مع ترويسة الورقة (A4) وجاهز للاعتماد النهائي.`;
+      ? "جرّب «الخط الأندلسي المغربي (Maghribi Script)» أو «الثلث السلطاني» أو «النسخ الأميري» إذا كان العنوان مزدوج اللغة (عربي/فرنسي)."
+      : `الخط «${fontMeta.shortAr}» بالحجم والتباعد الحالي متناسق تماماً مع ترويسة الورقة المغربية الرسمية (A4) وجاهز للاعتماد النهائي.`;
 
   return {
     score,
@@ -556,6 +865,154 @@ export const LESSON_TAG_OPTIONS: LessonTagFilterOption[] = [
   },
 ];
 
+export type LessonHeaderIconId =
+  | "AUTO"
+  | "FUNCTION"
+  | "SEQUENCE"
+  | "GEOMETRY"
+  | "COMPLEX"
+  | "PROBABILITY"
+  | "INTEGRAL"
+  | "ALGEBRA"
+  | "LOGIC"
+  | "NONE";
+
+export interface LessonHeaderIconOption {
+  id: LessonHeaderIconId;
+  labelAr: string;
+  labelFr: string;
+  shortAr: string;
+  shortFr: string;
+  mathSymbol: string;
+  latexPrefix: string;
+  typstPrefix: string;
+  badgeColorClass: string;
+  accentHex: string;
+}
+
+export const LESSON_HEADER_ICON_OPTIONS: LessonHeaderIconOption[] = [
+  {
+    id: "AUTO",
+    labelAr: "تلقائي (حسب محور الدرس)",
+    labelFr: "Auto (selon le chapitre)",
+    shortAr: "تلقائي",
+    shortFr: "Auto",
+    mathSymbol: "✨",
+    latexPrefix: "",
+    typstPrefix: "",
+    badgeColorClass: "bg-slate-100 text-slate-800 border-slate-300",
+    accentHex: "#334155",
+  },
+  {
+    id: "FUNCTION",
+    labelAr: "أيقونة دالة ومنحنى بياني — f(x)",
+    labelFr: "Icône Fonction & Courbe — f(x)",
+    shortAr: "دالة f(x)",
+    shortFr: "Fonction f(x)",
+    mathSymbol: "f(x)",
+    latexPrefix: "$[f(x)]$",
+    typstPrefix: "[$f(x)$]",
+    badgeColorClass: "bg-indigo-50 text-indigo-950 border-indigo-300",
+    accentHex: "#1d4ed8",
+  },
+  {
+    id: "SEQUENCE",
+    labelAr: "أيقونة متتالية عددية — (uₙ)",
+    labelFr: "Icône Suite Numérique — (uₙ)",
+    shortAr: "متتالية (uₙ)",
+    shortFr: "Suite (uₙ)",
+    mathSymbol: "(uₙ)",
+    latexPrefix: "$[(u_n)]$",
+    typstPrefix: "[$(u_n)$]",
+    badgeColorClass: "bg-blue-50 text-blue-950 border-blue-300",
+    accentHex: "#0369a1",
+  },
+  {
+    id: "GEOMETRY",
+    labelAr: "أيقونة هندسة مستوية/فضائية — △",
+    labelFr: "Icône Géométrie Plane/Espace — △",
+    shortAr: "هندسة △",
+    shortFr: "Géométrie △",
+    mathSymbol: "△",
+    latexPrefix: "$[\\triangle]$",
+    typstPrefix: "[△]",
+    badgeColorClass: "bg-emerald-50 text-emerald-950 border-emerald-300",
+    accentHex: "#047857",
+  },
+  {
+    id: "COMPLEX",
+    labelAr: "أيقونة الأعداد العقدية — ℂ",
+    labelFr: "Icône Nombres Complexes — ℂ",
+    shortAr: "عقدية ℂ",
+    shortFr: "Complexes ℂ",
+    mathSymbol: "ℂ",
+    latexPrefix: "$[\\mathbb{C}]$",
+    typstPrefix: "[ℂ]",
+    badgeColorClass: "bg-purple-50 text-purple-950 border-purple-300",
+    accentHex: "#6d28d9",
+  },
+  {
+    id: "PROBABILITY",
+    labelAr: "أيقونة الاحتمالات والإحصاء — P(A)",
+    labelFr: "Icône Probabilités & Stats — P(A)",
+    shortAr: "احتمالات P(A)",
+    shortFr: "Probas P(A)",
+    mathSymbol: "P(A)",
+    latexPrefix: "$[P(A)]$",
+    typstPrefix: "[$P(A)$]",
+    badgeColorClass: "bg-rose-50 text-rose-950 border-rose-300",
+    accentHex: "#be123c",
+  },
+  {
+    id: "INTEGRAL",
+    labelAr: "أيقونة التكامل والمعادلات التفاضلية — ∫",
+    labelFr: "Icône Intégrale & Éq. Diff. — ∫",
+    shortAr: "تكامل ∫",
+    shortFr: "Intégrale ∫",
+    mathSymbol: "∫",
+    latexPrefix: "$[\\int]$",
+    typstPrefix: "[$integral$]",
+    badgeColorClass: "bg-violet-50 text-violet-950 border-violet-300",
+    accentHex: "#4c1d95",
+  },
+  {
+    id: "ALGEBRA",
+    labelAr: "أيقونة الجبر والحسابيات — ∑",
+    labelFr: "Icône Algèbre & Arithmétique — ∑",
+    shortAr: "جبر ∑",
+    shortFr: "Algèbre ∑",
+    mathSymbol: "∑",
+    latexPrefix: "$[\\sum]$",
+    typstPrefix: "[$sum$]",
+    badgeColorClass: "bg-amber-50 text-amber-950 border-amber-300",
+    accentHex: "#b45309",
+  },
+  {
+    id: "LOGIC",
+    labelAr: "أيقونة المنطق والمجموعات — ∀∃",
+    labelFr: "Icône Logique & Ensembles — ∀∃",
+    shortAr: "منطق ∀∃",
+    shortFr: "Logique ∀∃",
+    mathSymbol: "∀∃",
+    latexPrefix: "$[\\forall\\exists]$",
+    typstPrefix: "[∀∃]",
+    badgeColorClass: "bg-orange-50 text-orange-950 border-orange-300",
+    accentHex: "#c2410c",
+  },
+  {
+    id: "NONE",
+    labelAr: "بدون أيقونة في ترويسة التمرين",
+    labelFr: "Sans icône dans l'en-tête",
+    shortAr: "بدون أيقونة",
+    shortFr: "Aucune",
+    mathSymbol: "∅",
+    latexPrefix: "",
+    typstPrefix: "",
+    badgeColorClass: "bg-slate-50 text-slate-500 border-slate-200",
+    accentHex: "#64748b",
+  },
+];
+
 export interface LessonItem {
   lessonAr: string;
   lessonFr: string;
@@ -580,6 +1037,119 @@ export interface LessonItem {
   hasCustomQuestions?: boolean;
   isImportedSimulation?: boolean;
   importedOriginLabel?: string;
+  customHeaderIcon?: LessonHeaderIconId;
+}
+
+export function detectAutoLessonHeaderIconId(
+  lesson?: LessonItem
+): Exclude<LessonHeaderIconId, "AUTO" | "NONE"> {
+  if (!lesson) return "FUNCTION";
+  const text = `${lesson.lessonAr || ""} ${lesson.lessonFr || ""} ${
+    lesson.subCategory || ""
+  } ${lesson.category || ""} ${(lesson.tags || []).join(" ")}`.toLowerCase();
+
+  if (
+    text.includes("متتالي") ||
+    text.includes("suite") ||
+    text.includes("u_n") ||
+    text.includes("ترجعي")
+  ) {
+    return "SEQUENCE";
+  }
+  if (
+    text.includes("تكامل") ||
+    text.includes("أصلية") ||
+    text.includes("تفاضلي") ||
+    text.includes("intégral") ||
+    text.includes("primitive") ||
+    text.includes("différentielle")
+  ) {
+    return "INTEGRAL";
+  }
+  if (text.includes("عقدي") || text.includes("complexe")) {
+    return "COMPLEX";
+  }
+  if (
+    text.includes("هندسة") ||
+    text.includes("فضاء") ||
+    text.includes("فضائية") ||
+    text.includes("مستوية") ||
+    text.includes("مثلثي") ||
+    text.includes("مرجح") ||
+    text.includes("سلمي") ||
+    text.includes("متجه") ||
+    text.includes("فلكة") ||
+    text.includes("دوران") ||
+    text.includes("تحاكي") ||
+    text.includes("إزاحة") ||
+    text.includes("géométrie") ||
+    text.includes("espace") ||
+    text.includes("trigonom") ||
+    text.includes("scalaire") ||
+    text.includes("vectoriel") ||
+    text.includes("barycentre") ||
+    text.includes("rotation") ||
+    text.includes("homothétie") ||
+    text.includes("sphère") ||
+    text.includes("vecteur") ||
+    lesson.category === "Geometry"
+  ) {
+    return "GEOMETRY";
+  }
+  if (
+    text.includes("احتمال") ||
+    text.includes("إحصاء") ||
+    text.includes("تعداد") ||
+    text.includes("عشوائي") ||
+    text.includes("probabilit") ||
+    text.includes("statist") ||
+    text.includes("dénombrement") ||
+    text.includes("aléatoire") ||
+    lesson.category === "Probabilities"
+  ) {
+    return "PROBABILITY";
+  }
+  if (
+    text.includes("منطق") ||
+    text.includes("مجموعات") ||
+    text.includes("تطبيقات") ||
+    text.includes("logique") ||
+    text.includes("ensemble") ||
+    text.includes("application")
+  ) {
+    return "LOGIC";
+  }
+  if (
+    text.includes("حسابيات") ||
+    text.includes("بنيات") ||
+    text.includes("مصفوف") ||
+    text.includes("حدوديات") ||
+    text.includes("جبر") ||
+    text.includes("نظمة") ||
+    text.includes("arithmétique") ||
+    text.includes("structure") ||
+    text.includes("matrice") ||
+    text.includes("polynôme") ||
+    text.includes("algèbre") ||
+    lesson.category === "Algebra"
+  ) {
+    return "ALGEBRA";
+  }
+  return "FUNCTION";
+}
+
+export function resolveLessonHeaderIcon(
+  lesson?: LessonItem,
+  explicitOverride?: LessonHeaderIconId
+): LessonHeaderIconOption | null {
+  const chosenId = explicitOverride ?? lesson?.customHeaderIcon ?? "AUTO";
+  if (chosenId === "NONE") return null;
+  const resolvedId =
+    chosenId === "AUTO" ? detectAutoLessonHeaderIconId(lesson) : chosenId;
+  return (
+    LESSON_HEADER_ICON_OPTIONS.find((opt) => opt.id === resolvedId) ||
+    LESSON_HEADER_ICON_OPTIONS[1]
+  );
 }
 
 export function getLessonTags(lesson: LessonItem): string[] {
@@ -1306,7 +1876,7 @@ export function getVariantQuestions(
     ];
   } else if (titleFr.includes("suite") || titleAr.includes("المتتاليات")) {
     const isAlt = variantSeed % 2 === 1;
-    const a = model === "A" ? (isAlt ? "5" : "3") : "4";
+    const a = model === "A" ? (isAlt ? "4" : "3") : "4";
     const b = model === "A" ? (isAlt ? "3" : "2") : "3";
     const u0 = model === "A" ? (isAlt ? "2" : "1") : "2";
     questionsAr = [
@@ -1330,11 +1900,12 @@ export function getVariantQuestions(
     const re = model === "A" ? (isAlt ? "2√2" : "2√3") : "4√3";
     const c = model === "A" ? (isAlt ? "4" : "4") : "16";
     const affA = model === "A" ? (isAlt ? "√2 + i√2" : "√3 + i") : "2√3 + 2i";
+    const affC = model === "A" ? (isAlt ? "-√2 + i√2" : "2i") : "4i";
     questionsAr = [
       `I. نعتبر في مجموعة الأعداد العقدية C المعادلة: (E) : z² - ${re} z + ${c} = 0.`,
       `1. أ) أحسب مميز المعادلة (E)، ثم حل في المجموعة C المعادلة (E).`,
       `1. ب) نضع a = ${affA} و b = ā. أكتب كلاً من a و b على الشكل المثلثي ثم الأسي، واستنتج أن a^{12} عدد حقيقي.`,
-      `II. في المستوى العقدي المنسوب إلى معلم متعامد ممنظم مباشر (O, u, v)، نعتبر النقط A(a) و B(b) و C(c) حيث c = ${model === "A" ? "2i" : "4i"}.`,
+      `II. في المستوى العقدي المنسوب إلى معلم متعامد ممنظم مباشر (O, u, v)، نعتبر النقط A(a) و B(b) و C(c) حيث c = ${affC}.`,
       `2. أ) أكتب العدد العقدي (c - a)/(b - a) على الشكل الجبري ثم المثلثي، واستنتج طبيعة المثلث ABC.`,
       `2. ب) ليكن R الدوران الذي مركزه O وزاويته π/3. حدد الكتابة العقدية للدوران R ولحق النقطة D صورة A بالدوران R، ثم حدد مجموعة النقط M(z) حيث |z - a| = |z - b|.`,
     ];
@@ -1342,7 +1913,7 @@ export function getVariantQuestions(
       `I. On considère dans l'ensemble des nombres complexes ℂ l'équation : (E) : z² - ${re} z + ${c} = 0.`,
       `1. a) Calculer le discriminant Δ de (E), puis résoudre dans ℂ l'équation (E).`,
       `1. b) On pose a = ${affA} et b = ā. Écrire a et b sous forme trigonométrique et exponentielle, puis montrer que a^{12} est un nombre réel.`,
-      `II. Dans le plan complexe rapporté à un repère orthonormé direct (O, u, v), on considère les points A(a), B(b) et C(c) avec c = ${model === "A" ? "2i" : "4i"}.`,
+      `II. Dans le plan complexe rapporté à un repère orthonormé direct (O, u, v), on considère les points A(a), B(b) et C(c) avec c = ${affC}.`,
       `2. a) Écrire le quotient (c - a)/(b - a) sous forme trigonométrique et en déduire la nature exacte du triangle ABC.`,
       `2. b) Soit R la rotation de centre O et d'angle π/3. Donner l'écriture complexe de R, déterminer l'affixe de D = R(A) et caractériser l'ensemble des points M(z) tels que |z - a| = |z - b|.`,
     ];
@@ -1353,9 +1924,12 @@ export function getVariantQuestions(
     titleAr.includes("التكاملي") ||
     titleAr.includes("التفاضلية")
   ) {
-    const alpha = model === "A" ? (variantSeed % 2 === 1 ? "4" : "2") : "3";
+    const isAlt = variantSeed % 2 === 1;
+    const odeEq = model === "A"
+      ? (isAlt ? "y'' - 4y' + 4y = 0" : "y'' - 2y' + y = 0")
+      : "y'' - 3y' + 2y = 0";
     questionsAr = [
-      `الجزء الأول: نعتبر المعادلة التفاضلية (E) : y'' - ${alpha}y' + y = 0.`,
+      `الجزء الأول: نعتبر المعادلة التفاضلية (E) : ${odeEq}.`,
       `1. أ) حل في R المعادلة المميزة المرتبطة بالمعادلة (E)، ثم استنتج الحل العام للمعادلة التفاضلية (E).`,
       `1. ب) حدد الحل الخاص h للمعادلة (E) الذي يحقق الشرطين: h(0) = 1 و h'(0) = 0.`,
       `الجزء الثاني: نعتبر التكاملين I = ∫_0^1 (x + 1)e^{-x} dx و J = ∫_0^{π/4} tan(x) dx.`,
@@ -1363,7 +1937,7 @@ export function getVariantQuestions(
       `2. ب) باستعمال المكاملة بالأجزاء، أحسب التكامل I، ثم استنتج بـ cm² مساحة الحيز المستوي المحصور بين منحنى الدالة f(x) = (x+1)e^{-x} ومحور الأفاصيل والمستقيمين x = 0 و x = 1 (حيث ||i|| = ||j|| = 2 cm).`,
     ];
     questionsFr = [
-      `Partie I : On considère l'équation différentielle (E) : y'' - ${alpha}y' + y = 0.`,
+      `Partie I : On considère l'équation différentielle (E) : ${odeEq}.`,
       `1. a) Résoudre l'équation caractéristique associée à (E) et donner la solution générale de (E) sur ℝ.`,
       `1. b) Déterminer la solution particulière h de (E) vérifiant les conditions initiales h(0) = 1 et h'(0) = 0.`,
       `Partie II : On pose I = ∫_0^1 (x + 1)e^{-x} dx et J = ∫_0^{π/4} tan(x) dx.`,
@@ -1534,10 +2108,23 @@ export function getVariantQuestions(
   }
 
   if (shuffleQuestions && model === "B" && questionsAr.length > 2) {
-    return {
-      questionsAr: [questionsAr[1], questionsAr[0], ...questionsAr.slice(2)],
-      questionsFr: [questionsFr[1], questionsFr[0], ...questionsFr.slice(2)],
-    };
+    const startsWithIntro = (q: string) =>
+      !/^[0-9]+[\.\-\)]/i.test(q.trim()) && !/^Q[0-9]+/i.test(q.trim()) && !/^[I|V|X]+[\.\-\)]/i.test(q.trim());
+    const hasIntroAr = startsWithIntro(questionsAr[0]);
+    const hasIntroFr = startsWithIntro(questionsFr[0]);
+
+    if (hasIntroAr && hasIntroFr && questionsAr.length > 3) {
+      // الحفاظ على نص المعطيات/المسألة التمهيدي في الموضع 0 وتبديل الأسئلة الفرعية اللاحقة فقط
+      return {
+        questionsAr: [questionsAr[0], questionsAr[2], questionsAr[1], ...questionsAr.slice(3)],
+        questionsFr: [questionsFr[0], questionsFr[2], questionsFr[1], ...questionsFr.slice(3)],
+      };
+    } else if (!hasIntroAr && !hasIntroFr) {
+      return {
+        questionsAr: [questionsAr[1], questionsAr[0], ...questionsAr.slice(2)],
+        questionsFr: [questionsFr[1], questionsFr[0], ...questionsFr.slice(2)],
+      };
+    }
   }
 
   return { questionsAr, questionsFr };
@@ -2195,18 +2782,35 @@ export function getQuestionBaremesAndLevels(
   }
 
   const ratioSum = rawRatios.reduce((a, b) => a + b, 0) || 1;
+  const minStep = totalExPoints >= questionCount * 0.25 ? 0.25 : Number((totalExPoints / questionCount).toFixed(2));
   let allocated = 0;
 
   return rawRatios.map((r, idx) => {
     let pt: number;
-    if (idx === questionCount - 1) {
-      pt = Math.max(0.25, Math.round((totalExPoints - allocated) * 4) / 4);
+    const remainingAfterCurrent = questionCount - 1 - idx;
+    if (remainingAfterCurrent === 0) {
+      pt = Math.max(
+        minStep,
+        minStep === 0.25
+          ? Math.round((totalExPoints - allocated) * 4) / 4
+          : Number((totalExPoints - allocated).toFixed(2))
+      );
     } else {
-      pt = Math.max(0.25, Math.round(((totalExPoints * r) / ratioSum) * 4) / 4);
-      if (allocated + pt >= totalExPoints) {
-        pt = Math.max(0.25, totalExPoints - allocated - 0.25);
+      const rawPt = (totalExPoints * r) / ratioSum;
+      pt =
+        minStep === 0.25
+          ? Math.max(0.25, Math.round(rawPt * 4) / 4)
+          : Number(rawPt.toFixed(2));
+      const maxAllowedForCurrent = Math.max(
+        minStep,
+        minStep === 0.25
+          ? Math.round((totalExPoints - allocated - remainingAfterCurrent * minStep) * 4) / 4
+          : Number((totalExPoints - allocated - remainingAfterCurrent * minStep).toFixed(2))
+      );
+      if (pt > maxAllowedForCurrent) {
+        pt = maxAllowedForCurrent;
       }
-      allocated += pt;
+      allocated = Number((allocated + pt).toFixed(2));
     }
 
     const lvl = levels[idx];
@@ -2364,7 +2968,7 @@ export function getSerieAndDMExercises(
   } else {
     olympiadQuestionsAr = [
       `مسألة التحدي والبحث المفتوح: نعتبر الدالة f المتصلة على [0, 1] والتي تحقق ∫_0^1 f(t) dt = 1/2.`,
-      `1. برهن باستعمال مبرهنة القيم الوسطية وجود عدد c من ]0, 1[ بحيث f(c) = c.`,
+      `1. برهن باستعمال مبرهنة القيم الوسيطية وجود عدد c من ]0, 1[ بحيث f(c) = c.`,
       `2. سؤال المبادرة: نفترض علاوة على ذلك أن f قابلة للاشتقاق وأن |f'(x)| ≤ 1 لكل x. حدد حصراً دقيقاً للقيمة القصوى لـ ∫_0^1 (f(t))² dt.`,
     ];
     olympiadQuestionsFr = [
@@ -3753,7 +4357,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["مبرهنة القيم الوسطية، التقابل، مبرهنة رول، ومبرهنة ومتفاوتة التزايدات المنتهية (TAF/IAF)"],
+            capacitiesAr: ["مبرهنة القيم الوسيطية، التقابل، مبرهنة رول، ومبرهنة ومتفاوتة التزايدات المنتهية (TAF/IAF)"],
             capacitiesFr: ["TVI, bijection, théorème de Rolle, TAF et IAF"],
           },
           {
@@ -3920,7 +4524,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["الاتصال في نقطة وعلى مجال، صورة مجال، مبرهنة القيم الوسطية (TVI)، والدالة العكسية"],
+            capacitiesAr: ["الاتصال في نقطة وعلى مجال، صورة مجال، مبرهنة القيم الوسيطية (TVI)، والدالة العكسية"],
             capacitiesFr: ["Continuité, image d'un intervalle, TVI et fonction réciproque"],
             sampleExerciseAr: [
               "نعتبر الدالة العددية f المعرفة على [1, +∞[ بما يلي: f(x) = x² - 2x + 3.",
@@ -3970,7 +4574,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل","متتاليات عددية"],
-            capacitiesAr: ["مصاديق التقارب، مبرهنات الحصر، والمتتاليات الترجعية u_{n+1}=f(u_n)"],
+            capacitiesAr: ["معايير التقارب، مبرهنات الترتيب والحصر، والمتتاليات الترجعية u_{n+1}=f(u_n)"],
             capacitiesFr: ["Critères de convergence, encadrement et suites récurrentes u_{n+1}=f(u_n)"],
           },
           {
@@ -4119,7 +4723,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["الاتصال، مبرهنة القيم الوسطية، الدالة العكسية، الجذر من الرتبة n، ودراسة الدوال"],
+            capacitiesAr: ["الاتصال، مبرهنة القيم الوسيطية، الدالة العكسية، الجذر من الرتبة n، ودراسة الدوال"],
             capacitiesFr: ["Continuité, TVI, fonction réciproque, racine n-ième et étude de fonctions"],
           },
         ],
@@ -4133,7 +4737,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل","متتاليات عددية","حساب تكاملي ومعادلات تفاضلية"],
-            capacitiesAr: ["مصاديق التقارب، المتتاليات الترجعية u_{n+1}=f(u_n)، والدوال الأصلية"],
+            capacitiesAr: ["معايير التقارب ومبرهنات الترتيب والحصر، المتتاليات الترجعية u_{n+1}=f(u_n)، والدوال الأصلية"],
             capacitiesFr: ["Critères de convergence, suites u_{n+1}=f(u_n) et fonctions primitives"],
           },
         ],
@@ -4222,7 +4826,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["مبرهنة القيم الوسطية، الدالة العكسية، واشتقاق الدوال المركبة"],
+            capacitiesAr: ["مبرهنة القيم الوسيطية، الدالة العكسية، واشتقاق الدوال المركبة"],
             capacitiesFr: ["TVI, fonction réciproque et étude de fonctions"],
           },
         ],
@@ -4325,7 +4929,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["الاتصال، مبرهنة القيم الوسطية، الدالة العكسية، ودراسة الدوال وتأويلها الاقتصادي"],
+            capacitiesAr: ["الاتصال، مبرهنة القيم الوسيطية، الدالة العكسية، ودراسة الدوال وتأويلها الاقتصادي"],
             capacitiesFr: ["Continuité, TVI, bijection, dérivation et applications économiques"],
           },
         ],
@@ -4901,7 +5505,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
         ],
         DS2: [
           {
-            lessonAr: "الاتصال ومبرهنة القيم الوسطية والتقعر والانعطاف",
+            lessonAr: "الاتصال ومبرهنة القيم الوسيطية والتقعر ونقط الانعطاف",
             lessonFr: "Continuité, TVI, convexité et points d'inflexion",
             weight: 50,
             hours: "16h",
@@ -4909,7 +5513,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل"],
-            capacitiesAr: ["مبرهنة القيم الوسطية، دراسة إشارة المشتقة الثانية f''، نقط الانعطاف والمماسات"],
+            capacitiesAr: ["مبرهنة القيم الوسيطية، دراسة إشارة المشتقة الثانية f''، نقط الانعطاف والمماسات"],
             capacitiesFr: ["Appliquer le TVI pour justifier l'unicité d'une solution, convexité via f''(x) et points d'inflexion"],
             sampleExerciseFr: [
               "Soit f la fonction définie sur ℝ par f(x) = (x² - 2x + 1)e^x.",
@@ -5261,7 +5865,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "احتمالات وإحصاء",
             subCategoryFr: "Probabilités & Statistiques",
             tags: ["Probabilities","احتمالات وإحصاء"],
-            capacitiesAr: ["سحابة النقط، النقطة المتوسطة G، معادلة مستقيم الانحدار y = ax + b، والتنبؤ"],
+            capacitiesAr: ["سحابة النقط، النقطة المتوسطة G، معادلة مستقيم التعديل الخطي (الانحدار) y = ax + b، والتنبؤ"],
             capacitiesFr: ["Nuage de points, point moyen G, droite d'ajustement affine par moindres carrés et prévisions"],
             sampleExerciseFr: [
               "On relève le chiffre d'affaires y_i (en k€) d'une société en fonction du rang de l'année x_i (de 1 à 6).",
@@ -5296,7 +5900,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
               "3. Déterminer la durée de vie t telle que 95% des composants dépassent cette durée."
             ],
             sampleExerciseAr: [
-              "تتبع مدة صلاحية مركب إلكتروني توزيعاً طبيعياً بمعدل μ = 500 ساعة وانحراف معياري σ = 40 ساعة.",
+              "تتبع مدة صلاحية مركب إلكتروني توزيعاً طبيعياً بمعدل μ = 500 ساعة وانحراف طرازي (معياري) σ = 40 ساعة.",
               "1. أحسب احتمال أن يشتغل المركب لأقل من 450 ساعة.",
               "2. أحسب P(460 ≤ X ≤ 540).",
               "3. حدد المدة t بحيث تتجاوز 95% من المركبات هذه المدة."
@@ -5310,7 +5914,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           { lessonAr: "الحساب التكاملي والقيمة المتوسطة", lessonFr: "Intégrales et valeurs moyennes en économie", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"], capacitiesAr: ["حساب الفائض الاستهلاكي وفائض المنتج بواسطة التكامل"], capacitiesFr: ["Calcul du surplus du consommateur et du producteur par intégration"] }
         ],
         DS2: [
-          { lessonAr: "الاختبارات الإحصائية وفترات الثقة", lessonFr: "Tests statistiques et intervalles de confiance", weight: 100, hours: "18h", category: "Probabilities", subCategory: "احتمالات وإحصاء", subCategoryFr: "Probabilités & Statistiques", tags: ["Probabilities","احتمالات وإحصاء"], capacitiesAr: ["فترة الثقة لنسبة مئوية، عينات الاستطلاع، واتخاذ القرار"], capacitiesFr: ["Intervalles de confiance pour une proportion et prise de décision"] }
+          { lessonAr: "الاختبارات الإحصائية ومجالات الثقة", lessonFr: "Tests statistiques et intervalles de confiance", weight: 100, hours: "18h", category: "Probabilities", subCategory: "احتمالات وإحصاء", subCategoryFr: "Probabilités & Statistiques", tags: ["Probabilities","احتمالات وإحصاء"], capacitiesAr: ["مجال الثقة لنسبة مئوية، عينات الاستطلاع، واتخاذ القرار"], capacitiesFr: ["Intervalles de confiance pour une proportion et prise de décision"] }
         ],
         DS3: [
           { lessonAr: "امتحان تركيبي شامل للرياضيات التكميلية", lessonFr: "Épreuve de synthèse Terminale Maths Complémentaires", weight: 100, hours: "18h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["توليف المسائل الاقتصادية والبيولوجية والإحصائية"], capacitiesFr: ["Épreuve de synthèse générale axée sur les applications scientifiques et économiques"] }

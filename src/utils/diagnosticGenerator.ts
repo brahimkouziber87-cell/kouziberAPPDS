@@ -194,7 +194,7 @@ export function generateMoroccanDiagnosticPaper(
           justificationFr: `Formule : (u^n)' = n · u' · u^{n-1}. Ici u'(x) = 2, donc g'(x) = 6(2x + 1)².`,
           commonErrorAr: "نسيان ضرب النتيجة في المشتقة الداخلية u'(x) واختيار 3(2x + 1)².",
           commonErrorFr: "Oubli systématique de la dérivée interne u' dans (u^n)'.",
-          didacticalOriginAr: "تطبيق سطحي لقاعدة مشتقة x^n على الدوال المركبة u^n دون استحضار قاعدة السلسلة.",
+          didacticalOriginAr: "تطبيق سطحي لقاعدة مشتقة x^n على الدوال المركبة u^n دون استحضار قاعدة اشتقاق مركب دالتين.",
           didacticalOriginFr: "Application erronée de (x^n)' à une fonction composée u^n.",
           remediationPlanAr: "تثبيت قاعدة اشتقاق مركب دالتين و(u^n)' و √(u) عبر أمثلة مقارنة.",
           remediationPlanFr: "Activités d'ancrage sur la dérivation des fonctions composées.",

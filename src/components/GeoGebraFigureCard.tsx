@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { GeoGebraResource, LessonItem } from "../data/curriculum";
+import { exportRealGeoGebraGgbArchive } from "../utils/advancedPedagogicalTools";
 import {
+  Download,
   ExternalLink,
   Eye,
   EyeOff,
@@ -546,6 +548,31 @@ export const GeoGebraFigureCard: React.FC<GeoGebraFigureCardProps> = ({
               className="hidden"
             />
           </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              const mode = isSpatial3D
+                ? "3D_SPACE"
+                : svgType === "NOMBRES_COMPLEXES"
+                ? "COMPLEX_PLANE"
+                : "2D_FUNCTION";
+              exportRealGeoGebraGgbArchive({
+                fileName: resource.fileName || `GeoGebra_Ex${exerciseNumber}_${mode}.ggb`,
+                mode,
+                title: isFr ? resource.titleFr : resource.titleAr,
+              });
+            }}
+            className="px-2.5 py-1 rounded-md text-[11px] font-black bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-800 transition flex items-center gap-1 cursor-pointer shadow-2xs"
+            title={
+              isFr
+                ? "Exporter le fichier natif GeoGebra (.ggb) pour TBI / Vidéoprojecteur"
+                : "تحميل ملف GeoGebra الأصلي (.ggb) للعرض الديناميكي على المسلاط العاكس والسبورة التفاعلية TBI"
+            }
+          >
+            <Download className="w-3 h-3" />
+            <span>{isFr ? "Exporter .ggb" : "تصدير .ggb"}</span>
+          </button>
 
           <button
             type="button"

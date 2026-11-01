@@ -37,7 +37,7 @@ const MATH_SYMBOLS = [
   { label: "ℕ", insert: "ℕ", title: "مجموعة الأعداد الصحيحة الطبيعية" },
   { label: "ℤ", insert: "ℤ", title: "مجموعة الأعداد الصحيحة النسبية" },
   { label: "ℂ", insert: "ℂ", title: "مجموعة الأعداد العقدية (Nombres Complexes)" },
-  // رموز تفاضل وتكامل ومتتاليات
+  // رموز التحليل والاشتقاق والتكامل والمتتاليات
   { label: "√x", insert: "√", title: "جذر مربع (Racine carrée)" },
   { label: "∫", insert: "∫", title: "تكامل (Intégrale)" },
   { label: "∑", insert: "∑", title: "مجموع (Somme)" },

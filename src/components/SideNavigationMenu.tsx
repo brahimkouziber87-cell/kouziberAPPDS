@@ -808,7 +808,7 @@ export const SideNavigationMenu: React.FC<SideNavigationMenuProps> = ({
                 )}
               </div>
               {!collapsedState && isExamSimulationActive && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 shrink-0">نشط</span>
               )}
             </button>
 

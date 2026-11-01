@@ -25,6 +25,7 @@ import {
   Filter,
   FolderOpen,
   GraduationCap,
+  Highlighter,
   Layers,
   Link2,
   LogOut,
@@ -79,30 +80,42 @@ import {
   getLessonBadgeColor,
   getLessonTags,
   getQuestionBaremesAndLevels,
+  getTitleOrnamentMiniPreview,
+  getExamenBlanc2BacConfig,
   getVariantQuestions,
   HeaderStyle,
   InsertedFigure,
   isGeometryOrSpatialLesson,
+  LESSON_HEADER_ICON_OPTIONS,
   LESSON_TAG_OPTIONS,
+  LessonHeaderIconId,
   LessonItem,
   lessonMatchesTagFilter,
   MISSION_SCHOOLS,
   ModuleType,
+  MOROCCAN_HEADER_SVG_FRAME_OPTIONS,
   MoroccanDSStructureMode,
   MoroccanQCMItem,
   QCMGeneratorConfig,
   QCMScoringMode,
+  resolveLessonHeaderIcon,
   SemesterType,
   SolutionDisplayMode,
   SPATIAL_GEOMETRY_INSTRUCTIONS_PRESETS,
   TRADITIONAL_TITLE_FONT_OPTIONS,
+  TraditionalTitleFontId,
 } from "./data/curriculum";
 import {
   AppliedTitleCalligraphyConfig,
   ArabicCalligraphySimulator,
 } from "./components/ArabicCalligraphySimulator";
 import { generateOfflineSourceCode } from "./utils/docGenerator";
-import { exportPreviewToPDF, exportStandaloneHTML } from "./utils/pdfExporter";
+import {
+  exportBookletImposedPDF,
+  exportPedagogicalAuditReportToPDF,
+  exportPreviewToPDF,
+  exportStandaloneHTML,
+} from "./utils/pdfExporter";
 import {
   buildCustomEvaluationGrid,
   DEFAULT_MOROCCAN_CLASS_ROSTER,
@@ -117,8 +130,17 @@ import {
   ImportedExamBlueprint,
   SimulationMode,
 } from "./utils/importedExamSimulator";
-import { ImportedExamSimulatorPanel } from "./components/ImportedExamSimulatorPanel";
-import { PrintablePreview } from "./components/PrintablePreview";
+import {
+  ImportedExamSimulatorPanel,
+  ImportSimulatorTabId,
+} from "./components/ImportedExamSimulatorPanel";
+import {
+  DocumentViewMarginModelId,
+  LessonHeaderIconBadge,
+  LessonHeaderIconSvg,
+  PrintablePreview,
+  resolveAutoDocViewMarginModel,
+} from "./components/PrintablePreview";
 import { TouchPreviewCanvas } from "./components/TouchPreviewCanvas";
 import {
   SpecMatrix2DInspectorCard,
@@ -165,6 +187,7 @@ import {
   LATEX_PACKAGE_OPTIONS,
   LatexPackageTheme,
   PaperSurfaceTexture,
+  StudentGridStyle,
   TCOLORBOX_FRAME_OPTIONS,
   TCOLORBOX_PALETTE_OPTIONS,
   TCOLORBOX_SHADING_OPTIONS,
@@ -184,6 +207,25 @@ import {
   logout,
   uploadDocumentToDrive,
 } from "./services/googleDrive";
+import {
+  DEFAULT_LONGITUDINAL_COHORT_CONFIG,
+  DifferentiatedPathConfig,
+  LongitudinalCohortTrackerConfig,
+  detectDoublePenaltyInLessons,
+  getDefaultDifferentiatedPathForTrack,
+  sanitizeAndValidateQuestionsList,
+  analyzeDidacticProgressionAndTimeBudget,
+  runFullEdTechDocumentDiagnostics,
+} from "./utils/mathjsValidator";
+import type { MathInspectorStudioTabId } from "./components/MathTeacherInspectorStudioModal";
+import {
+  FourProposalsInnovationStudioModal,
+  InnovationProposalTabId,
+} from "./components/FourProposalsInnovationStudioModal";
+
+const MathTeacherInspectorStudioModal = React.lazy(
+  () => import("./components/MathTeacherInspectorStudioModal")
+);
 
 const STORAGE_KEY = "pedagogical_math_prefs_v4";
 
@@ -234,6 +276,7 @@ interface SavedPreferences {
   isCustomLessonMode?: boolean;
   selectedLessonIndices?: number[];
   customWeightsMap?: Record<string, number>;
+  customLessonIconsMap?: Record<string, LessonHeaderIconId>;
   dsStructureMode?: MoroccanDSStructureMode;
   dsQuestionDensity?: DSQuestionDensity;
   latexPackageTheme?: LatexPackageTheme;
@@ -241,6 +284,8 @@ interface SavedPreferences {
   enableBranchColorGradient?: boolean;
   branchColorMode?: BranchColorGradientMode;
   includeInteractiveQrFooter?: boolean;
+  studentGridStyle?: StudentGridStyle;
+  appliedTitleCalligraphy?: AppliedTitleCalligraphyConfig;
 }
 
 const DEFAULT_PREFS: SavedPreferences = {
@@ -290,6 +335,7 @@ const DEFAULT_PREFS: SavedPreferences = {
   isCustomLessonMode: false,
   selectedLessonIndices: [0, 1],
   customWeightsMap: {},
+  customLessonIconsMap: {},
   dsStructureMode: "EXERCICES_ET_PROBLEME",
   dsQuestionDensity: "INTENSIVE",
   latexPackageTheme: "TCOLORBOX",
@@ -297,6 +343,15 @@ const DEFAULT_PREFS: SavedPreferences = {
   enableBranchColorGradient: true,
   branchColorMode: "AUTO_BY_LESSON",
   includeInteractiveQrFooter: true,
+  studentGridStyle: "SEYES_FRENCH",
+  appliedTitleCalligraphy: {
+    fontId: "DEFAULT_DOC",
+    scale: "BALANCED",
+    ornament: "NONE",
+    scope: "HEADER_TITLES",
+    enableMoroccanHeaderOrnament: true,
+    customLetterSpacingEm: 0.025,
+  },
 };
 
 function loadInitialPrefs(): SavedPreferences {
@@ -316,6 +371,7 @@ interface QuickEditorSnapshot {
   customHeaderNote: string;
   customExerciseTitles: Record<number, string>;
   customWeightsMap: Record<string, number>;
+  customLessonIconsMap: Record<string, LessonHeaderIconId>;
   school: string;
   prof: string;
 }
@@ -411,6 +467,9 @@ export default function App() {
   const [customWeightsMap, setCustomWeightsMap] = useState<Record<string, number>>(
     initial.customWeightsMap || {}
   );
+  const [customLessonIconsMap, setCustomLessonIconsMap] = useState<
+    Record<string, LessonHeaderIconId>
+  >(initial.customLessonIconsMap || {});
   const [customQuestionBaremesMap, setCustomQuestionBaremesMap] = useState<Record<string, number[]>>({});
   const [customQuestionLevelsMap, setCustomQuestionLevelsMap] = useState<
     Record<string, Array<"N1" | "N2" | "N3">>
@@ -464,12 +523,16 @@ export default function App() {
   const [showQuickEditor, setShowQuickEditor] = useState<boolean>(true);
   const [showCalligraphySimulator, setShowCalligraphySimulator] = useState<boolean>(true);
   const [appliedTitleCalligraphy, setAppliedTitleCalligraphy] =
-    useState<AppliedTitleCalligraphyConfig>({
-      fontId: "DEFAULT_DOC",
-      scale: "BALANCED",
-      ornament: "NONE",
-      scope: "HEADER_TITLES",
-    });
+    useState<AppliedTitleCalligraphyConfig>(
+      initial.appliedTitleCalligraphy || {
+        fontId: "DEFAULT_DOC",
+        scale: "BALANCED",
+        ornament: "NONE",
+        scope: "HEADER_TITLES",
+        enableMoroccanHeaderOrnament: true,
+        customLetterSpacingEm: 0.025,
+      }
+    );
   const [isInlineEditable, setIsInlineEditable] = useState<boolean>(false);
   const [showQuickVoiceDictation, setShowQuickVoiceDictation] =
     useState<boolean>(false);
@@ -500,9 +563,9 @@ export default function App() {
   const [includeAnswerWorkspace, setIncludeAnswerWorkspace] = useState<boolean>(
     initial.includeAnswerWorkspace ?? false
   );
-  const [studentGridStyle, setStudentGridStyle] = useState<
-    "SEYES_FRENCH" | "LINED_RULED" | "MILLIMETER_GRID" | "DOTTED_BOX" | "PLAIN_BOX"
-  >("SEYES_FRENCH");
+  const [studentGridStyle, setStudentGridStyle] = useState<StudentGridStyle>(
+    initial.studentGridStyle || "SEYES_FRENCH"
+  );
   const [workspaceHeightMode, setWorkspaceHeightMode] = useState<
     "ADAPTIVE" | "COMPACT" | "GENEROUS"
   >("ADAPTIVE");
@@ -551,6 +614,8 @@ export default function App() {
     useState<boolean>(false);
   const [activeImportedBlueprint, setActiveImportedBlueprint] =
     useState<ImportedExamBlueprint | null>(IMPORTED_EXAMS_ARCHIVE[0]);
+  const [importedStudioInitialTab, setImportedStudioInitialTab] =
+    useState<ImportSimulatorTabId>("ARCHIVE");
   const [examSimulationMode, setExamSimulationMode] =
     useState<SimulationMode>("ISOMORPHIC_TWIN");
   const [examVariationSeed, setExamVariationSeed] = useState<number>(1);
@@ -574,6 +639,39 @@ export default function App() {
     useState<boolean>(false);
   const [includeOfficialExamCoverSheet, setIncludeOfficialExamCoverSheet] =
     useState<boolean>(false);
+
+  // 10. أ-3 (جديد): حالة مختبر MathJS ومقترحات أستاذ المادة (1-3) ومقترحات المفتش التربوي (2-3)
+  const [showMathInspectorStudioModal, setShowMathInspectorStudioModal] =
+    useState<boolean>(false);
+  const [mathInspectorStudioTab, setMathInspectorStudioTab] =
+    useState<MathInspectorStudioTabId>("MATHJS_VALIDATOR");
+  const [differentiatedPathConfig, setDifferentiatedPathConfig] =
+    useState<DifferentiatedPathConfig>(() =>
+      getDefaultDifferentiatedPathForTrack(
+        initial.selectedTrackCode || "2BAC_PC"
+      )
+    );
+  const [longitudinalCohortConfig, setLongitudinalCohortConfig] =
+    useState<LongitudinalCohortTrackerConfig>(() => {
+      try {
+        const saved = localStorage.getItem("prof_math_longitudinal_cohort_v1");
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore read error
+      }
+      return DEFAULT_LONGITUDINAL_COHORT_CONFIG;
+    });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "prof_math_longitudinal_cohort_v1",
+        JSON.stringify(longitudinalCohortConfig)
+      );
+    } catch {
+      // ignore write error
+    }
+  }, [longitudinalCohortConfig]);
 
   // 10. أ-4: شريط التنقل الجانبي الثابت والتحكم في طيه وحفظ الحالة محلياً
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -657,6 +755,12 @@ export default function App() {
     useState<boolean>(false);
   const [economicTwoUpPrintMode, setEconomicTwoUpPrintMode] =
     useState<boolean>(false);
+  const [customPageMarginsMm, setCustomPageMarginsMm] = useState<{
+    topMm: number;
+    bottomMm: number;
+    xMm: number;
+    modelId: DocumentViewMarginModelId;
+  } | null>(null);
   const [includeInteractiveQrFooter, setIncludeInteractiveQrFooter] =
     useState<boolean>(initial.includeInteractiveQrFooter ?? true);
   const hasHandledUrlQuizRef = useRef<boolean>(false);
@@ -715,6 +819,8 @@ export default function App() {
   >("WORKSPACE");
   const [attachedPythonAlgorithms, setAttachedPythonAlgorithms] = useState<PythonAlgorithmPreset[]>([]);
   const [isExportDashboardOpen, setIsExportDashboardOpen] = useState<boolean>(false);
+  const [showFourProposalsModal, setShowFourProposalsModal] = useState<boolean>(false);
+  const [fourProposalsTab, setFourProposalsTab] = useState<InnovationProposalTabId>("INTERACTIVE_CF_SPLINE");
   const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>(() =>
     loadExportHistory(CURRICULUM_DB[initial.selectedTrackCode], initial.semester)
   );
@@ -769,6 +875,7 @@ export default function App() {
       customHeaderNote: "",
       customExerciseTitles: {},
       customWeightsMap: {},
+      customLessonIconsMap: initial.customLessonIconsMap || {},
       school: initial.school,
       prof: initial.prof,
     },
@@ -1027,6 +1134,7 @@ export default function App() {
           isCustomLessonMode,
           selectedLessonIndices,
           customWeightsMap,
+          customLessonIconsMap,
           dsStructureMode,
           dsQuestionDensity,
           latexPackageTheme,
@@ -1034,6 +1142,8 @@ export default function App() {
           enableBranchColorGradient,
           branchColorMode,
           includeInteractiveQrFooter,
+          studentGridStyle,
+          appliedTitleCalligraphy,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsToSave));
         setSaveStatus("saved");
@@ -1096,6 +1206,7 @@ export default function App() {
     isCustomLessonMode,
     selectedLessonIndices,
     customWeightsMap,
+    customLessonIconsMap,
     dsStructureMode,
     dsQuestionDensity,
     latexPackageTheme,
@@ -1103,6 +1214,8 @@ export default function App() {
     enableBranchColorGradient,
     branchColorMode,
     includeInteractiveQrFooter,
+    studentGridStyle,
+    appliedTitleCalligraphy,
   ]);
 
   const handleResetPreferences = () => {
@@ -1152,7 +1265,29 @@ export default function App() {
     setCustomExerciseTitles({});
     setIsCustomLessonMode(false);
     setCustomWeightsMap({});
-    setIncludeInteractiveQrFooter(true);
+    setCustomLessonIconsMap({});
+    setShowQuestionBareme(DEFAULT_PREFS.showQuestionBareme ?? true);
+    setIncludeAnswerWorkspace(DEFAULT_PREFS.includeAnswerWorkspace || false);
+    setStudentGridStyle(DEFAULT_PREFS.studentGridStyle || "SEYES_FRENCH");
+    setIncludeGradingScaleTable(DEFAULT_PREFS.includeGradingScaleTable ?? true);
+    setIncludeSelfEvalGrid(DEFAULT_PREFS.includeSelfEvalGrid ?? true);
+    setDsStructureMode(DEFAULT_PREFS.dsStructureMode || "EXERCICES_ET_PROBLEME");
+    setDsQuestionDensity(DEFAULT_PREFS.dsQuestionDensity || "INTENSIVE");
+    setLatexPackageTheme(DEFAULT_PREFS.latexPackageTheme || "TCOLORBOX");
+    setPaperSurface(DEFAULT_PREFS.paperSurface || "PLAIN_WHITE");
+    setEnableBranchColorGradient(DEFAULT_PREFS.enableBranchColorGradient ?? true);
+    setBranchColorMode(DEFAULT_PREFS.branchColorMode || "AUTO_BY_LESSON");
+    setIncludeInteractiveQrFooter(DEFAULT_PREFS.includeInteractiveQrFooter ?? true);
+    setAppliedTitleCalligraphy(
+      DEFAULT_PREFS.appliedTitleCalligraphy || {
+        fontId: "DEFAULT_DOC",
+        scale: "BALANCED",
+        ornament: "NONE",
+        scope: "HEADER_TITLES",
+        enableMoroccanHeaderOrnament: true,
+        customLetterSpacingEm: 0.025,
+      }
+    );
     setStatusMessage({
       type: "info",
       text: "تمت استعادة الإعدادات والتفضيلات الافتراضية بنجاح.",
@@ -1393,17 +1528,19 @@ export default function App() {
     });
   };
 
-  // حساب قائمة الدروس الفعلية مع النسب المئوية المخصصة من طرف الأستاذ أو من محاكاة الفرض المستورد
+  // حساب قائمة الدروس الفعلية مع النسب المئوية المخصصة والأيقونة المخصصة من طرف الأستاذ أو من محاكاة الفرض المستورد
   const activeCustomLessons = useMemo<LessonItem[]>(() => {
     const enrichLesson = (lesson: LessonItem) => {
       const key = `${currentTrack.code}_${lesson.lessonFr}`;
       const customW = customWeightsMap[key];
+      const customIcon = customLessonIconsMap[key];
       const customBaremes = customQuestionBaremesMap[key];
       const customLevels = customQuestionLevelsMap[key];
       const customQs = customQuestionsMap[key];
       return {
         ...lesson,
         weight: customW !== undefined ? customW : lesson.weight,
+        customHeaderIcon: customIcon || lesson.customHeaderIcon || "AUTO",
         customQuestionBaremes: customBaremes || lesson.customQuestionBaremes,
         customQuestionLevels: customLevels || lesson.customQuestionLevels,
         ...(customQs
@@ -1439,6 +1576,7 @@ export default function App() {
     allTrackLessons,
     defaultDSLessons,
     customWeightsMap,
+    customLessonIconsMap,
     customQuestionBaremesMap,
     customQuestionLevelsMap,
     customQuestionsMap,
@@ -1459,7 +1597,8 @@ export default function App() {
       !isMission &&
       activeModule === "DS_142_08" &&
       (dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-        dsStructureMode === "COMPLETE_EXAM_MAROC");
+        dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+        dsStructureMode === "EXAMEN_BLANC_2BAC");
 
     const qcmPts = hasQCM ? Number((qcmQuestionCount * 1.0).toFixed(2)) : 0;
     const probPts = hasProb ? 8.5 : 0;
@@ -1773,6 +1912,30 @@ export default function App() {
     }));
   };
 
+  // تغيير الأيقونة المخصصة لترويسة تمرين الدرس في الورقة المطبوعة
+  const handleLessonIconChange = (
+    lessonFr: string,
+    newIconId: LessonHeaderIconId,
+    lessonTitleLabel?: string
+  ) => {
+    const key = `${currentTrack.code}_${lessonFr}`;
+    setCustomLessonIconsMap((prev) => ({
+      ...prev,
+      [key]: newIconId,
+    }));
+    const selectedOpt = LESSON_HEADER_ICON_OPTIONS.find(
+      (opt) => opt.id === newIconId
+    );
+    setStatusMessage({
+      type: "info",
+      text: `تم تحديث أيقونة ترويسة التمرين لدرس « ${
+        lessonTitleLabel || lessonFr
+      } » إلى: ${selectedOpt?.labelAr || newIconId} ${
+        selectedOpt?.mathSymbol ? `(${selectedOpt.mathSymbol})` : ""
+      }`,
+    });
+  };
+
   // موازنة النسب تلقائياً ليكون المجموع 100%
   const handleNormalizeWeightsTo100 = () => {
     if (activeCustomLessons.length === 0) return;
@@ -1866,13 +2029,23 @@ export default function App() {
     questionsAr: string[],
     questionsFr: string[]
   ) => {
+    const validatedAr = sanitizeAndValidateQuestionsList(questionsAr);
+    const validatedFr = sanitizeAndValidateQuestionsList(questionsFr);
     setCustomQuestionsMap((prev) => ({
       ...prev,
-      [lessonKey]: { ar: questionsAr, fr: questionsFr },
+      [lessonKey]: {
+        ar: validatedAr.sanitizedQuestions,
+        fr: validatedFr.sanitizedQuestions,
+      },
     }));
+    const totalAutoFixed =
+      validatedAr.autoFixedCount + validatedFr.autoFixedCount;
     setStatusMessage({
       type: "success",
-      text: "تم تحديث قائمة ونصوص الأسئلة المخصصة للتمرين ومزامنتها مع المعاينة بنجاح!",
+      text:
+        totalAutoFixed > 0
+          ? `تم فحص وتنقية الأسئلة المخصصة بواسطة مكتبة MathJS (إصلاح تلقائي لـ ${totalAutoFixed} صيغ رياضية) قبل عرضها في معاينة الورقة!`
+          : "تم التحقق من سلامة التعبيرات الرياضية بواسطة MathJS وتحديث الأسئلة المخصصة في المعاينة بنجاح!",
     });
   };
 
@@ -2131,6 +2304,115 @@ export default function App() {
       },
     });
 
+    // 11. مدقق "العقوبة المزدوجة" الديداكتيكي الآلي وفحص سلامة التعبيرات الرياضية بـ MathJS
+    const doublePenaltyList = detectDoublePenaltyInLessons(
+      activeCustomLessons,
+      (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity)
+    );
+    const isDoublePenaltyFree = doublePenaltyList.length === 0;
+    items.push({
+      id: "DOUBLE_PENALTY_MATHJS",
+      title: "سلامة التعبيرات الجبرية (MathJS) وخلو الفرض من «العقوبة المزدوجة» الديداكتيكية",
+      status: isDoublePenaltyFree ? "PASS" : "RECOMMEND",
+      detail: isDoublePenaltyFree
+        ? "جميع التعبيرات الرياضية مفحوصة عبر MathJS، ولا توجد أسئلة وسطية مفتوحة تؤدي إلى عقوبة مزدوجة للتلميذ."
+        : `رصد مدقق المفتش ${doublePenaltyList.length} سؤالاً وسطياً مفتوحاً قد يؤدي إلى عقوبة مزدوجة؛ يُنصح بتحويلها إلى صيغة «بين أن / Montrer que».`,
+      actionLabel: isDoublePenaltyFree
+        ? "فتح مختبر MathJS والمفتش"
+        : `إصلاح العقوبة المزدوجة (${doublePenaltyList.length})`,
+      onFix: () => {
+        if (doublePenaltyList.length > 0) {
+          setMathInspectorStudioTab("DOUBLE_PENALTY_DETECTOR");
+          setShowMathInspectorStudioModal(true);
+        } else {
+          setMathInspectorStudioTab("MATHJS_VALIDATOR");
+          setShowMathInspectorStudioModal(true);
+        }
+      },
+    });
+
+    // 12. المسار الفارقي بالاختيار (البيداغوجيا الفارقية) وسؤال التميز والتتبع الطولي لمكتسبات الفوج (DS1 → DS2 → DS3)
+    const isDiffAndLongitudinalReady =
+      differentiatedPathConfig.enabled &&
+      longitudinalCohortConfig.includeInPrintablePreview;
+    items.push({
+      id: "DIFF_PATH_AND_LONGITUDINAL",
+      title: "المسار الفارقي بالاختيار (+1 ن تميز) ولوحة التتبع الطولي لمكتسبات الفوج (DS1→DS3)",
+      status: isDiffAndLongitudinalReady ? "PASS" : "RECOMMEND",
+      detail: isDiffAndLongitudinalReady
+        ? "المسار الفارقي بالاختيار (Piste Guidée / Experte) وبطاقة التتبع الطولي لمكتسبات الفوج (DS1→DS2→DS3) مفعلان في الورقة."
+        : "لتفعيل مقترحات أستاذ المادة والمفتش التربوي، يمكنك إدراج المسار الفارقي وسؤال التميز (+1 ن) وبطاقة التتبع الطولي للفوج.",
+      actionLabel: isDiffAndLongitudinalReady
+        ? "مفعلة بالكامل ✓"
+        : "تفعيل المسار الفارقي والتتبع الطولي",
+      onFix: () => {
+        setDifferentiatedPathConfig((prev) => ({
+          ...prev,
+          enabled: true,
+          includeBonusQuestion: true,
+        }));
+        setLongitudinalCohortConfig((prev) => ({
+          ...prev,
+          includeInPrintablePreview: true,
+        }));
+        setStatusMessage({
+          type: "success",
+          text: "تم تفعيل المسار الفارقي بالاختيار وسؤال التميز (+1 ن) وبطاقة التتبع الطولي لمكتسبات الفوج (DS1 → DS2 → DS3) في المعاينة!",
+        });
+      },
+    });
+
+    // 13. التدرج الديداكتيكي وميزانية الزمن (قاعدة 1x3 للمفتش التربوي)
+    const examDurationMinutes = currentTrack.durationFr?.includes("3h")
+      ? 180
+      : currentTrack.durationFr?.includes("1h30")
+      ? 90
+      : 120;
+    const didacticProgression = analyzeDidacticProgressionAndTimeBudget(
+      activeCustomLessons,
+      (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity),
+      examDurationMinutes
+    );
+    const isTimeFeasible = didacticProgression.timeBudgetStatus !== "OVERLOAD";
+    const hasNoInversion = didacticProgression.inversionCount === 0;
+    const isProgressionOptimal = isTimeFeasible && hasNoInversion;
+
+    items.push({
+      id: "DIDACTIC_PROGRESSION_AND_BUDGET",
+      title: "التدرج الديداكتيكي المعرفي (N1→N2→N3) وميزانية الزمن التقديري (قاعدة 1×3)",
+      status: isProgressionOptimal ? "PASS" : "RECOMMEND",
+      detail: isProgressionOptimal
+        ? `الميزانية الزمنية للتلميذ متوازنة (${didacticProgression.totalStudentMinutes} د لفرض مدته ${examDurationMinutes} د)، والتدرج الصعودي للأسئلة محترم.`
+        : `تنبيه ديداكتيكي: زمن التلميذ المقدر (${didacticProgression.totalStudentMinutes} د) قد يفوق سعة الإنجاز، أو توجد أسئلة مركبة تسبق التطبيق المباشر (${didacticProgression.inversionCount} تنبيه).`,
+      actionLabel: "ضبط التدرج وميزانية الزمن",
+      onFix: () => {
+        setMathInspectorStudioTab("DOUBLE_PENALTY_DETECTOR");
+        setShowMathInspectorStudioModal(true);
+      },
+    });
+
+    // 14. تدقيق الكثافة الإخراجية للوثيقة (A4 Page Fit) وصحة الشجرة الرياضية LaTeX AST
+    const docDiagnostics = runFullEdTechDocumentDiagnostics(
+      activeCustomLessons,
+      (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity),
+      longitudinalCohortConfig.includeInPrintablePreview
+    );
+    const isDocDensityHealthy = !docDiagnostics.hasOrphanPageRisk && docDiagnostics.latexDelimiterWarningsCount === 0;
+
+    items.push({
+      id: "EDTECH_DENSITY_AND_AST",
+      title: "المعايرة الطباعية للورقة A4، كثافة التصفيف، وسلامة شجرة الرموز LaTeX AST",
+      status: isDocDensityHealthy ? "PASS" : "RECOMMEND",
+      detail: isDocDensityHealthy
+        ? `الإخراج الطباعي متزن بنسبة ملء ${docDiagnostics.lastPageFillPercent}% على ${docDiagnostics.estimatedA4Pages} صفحة A4، وشجرة LaTeX خالية من الأقواس المكسورة.`
+        : `ملاحظة إخراجية: خطر صفحة يتيمة (كثافة الصفحة الأخيرة ${docDiagnostics.lastPageFillPercent}%) أو أقواس LaTeX غير متوازنة (${docDiagnostics.latexDelimiterWarningsCount}). يُنصح بالمواءمة عبر استوديو المطور.`,
+      actionLabel: "استوديو المطور EdTech",
+      onFix: () => {
+        setMathInspectorStudioTab("EDTECH_DEV_STUDIO");
+        setShowMathInspectorStudioModal(true);
+      },
+    });
+
     const passCount = items.filter((i) => i.status === "PASS").length;
     const scorePercent = Math.round((passCount / items.length) * 100);
 
@@ -2139,11 +2421,28 @@ export default function App() {
       passCount,
       issueCount: items.length - passCount,
       scorePercent,
+      technicalMetrics: {
+        doublePenaltyCount: doublePenaltyList.length,
+        doublePenaltySummary:
+          doublePenaltyList.length === 0
+            ? "جميع التعبيرات الرياضية مفحوصة عبر MathJS وخالية من أسئلة العقوبة المزدوجة الوسطية."
+            : `تم رصد ${doublePenaltyList.length} سؤالاً وسطياً مفتوحاً يوصى بتحويله إلى صيغة «بين أن / Montrer que».`,
+        estimatedStudentMinutes: didacticProgression.totalStudentMinutes,
+        officialDurationMinutes: examDurationMinutes,
+        timeBudgetStatus: didacticProgression.timeBudgetStatus,
+        inversionCount: didacticProgression.inversionCount,
+        estimatedA4Pages: docDiagnostics.estimatedA4Pages,
+        lastPageFillPercent: docDiagnostics.lastPageFillPercent,
+        latexDelimiterWarningsCount: docDiagnostics.latexDelimiterWarningsCount,
+      },
     };
   }, [
     liveExamStats,
     totalCustomWeight,
-    activeCustomLessons.length,
+    activeCustomLessons,
+    dsQuestionDensity,
+    differentiatedPathConfig.enabled,
+    longitudinalCohortConfig.includeInPrintablePreview,
     n1,
     n2,
     n3,
@@ -2169,6 +2468,128 @@ export default function App() {
     handleFixEmptyQuickTitles,
   ]);
 
+  const [isExportingAuditPDF, setIsExportingAuditPDF] = useState<boolean>(false);
+  const [autoExportAuditPdfOnFix, setAutoExportAuditPdfOnFix] = useState<boolean>(true);
+
+  const handleExportPedagogicalAuditPDF = useCallback(
+    async (isAutoTriggered: boolean = false) => {
+      if (isExportingAuditPDF) return;
+      setIsExportingAuditPDF(true);
+      setStatusMessage({
+        type: "info",
+        text: isAutoTriggered
+          ? "جاري التصدير التلقائي لتقرير «مرصد التدقيق البيداغوجي والتقني» إلى ملف PDF مستقل..."
+          : "جاري توليد وتصدير تقرير «مرصد التدقيق البيداغوجي والتقني» إلى ملف PDF مستقل...",
+      });
+
+      try {
+        const effectiveTitle =
+          customDocTitle ||
+          (isExamSimulationActive && activeImportedBlueprint
+            ? activeImportedBlueprint.titleAr
+            : defaultDocTitle);
+
+        const lessonsSummary = activeCustomLessons.map((l) => ({
+          lessonAr: l.lessonAr,
+          lessonFr: l.lessonFr,
+          weight: l.weight,
+          points: Number(((l.weight / 100) * 20).toFixed(2)),
+        }));
+
+        const exportedFileName = await exportPedagogicalAuditReportToPDF({
+          academy,
+          direction,
+          school,
+          prof,
+          year,
+          trackLabelAr: currentTrack.labelAr,
+          trackLabelFr: currentTrack.labelFr,
+          trackCode: currentTrack.code,
+          semester,
+          dsKey,
+          docTitle: effectiveTitle,
+          durationFr: currentTrack.durationFr,
+          examModel,
+          scorePercent: pedagogicalAuditReport.scorePercent,
+          passCount: pedagogicalAuditReport.passCount,
+          issueCount: pedagogicalAuditReport.issueCount,
+          totalPoints: liveExamStats.totalPoints,
+          totalQuestions: liveExamStats.totalQuestions,
+          totalExercises: activeCustomLessons.length,
+          n1,
+          n2,
+          n3,
+          items: pedagogicalAuditReport.items.map((it) => ({
+            id: it.id,
+            title: it.title,
+            status: it.status,
+            detail: it.detail,
+            actionLabel: it.actionLabel,
+          })),
+          technicalMetrics: pedagogicalAuditReport.technicalMetrics,
+          lessonsSummary,
+        });
+
+        const updatedHist = recordExportHistoryEntry({
+          fileName: exportedFileName,
+          formatLabel: "Audit Report PDF (142-08)",
+          category: "PDF",
+          trackCode: currentTrack.code,
+          trackLabelAr: currentTrack.labelAr,
+          semester,
+          moduleType: activeModule,
+          modelCode: examModel,
+          fileSizeKb: 195.4,
+          dpiOrCompiler: "Standalone Audit PDF · 300 DPI",
+          includeAnswerWorkspace,
+          includeDetailedSolutions,
+        });
+        setExportHistory(updatedHist);
+
+        setStatusMessage({
+          type: "success",
+          text: `✓ تم تصدير تقرير «مرصد التدقيق البيداغوجي» المستقل (${exportedFileName}) شاملاً جميع التوصيات البيداغوجية والتقنية (${pedagogicalAuditReport.scorePercent}%) بنجاح!`,
+        });
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "تعذر تصدير تقرير مرصد التدقيق البيداغوجي إلى PDF.";
+        setStatusMessage({
+          type: "error",
+          text: msg,
+        });
+      } finally {
+        setIsExportingAuditPDF(false);
+      }
+    },
+    [
+      isExportingAuditPDF,
+      customDocTitle,
+      isExamSimulationActive,
+      activeImportedBlueprint,
+      defaultDocTitle,
+      activeCustomLessons,
+      academy,
+      direction,
+      school,
+      prof,
+      year,
+      currentTrack,
+      semester,
+      dsKey,
+      examModel,
+      pedagogicalAuditReport,
+      liveExamStats,
+      n1,
+      n2,
+      n3,
+      activeModule,
+      includeAnswerWorkspace,
+      includeDetailedSolutions,
+    ]
+  );
+
   const handleAutoFixAllAuditIssues = () => {
     setCustomQuestionBaremesMap({});
     handleNormalizeWeightsTo100();
@@ -2190,13 +2611,27 @@ export default function App() {
     setIncludeTICE(true);
     setAutoAttachGeoGebra(true);
     setIncludeInteractiveQrFooter(true);
+    setDifferentiatedPathConfig((prev) => ({
+      ...prev,
+      enabled: true,
+      includeBonusQuestion: true,
+    }));
+    setLongitudinalCohortConfig((prev) => ({
+      ...prev,
+      includeInPrintablePreview: true,
+    }));
     if (quickEditorValidation.hasErrors) {
       handleFixEmptyQuickTitles();
     }
     setStatusMessage({
       type: "success",
-      text: "✓ تمت المراجعة الشاملة وتصحيح جميع البنود الـ 10 (100%): موازنة التنقيط 20/20، المذكرة 142-08، مصفوفة التخصيص 2D، اليقظة الديداكتيكية، ورمز QR للنسخة التفاعلية!",
+      text: "✓ تمت المراجعة الشاملة وتصحيح جميع البنود الـ 14: موازنة التنقيط 20/20، المذكرة 142-08، مصفوفة التخصيص 2D، المسار الفارقي، واليقظة الديداكتيكية!",
     });
+    if (autoExportAuditPdfOnFix) {
+      window.setTimeout(() => {
+        handleExportPedagogicalAuditPDF(true);
+      }, 350);
+    }
   };
 
   const handleSliderChange = (level: "N1" | "N2" | "N3", val: number) => {
@@ -2239,6 +2674,7 @@ export default function App() {
         customHeaderNote,
         customExerciseTitles,
         customWeightsMap,
+        customLessonIconsMap,
         school,
         prof,
       };
@@ -2253,7 +2689,9 @@ export default function App() {
           JSON.stringify(currentSnap.customExerciseTitles) ===
             JSON.stringify(nextSnap.customExerciseTitles) &&
           JSON.stringify(currentSnap.customWeightsMap) ===
-            JSON.stringify(nextSnap.customWeightsMap);
+            JSON.stringify(nextSnap.customWeightsMap) &&
+          JSON.stringify(currentSnap.customLessonIconsMap || {}) ===
+            JSON.stringify(nextSnap.customLessonIconsMap || {});
 
         if (isIdentical) return;
       }
@@ -2274,6 +2712,7 @@ export default function App() {
     customHeaderNote,
     customExerciseTitles,
     customWeightsMap,
+    customLessonIconsMap,
     school,
     prof,
   ]);
@@ -2410,6 +2849,9 @@ export default function App() {
     setCustomHeaderNote(snap.customHeaderNote);
     setCustomExerciseTitles(snap.customExerciseTitles);
     setCustomWeightsMap(snap.customWeightsMap);
+    if (snap.customLessonIconsMap) {
+      setCustomLessonIconsMap(snap.customLessonIconsMap);
+    }
     setSchool(snap.school);
     setProf(snap.prof);
     setHistoryIndex(targetIdx);
@@ -2431,6 +2873,9 @@ export default function App() {
     setCustomHeaderNote(snap.customHeaderNote);
     setCustomExerciseTitles(snap.customExerciseTitles);
     setCustomWeightsMap(snap.customWeightsMap);
+    if (snap.customLessonIconsMap) {
+      setCustomLessonIconsMap(snap.customLessonIconsMap);
+    }
     setSchool(snap.school);
     setProf(snap.prof);
     setHistoryIndex(targetIdx);
@@ -2663,9 +3108,12 @@ export default function App() {
         qcmConfig: activeQcmConfig,
         include2DSpecMatrix,
         includeAnswerWorkspace,
+        studentGridStyle,
         includeInteractiveQrFooter,
         interactiveExamUrl,
         attachedPythonAlgorithms,
+        appliedTitleCalligraphy,
+        pageMarginsMm: customPageMarginsMm,
       });
     },
     [
@@ -2725,9 +3173,12 @@ export default function App() {
       activeQcmConfig,
       include2DSpecMatrix,
       includeAnswerWorkspace,
+      studentGridStyle,
       includeInteractiveQrFooter,
       interactiveExamUrl,
       attachedPythonAlgorithms,
+      appliedTitleCalligraphy,
+      customPageMarginsMm,
     ]
   );
 
@@ -2761,6 +3212,7 @@ export default function App() {
           dsStructureMode === "QCM_ET_EXERCICES" ||
           dsStructureMode === "COMPLETE_EXAM_MAROC",
         hasPython: attachedPythonAlgorithms.length > 0,
+        appliedTitleCalligraphy,
       });
 
       const zipFileName = `Overleaf_${currentTrack.code}_${semester}_${dsKey}_${year}.zip`;
@@ -3313,6 +3765,7 @@ export default function App() {
         selectedLessonIndices,
         selectedLessonRefs,
         customWeightsMap,
+        customLessonIconsMap,
         customQuestionBaremesMap,
         customQuestionLevelsMap,
         customQuestionsMap,
@@ -3433,6 +3886,7 @@ export default function App() {
     isCustomLessonMode,
     selectedLessonIndices,
     customWeightsMap,
+    customLessonIconsMap,
     customQuestionBaremesMap,
     customQuestionLevelsMap,
     customQuestionsMap,
@@ -3585,6 +4039,9 @@ export default function App() {
       setIsCustomLessonMode(blueprint.gradingAndLessons.isCustomLessonMode);
       setSelectedLessonIndices(blueprint.gradingAndLessons.selectedLessonIndices);
       setCustomWeightsMap(blueprint.gradingAndLessons.customWeightsMap);
+      if (blueprint.gradingAndLessons.customLessonIconsMap) {
+        setCustomLessonIconsMap(blueprint.gradingAndLessons.customLessonIconsMap);
+      }
       setCustomQuestionBaremesMap(
         blueprint.gradingAndLessons.customQuestionBaremesMap
       );
@@ -4275,17 +4732,65 @@ export default function App() {
 
     setStatusMessage({
       type: "info",
-      text: `جاري تهيئة طابور الطباعة المجمعة (${selectedItems.length} وثائق) مع فواصل صفحات ذكية...`,
+      text: options.bookletMode
+        ? `جاري توليد كتيب الطباعة المطوي تلقائياً (Booklet A4 → A5) لـ ${selectedItems.length} وثائق...`
+        : `جاري تهيئة طابور الطباعة المجمعة (${selectedItems.length} وثائق) مع فواصل صفحات ذكية...`,
     });
 
-    setTimeout(() => {
-      // إطلاق أمر الطباعة الموحد
-      handlePrint(false);
-      setStatusMessage({
-        type: "success",
-        text: `تم إطلاق أمر الطباعة المجمعة بنجاح (${selectedItems.length} وثائق متتالية)!`,
-      });
-    }, 400);
+    setTimeout(async () => {
+      if (options.bookletMode) {
+        try {
+          const bookletTag = `Booklet_A4_to_A5_${getDocumentFileTag()}_${year}.pdf`;
+          const res = await exportBookletImposedPDF({
+            elementId: "printable-document-sheet",
+            fileName: bookletTag,
+            bindingEdge: options.bookletBindingEdge,
+            addFoldGuides: options.bookletAddFoldGuides,
+            docTitle: customDocTitle || defaultDocTitle,
+            headerMeta: `${school} · ${prof} · ${year}`,
+            isMission,
+            isFrench: docLang === "FR",
+          });
+
+          const updatedHist = recordExportHistoryEntry({
+            fileName: res.fileName,
+            formatLabel: `Booklet A4→A5 (${res.physicalA4Sheets} أوراق A4)`,
+            category: "PDF",
+            trackCode: currentTrack.code,
+            trackLabelAr: currentTrack.labelAr,
+            semester,
+            moduleType: activeModule,
+            modelCode: examModel,
+            fileSizeKb: 310.5,
+            dpiOrCompiler: `Saddle-Stitch Booklet · ${res.paddedBookletPages}p A5`,
+            includeAnswerWorkspace: Boolean(options.includeStudentWorkbookGrid),
+            includeDetailedSolutions: hasSolutions,
+          });
+          setExportHistory(updatedHist);
+
+          setStatusMessage({
+            type: "success",
+            text: `✓ تم توليد وتصدير الكتيب المطوي (${res.fileName}) بنجاح: ${res.originalPages} صفحات أصلية رُتبت في ${res.physicalA4Sheets} أوراق A4 أفقية (${res.paddedBookletPages} ص A5 جاهزة للطي)!`,
+          });
+        } catch (err: unknown) {
+          const msg =
+            err instanceof Error
+              ? err.message
+              : "تعذر توليد ملف الكتيب المطوي (Booklet PDF).";
+          setStatusMessage({
+            type: "error",
+            text: msg,
+          });
+        }
+      } else {
+        // إطلاق أمر الطباعة الموحد
+        handlePrint(false);
+        setStatusMessage({
+          type: "success",
+          text: `تم إطلاق أمر الطباعة المجمعة بنجاح (${selectedItems.length} وثائق متتالية)!`,
+        });
+      }
+    }, 450);
   };
 
   const handleUpdateGeoGebraResource = (
@@ -5302,163 +5807,328 @@ export default function App() {
           </section>
         )}
 
-        {/* شريط السياق البيداغوجي الحي وخلاصة الوثيقة الجارية + زر مرصد التدقيق البيداغوجي */}
-        <section className="bg-white px-4 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs no-print">
-          <div className="flex flex-wrap items-center gap-2 text-slate-600">
-            <span className="font-black text-slate-900">
-              {activeModule === "DS_142_08"
-                ? "فرض محروس (DS)"
-                : activeModule === "DM_SERIE"
-                ? dmSubType === "DEVOIR_MAISON"
-                  ? "فرض منزلي (DM)"
-                  : "سلسلة تمارين (TD)"
-                : activeModule === "FICHE_OP2007"
-                ? "جذاذة تربوية"
-                : activeModule === "DIAGNOSTIC"
-                ? "رائز تشخيصي"
-                : "التوزيع السنوي"}
-            </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="font-bold text-slate-800">
-              {isMission ? currentTrack.labelFr : `${currentTrack.labelAr} (${currentTrack.code})`}
-            </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="font-mono font-semibold text-slate-700 tabular-nums">
-              {activeModule === "DS_142_08"
-                ? `${semester} · ${dsKey} · ${currentTrack.durationFr}`
-                : activeModule === "DM_SERIE"
-                ? `${dmNumber} · ${semester}`
-                : currentTrack.durationFr}
-            </span>
-            {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
-              <>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span className="font-mono font-extrabold text-teal-800 tabular-nums">
-                  {activeCustomLessons.length} تمارين · {liveExamStats.totalQuestions} سؤالاً ·{" "}
-                  {liveExamStats.totalPoints.toFixed(2)}/20 ن
+        {/* شريط السياق البيداغوجي الحي ومنصة المختبرات التخصصية الموحدة (Unified Context & Didactic Labs Dock) */}
+        <section className="bg-white px-4 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs no-print">
+          {/* الصف العلوي: مسار الوثيقة الحية (Unboxed Breadcrumb) + ضوابط المعاينة والتدقيق الأساسية */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2 text-slate-600">
+              <span className="font-black text-slate-950">
+                {activeModule === "DS_142_08"
+                  ? "فرض محروس (DS)"
+                  : activeModule === "DM_SERIE"
+                  ? dmSubType === "DEVOIR_MAISON"
+                    ? "فرض منزلي (DM)"
+                    : "سلسلة تمارين (TD)"
+                  : activeModule === "FICHE_OP2007"
+                  ? "جذاذة تربوية"
+                  : activeModule === "DIAGNOSTIC"
+                  ? "رائز تشخيصي"
+                  : "التوزيع السنوي"}
+              </span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span className="font-bold text-slate-800">
+                {isMission ? currentTrack.labelFr : `${currentTrack.labelAr} (${currentTrack.code})`}
+              </span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span className="font-mono font-semibold text-slate-700 tabular-nums">
+                {activeModule === "DS_142_08"
+                  ? `${semester} · ${dsKey} · ${currentTrack.durationFr}`
+                  : activeModule === "DM_SERIE"
+                  ? `${dmNumber} · ${semester}`
+                  : currentTrack.durationFr}
+              </span>
+              {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
+                <>
+                  <span aria-hidden="true" className="text-slate-300">·</span>
+                  <span className="font-mono font-extrabold text-teal-800 tabular-nums">
+                    {activeCustomLessons.length} تمارين · {liveExamStats.totalQuestions} سؤالاً ·{" "}
+                    {liveExamStats.totalPoints.toFixed(2)}/20 ن
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* زر التبديل السريع لحيز الإجابة الكاملة المعاير للتلميذ */}
+              <button
+                type="button"
+                onClick={() => setIncludeAnswerWorkspace((v) => !v)}
+                className={`h-7.5 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
+                  includeAnswerWorkspace
+                    ? "bg-teal-700 text-white border-teal-800 shadow-2xs"
+                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                }`}
+                title="ترك فراغ الإجابة الكاملة المعاير للتلميذ تحت كل سؤال (مع شبكة معلم، جدول تغيرات، ومراحل البرهان بالترجع)"
+              >
+                <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {includeAnswerWorkspace
+                    ? "✓ حيز الإجابة الكاملة: مفعّل"
+                    : "ترك فراغ للإجابة الكاملة"}
                 </span>
-              </>
-            )}
+              </button>
+
+              {/* زر مرصد التدقيق البيداغوجي الشامل واقتراح النقائص */}
+              <button
+                type="button"
+                onClick={() => setShowAuditPanel((v) => !v)}
+                className={`h-7.5 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
+                  showAuditPanel
+                    ? "bg-slate-900 text-cyan-300 border-slate-900"
+                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                }`}
+                title="فتح مرصد المراجعة الشاملة والتدقيق البيداغوجي وتصحيح الأخطاء واقتراح النقائص (142-08)"
+              >
+                <CheckCircle2
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    showAuditPanel ? "text-cyan-400" : "text-teal-700"
+                  }`}
+                />
+                <span>المراجعة وتدقيق المطابقة</span>
+                <span className="font-mono tabular-nums font-black text-teal-700">
+                  {pedagogicalAuditReport.scorePercent}%
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsConfigDeckCollapsed((v) => !v)}
+                className={`hidden lg:inline-flex items-center gap-1.5 h-7.5 px-2.5 rounded-lg text-[11px] font-black transition cursor-pointer border ${
+                  isConfigDeckCollapsed
+                    ? "bg-slate-900 text-cyan-300 border-slate-900 shadow-2xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
+                }`}
+                title="تبديل وضع اللوح الإلكتروني والتركيز الكامل على ورقة A4 (اختصار سطح المكتب: Ctrl+B)"
+              >
+                <Sliders className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {isConfigDeckCollapsed
+                    ? "إظهار أعمدة الإعدادات (Ctrl+B)"
+                    : "التركيز على الورقة A4"}
+                </span>
+              </button>
+              {isConfigDeckCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenMobileConfigSheet(1)}
+                  className="hidden lg:inline-flex h-7.5 px-2.5 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 items-center gap-1.5 cursor-pointer"
+                  title="فتح درج الإعدادات السريع دون مغادرة معاينة الورقة"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>درج الإعدادات العائم</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleOpenMobileConfigSheet(1)}
+                className="lg:hidden h-7.5 px-2.5 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                <span>درج الإعدادات والضوابط</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* زر التبديل السريع لحيز الإجابة الكاملة المعاير للتلميذ */}
-            <button
-              type="button"
-              onClick={() => setIncludeAnswerWorkspace((v) => !v)}
-              className={`px-3 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
-                includeAnswerWorkspace
-                  ? "bg-teal-700 text-white border-teal-800 shadow-2xs"
-                  : "bg-slate-50 text-slate-800 border-slate-300 hover:bg-slate-100"
-              }`}
-              title="ترك فراغ الإجابة الكاملة المعاير للتلميذ تحت كل سؤال (مع شبكة معلم، جدول تغيرات، ومراحل البرهان بالترجع)"
-            >
-              <Edit3 className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                {includeAnswerWorkspace
-                  ? "✓ حيز الإجابة الكاملة للتلميذ: مفعّل"
-                  : "ترك فراغ للإجابة الكاملة"}
-              </span>
-            </button>
-
-            {/* زر مرصد التدقيق البيداغوجي الشامل واقتراح النقائص */}
-            <button
-              type="button"
-              onClick={() => setShowAuditPanel((v) => !v)}
-              className={`px-3 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
-                showAuditPanel
-                  ? "bg-slate-900 text-cyan-300 border-cyan-700"
-                  : pedagogicalAuditReport.issueCount === 0
-                  ? "bg-teal-50 text-teal-900 border-teal-300 hover:bg-teal-100"
-                  : "bg-sky-50 text-sky-950 border-sky-300 hover:bg-sky-100"
-              }`}
-              title="فتح مرصد المراجعة الشاملة والتدقيق البيداغوجي وتصحيح الأخطاء واقتراح النقائص (142-08)"
-            >
-              <CheckCircle2
-                className={`w-3.5 h-3.5 shrink-0 ${
-                  showAuditPanel
-                    ? "text-cyan-400"
-                    : pedagogicalAuditReport.issueCount === 0
-                    ? "text-teal-700"
-                    : "text-sky-700"
-                }`}
-              />
-              <span>المراجعة الشاملة وتدقيق المطابقة</span>
-              <span className="font-mono tabular-nums px-1.5 py-0.2 rounded bg-white/90 text-slate-900 border border-slate-200 text-[10px]">
-                {pedagogicalAuditReport.scorePercent}%
-              </span>
-            </button>
+          {/* الصف السفلي الموحد: رصيف المختبرات الديداكتيكية واستوديوهات المفتش والأستاذ (Unified Segmented Lab Dock) */}
+          <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[10.5px] font-black text-slate-400 whitespace-nowrap shrink-0 pl-1">
+              المختبرات التخصصية:
+            </span>
 
             {activeModule === "DS_142_08" && (
               <button
                 type="button"
                 onClick={() => handleOpenAdvancedPedagogyStudio("SPEC_2D")}
-                className="px-3 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border bg-indigo-950 text-cyan-300 border-indigo-800 hover:bg-indigo-900 shadow-2xs"
+                className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 text-cyan-300 border-slate-800 hover:bg-slate-800 whitespace-nowrap shrink-0"
                 title="فتح مصفوفة التخصيص 2D وتقييم المهارات المكتسبة للتلاميذ والتقرير البيداغوجي المدمج"
               >
                 <Table2 className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                <span>مصفوفة التخصيص 2D وتقييم المهارات المكتسبة</span>
+                <span>مصفوفة التخصيص 2D</span>
               </button>
             )}
 
             {activeModule === "DS_142_08" && (
               <button
                 type="button"
-                onClick={() => setShowImportedExamStudio((v) => !v)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
+                onClick={() => {
+                  setImportedStudioInitialTab("ARCHIVE");
+                  setShowImportedExamStudio((v) => !v);
+                }}
+                className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
                   isExamSimulationActive
-                    ? "bg-teal-100 text-teal-950 border-teal-300"
-                    : showImportedExamStudio
+                    ? "bg-teal-700 text-white border-teal-800"
+                    : showImportedExamStudio && importedStudioInitialTab !== "PDF_HIGHLIGHTER"
                     ? "bg-slate-900 text-cyan-300 border-slate-800"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
                 }`}
               >
-                <Sparkles className="w-3 h-3 text-cyan-600" />
+                <Sparkles className="w-3 h-3 text-cyan-700 shrink-0" />
                 <span>
-                  {showImportedExamStudio
+                  {showImportedExamStudio && importedStudioInitialTab !== "PDF_HIGHLIGHTER"
                     ? "إخفاء استوديو المحاكاة"
                     : isExamSimulationActive
-                    ? `تعديل الفرض المحاكى (#${examVariationSeed})`
-                    : "محاكاة فرض خارجي (PDF / أرشيف)"}
+                    ? `الفرض المحاكى (#${examVariationSeed})`
+                    : "محاكاة فرض خارجي"}
                 </span>
               </button>
             )}
 
             <button
               type="button"
-              onClick={() => setIsConfigDeckCollapsed((v) => !v)}
-              className={`hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-black transition cursor-pointer border ${
-                isConfigDeckCollapsed
-                  ? "bg-amber-400 text-slate-950 border-amber-500 shadow-2xs"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
+              onClick={() => {
+                if (showImportedExamStudio && importedStudioInitialTab === "PDF_HIGHLIGHTER") {
+                  setShowImportedExamStudio(false);
+                } else {
+                  setImportedStudioInitialTab("PDF_HIGHLIGHTER");
+                  setShowImportedExamStudio(true);
+                }
+              }}
+              className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
+                showImportedExamStudio && importedStudioInitialTab === "PDF_HIGHLIGHTER"
+                  ? "bg-slate-900 text-amber-300 border-slate-800"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
               }`}
-              title="تبديل وضع اللوح الإلكتروني والتركيز الكامل على ورقة A4 (اختصار سطح المكتب: Ctrl+B)"
+              title="فتح عارض PDF التفاعلي وتظليل المقاطع بالماوس لتوليد تمارين رياضية موازية بالذكاء الاصطناعي"
             >
-              <Sliders className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                {isConfigDeckCollapsed
-                  ? "إظهار أعمدة الإعدادات (Ctrl+B)"
-                  : "وضع اللوح / التركيز على الورقة"}
-              </span>
+              <Highlighter className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>عارض PDF والتوليد بالتظليل</span>
             </button>
-            {isConfigDeckCollapsed && (
-              <button
-                type="button"
-                onClick={() => handleOpenMobileConfigSheet(1)}
-                className="hidden lg:inline-flex px-3 py-1 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 items-center gap-1.5 cursor-pointer"
-                title="فتح درج الإعدادات السريع دون مغادرة معاينة الورقة"
-              >
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                <span>درج الإعدادات العائم</span>
-              </button>
-            )}
+
+            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
+
             <button
               type="button"
-              onClick={() => handleOpenMobileConfigSheet(1)}
-              className="lg:hidden px-3 py-1.5 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+              onClick={() => {
+                setMathInspectorStudioTab("SIGN_TABLE_STUDIO");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="مولد جدول الإشارة ومجموعة التعريف الآلي (Tableaux de Signes & D_f) عبر MathJS"
             >
-              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-              <span>درج الإعدادات والضوابط</span>
+              <span className="font-mono text-indigo-700 font-black">±||</span>
+              <span>جدول الإشارة و D_f</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMathInspectorStudioTab("INTEGRAL_AREA_STUDIO");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="مختبر حساب التكامل والمساحات المظللة بين منحنيين (Calcul Intégral & Aires Hachurées)"
+            >
+              <span className="font-serif text-emerald-700 font-black">∫</span>
+              <span>التكامل والمساحة المظللة</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMathInspectorStudioTab("SPACE_GEOMETRY_3D_STUDIO");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="مكتبة الأشكال الهندسية الفضائية ثلاثية الأبعاد (مكعب، رباعي أوجه، هرم، فلكة ومستوٍ قاطع)"
+            >
+              <span className="font-mono text-cyan-800 font-black">3D</span>
+              <span>الهندسة الفضائية SVG</span>
+            </button>
+
+            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
+
+            <button
+              type="button"
+              onClick={() => {
+                setMathInspectorStudioTab("DOUBLE_PENALTY_DETECTOR");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="النقطة 2 للمفتش التربوي: مدقق العقوبة المزدوجة (3 أنماط إصلاح) + التدرج الديداكتيكي وميزانية الزمن (1×3)"
+            >
+              <span className="font-mono text-amber-700 font-black">1×3</span>
+              <span>مدقق المفتش (العقوبة المزدوجة)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMathInspectorStudioTab("LONGITUDINAL_COHORT");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="النقطة 3 للمفتش التربوي: لوحة التتبع الطولي (DS1→DS2→DS3) ومبيان التطور ومصنف نقط مسار"
+            >
+              <span className="font-mono text-teal-800 font-black">DS1→3</span>
+              <span>التتبع الطولي ومسار</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMathInspectorStudioTab("EDTECH_DEV_STUDIO");
+                setShowMathInspectorStudioModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 hover:bg-slate-800 text-cyan-300 border-slate-800 whitespace-nowrap shrink-0"
+              title="مقترحات مطور البرامج التربوية: مولد النماذج البارامترية المتكافئة A/B/C/D + مدقق كثافة A4 + تصدير Moodle XML"
+            >
+              <span className="font-mono text-amber-300 font-black">A/B/C/D</span>
+              <span>مختبر النماذج و Moodle XML</span>
+            </button>
+
+            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
+
+            {/* أزرار الوصول الفوري للمقترحات العملية الأربعة الجديدة */}
+            <button
+              type="button"
+              onClick={() => {
+                setFourProposalsTab("INTERACTIVE_CF_SPLINE");
+                setShowFourProposalsModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 hover:bg-slate-800 text-cyan-300 border-slate-800 whitespace-nowrap shrink-0"
+              title="المقترح 1: محرر المنحنيات البيانية التفاعلي باللمس والماوس (C_f Interactive Spline) مع استنتاج الصيغة وجدول التغيرات"
+            >
+              <span className="font-serif text-cyan-300 font-black">C_f</span>
+              <span>محرر المنحنى بالماوس</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFourProposalsTab("MASSAR_XLSX_STUDIO");
+                setShowFourProposalsModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="المقترح 2: استيراد وتصدير مباشر لملفات منظومة «مسار» الرسمية (Excel / CSV) مع التقديرات التربوية الآلية"
+            >
+              <span className="font-mono text-emerald-700 font-black">.XLS</span>
+              <span>مصنف مسار الرسمي</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFourProposalsTab("BIOF_ERRORS_CATALOG");
+                setShowFourProposalsModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="المقترح 3: بنك الأخطاء الشائعة للمتعلمين والعوائق الإبستيمولوجية حسب كل درس (BIOF)"
+            >
+              <span className="font-mono text-amber-700 font-black">BIOF</span>
+              <span>بنك الأخطاء الشائعة</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFourProposalsTab("QR_PROGRESSIVE_HINTS");
+                setShowFourProposalsModal(true);
+              }}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
+              title="المقترح 4: مولد أوراق التصحيح الذاتي والتلميحات التدريجية بالرمز المربع (Auto-Évaluation par QR Code)"
+            >
+              <span className="font-mono text-indigo-700 font-black">QR</span>
+              <span>تلميحات التصحيح الذاتي</span>
             </button>
           </div>
         </section>
@@ -5493,7 +6163,35 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer"
+                      title="تصدير ملف PDF مستقل لتقرير مرصد التدقيق تلقائياً فور الضغط على زر التصحيح الشامل"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={autoExportAuditPdfOnFix}
+                        onChange={(e) => setAutoExportAuditPdfOnFix(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded text-teal-700 accent-teal-700"
+                      />
+                      <span>تصدير PDF تلقائي عند المطابقة</span>
+                    </label>
+
+                    <button
+                      type="button"
+                      disabled={isExportingAuditPDF}
+                      onClick={() => handleExportPedagogicalAuditPDF(false)}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-teal-700 hover:bg-teal-800 text-white border border-teal-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                      title="تصدير تقرير مرصد التدقيق البيداغوجي والتقني الشامل إلى ملف PDF مستقل جاهز للطباعة والتأشير"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>
+                        {isExportingAuditPDF
+                          ? "جاري تصدير التقرير PDF..."
+                          : "تصدير تقرير التدقيق PDF مستقل"}
+                      </span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleAutoFixAllAuditIssues}
@@ -5712,9 +6410,9 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* استوديو محاكاة واستنساخ الفروض المحروسة المستوردة مع حركات Framer Motion */}
+        {/* استوديو محاكاة واستنساخ الفروض المحروسة المستوردة وعارض PDF التفاعلي مع حركات Framer Motion */}
         <AnimatePresence initial={false}>
-          {showImportedExamStudio && activeModule === "DS_142_08" && (
+          {showImportedExamStudio && (
             <motion.section
               key="imported-exam-studio-panel"
               initial={{ height: 0, opacity: 0, y: -10 }}
@@ -5729,12 +6427,18 @@ export default function App() {
                 simulationMode={examSimulationMode}
                 variationSeed={examVariationSeed}
                 targetTrackCode={currentTrack.code}
+                trackLabel={isMission ? currentTrack.labelFr : currentTrack.labelAr}
+                educationSystem={educationSystem}
+                initialImportTab={importedStudioInitialTab}
                 onApplySimulation={handleApplyImportedExamSimulation}
                 onDisableSimulation={handleDisableImportedExamSimulation}
                 onCloseStudio={() => setShowImportedExamStudio(false)}
                 onExportPDF={handleExportPDF}
                 onExportEvalGridExcel={handleExportEvaluationGridExcel}
                 selectedAiModel={selectedAiModel}
+                onInsertLessonToExam={handleInsertOfficialAnnaleExercise}
+                onInsertQuestionToExam={handleInsertVerifiedWolframQuestion}
+                onNotify={(type, text) => setStatusMessage({ type, text })}
               />
             </motion.section>
           )}
@@ -5743,7 +6447,7 @@ export default function App() {
         {/* شريط وصول سريع على الجوال يبقي معاينة الورقة A4 في صدارة الشاشة ويفتح الإعدادات في درج سفلي (Bottom-Sheet Drawer) */}
         <div className="lg:hidden no-print bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <FileCheck2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
             <span className="text-[11px] font-black text-slate-900 truncate">
               المعاينة الورقية A4 قيد التركيز المباشر
             </span>
@@ -6087,7 +6791,7 @@ export default function App() {
                       التنسيق والتحكم في الخطوط والورقة
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold bg-cyan-50 text-cyan-900 border border-cyan-200 px-2 py-0.5 rounded-md">
+                  <span className="text-[10.5px] font-bold text-cyan-800">
                     {DOC_FONT_OPTIONS.find((f) => f.id === docFontFamily)?.shortAr || "خط أكاديمي"}
                   </span>
                 </div>
@@ -6154,6 +6858,294 @@ export default function App() {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* قوالب الخطوط التقليدية لتبويبات العناوين والترويسة المغربية الرسمية */}
+                <div className="border-t border-slate-200/90 pt-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-[11px] font-black text-indigo-950 flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded bg-amber-900 text-amber-200 flex items-center justify-center font-serif text-[10px] font-black">
+                        ق
+                      </span>
+                      <span>قوالب الخطوط التقليدية لتبويبات العناوين:</span>
+                    </label>
+                    {appliedTitleCalligraphy.fontId !== "DEFAULT_DOC" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAppliedTitleCalligraphy({
+                            fontId: "DEFAULT_DOC",
+                            scale: "BALANCED",
+                            ornament: "NONE",
+                            scope: "HEADER_TITLES",
+                          })
+                        }
+                        className="text-[10px] font-bold text-rose-700 hover:underline cursor-pointer"
+                      >
+                        إعادة للخط القياسي
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    value={appliedTitleCalligraphy.fontId}
+                    onChange={(e) => {
+                      const nextFontId = e.target.value as TraditionalTitleFontId;
+                      const fontOpt = TRADITIONAL_TITLE_FONT_OPTIONS.find(
+                        (f) => f.id === nextFontId
+                      );
+                      const nextOrnament =
+                        fontOpt?.recommendedOrnament ??
+                        (nextFontId === "DEFAULT_DOC" ? "NONE" : appliedTitleCalligraphy.ornament);
+                      const nextScale = fontOpt?.recommendedScale ?? appliedTitleCalligraphy.scale;
+                      setAppliedTitleCalligraphy((prev) => ({
+                        ...prev,
+                        fontId: nextFontId,
+                        ornament: nextOrnament,
+                        scale: nextScale,
+                      }));
+                      if (fontOpt?.moroccanHeaderFramePreset && !isMission) {
+                        setHeaderStyle("OFFICIAL_AREF");
+                      }
+                      setStatusMessage({
+                        type: "success",
+                        text:
+                          nextFontId === "DEFAULT_DOC"
+                            ? "تمت استعادة خط العناوين القياسي للوثيقة."
+                            : `تم اعتماد قالب «${fontOpt?.nameAr}» لتبويبات العناوين مع ضبط التباعد (${fontOpt?.letterSpacing || "0.01em"}) والزخرفة الخاصة بالترويسة المغربية الرسمية!`,
+                      });
+                    }}
+                    className="w-full border border-amber-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  >
+                    {TRADITIONAL_TITLE_FONT_OPTIONS.map((tFont) => (
+                      <option key={tFont.id} value={tFont.id}>
+                        {tFont.id === "ANDALUSI_MAGHRIBI_SCRIPT"
+                          ? `🇲🇦 ${tFont.nameAr} — متناغم مع الترويسة المغربية`
+                          : tFont.nameAr}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* قسم إعدادات الخط الأندلسي المغربي (Maghribi Script): زر التفعيل + زر تبديل الزخرفة (Toggle) مع أيقونة مصغرة + شريط تمرير التباعد الأفقي بين الحروف (Letter Spacing Slider) */}
+                  {(() => {
+                    const isMoroccanOrnamentEnabled =
+                      appliedTitleCalligraphy.enableMoroccanHeaderOrnament ?? true;
+                    const activeOrnamentForPreview =
+                      appliedTitleCalligraphy.ornament === "NONE" && isMoroccanOrnamentEnabled
+                        ? "ANDALUSI_MOROCCAN"
+                        : appliedTitleCalligraphy.ornament;
+                    const ornamentMiniMeta = getTitleOrnamentMiniPreview(
+                      activeOrnamentForPreview,
+                      isMoroccanOrnamentEnabled && appliedTitleCalligraphy.ornament !== "NONE"
+                    );
+                    const currentSpacingEm =
+                      appliedTitleCalligraphy.customLetterSpacingEm ?? 0.025;
+
+                    return (
+                      <div className="bg-amber-50/85 border border-amber-200/90 rounded-xl p-2.5 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAppliedTitleCalligraphy({
+                                fontId: "ANDALUSI_MAGHRIBI_SCRIPT",
+                                scale: "BALANCED",
+                                ornament: "ANDALUSI_MOROCCAN",
+                                scope: "HEADER_TITLES",
+                                enableMoroccanHeaderOrnament: true,
+                                customLetterSpacingEm: 0.025,
+                              });
+                              if (!isMission) {
+                                setHeaderStyle("OFFICIAL_AREF");
+                              }
+                              setStatusMessage({
+                                type: "success",
+                                text: "تم تفعيل «الخط الأندلسي المغربي (Maghribi Script)» مع ضبط إعدادات التباعد والزخرفة الأندلسية ❁ ﴾ ... ﴿ ❁ ليتناسب مع الترويسة المغربية الرسمية!",
+                              });
+                            }}
+                            className={`w-full px-2.5 py-1.5 rounded-lg text-[11px] font-black border transition flex items-center justify-between cursor-pointer ${
+                              appliedTitleCalligraphy.fontId === "ANDALUSI_MAGHRIBI_SCRIPT"
+                                ? "bg-slate-900 text-amber-300 border-slate-900 shadow-2xs"
+                                : "bg-white hover:bg-amber-100/70 text-amber-950 border-amber-300"
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>❁</span>
+                              <span>الخط الأندلسي المغربي (Maghribi Script)</span>
+                            </span>
+                            <span className="text-[10px] font-mono">
+                              {appliedTitleCalligraphy.fontId === "ANDALUSI_MAGHRIBI_SCRIPT"
+                                ? "✓ مفعّل للترويسة"
+                                : "تفعيل فوري"}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* 1. زر تبديل (Toggle) لتفعيل أو إلغاء الزخرفة الخاصة بالترويسة المغربية مع أيقونة مصغرة توضح شكل الزخرفة */}
+                        <div className="bg-white/95 border border-amber-200 rounded-lg p-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              title={`أيقونة مصغرة توضح شكل الزخرفة المختارة: ${ornamentMiniMeta.descriptionAr}`}
+                              className={`inline-flex items-center justify-center px-2 py-1 rounded-md font-serif text-[11px] font-black border shrink-0 transition ${
+                                isMoroccanOrnamentEnabled &&
+                                appliedTitleCalligraphy.ornament !== "NONE"
+                                  ? "bg-amber-950 text-amber-300 border-amber-700 shadow-2xs"
+                                  : "bg-slate-100 text-slate-500 border-slate-300"
+                              }`}
+                            >
+                              {ornamentMiniMeta.miniIconGlyph}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-[10.5px] font-black text-slate-900 truncate">
+                                زخرفة الترويسة المغربية ({ornamentMiniMeta.shortBadgeAr})
+                              </div>
+                              <div className="text-[9.5px] text-slate-600 truncate">
+                                {isMoroccanOrnamentEnabled &&
+                                appliedTitleCalligraphy.ornament !== "NONE"
+                                  ? "مفعّلة في الترويسة المغربية"
+                                  : "معطّلة (نص صافي بدون زخرفة)"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={
+                              isMoroccanOrnamentEnabled &&
+                              appliedTitleCalligraphy.ornament !== "NONE"
+                            }
+                            onClick={() => {
+                              const currentlyActive =
+                                isMoroccanOrnamentEnabled &&
+                                appliedTitleCalligraphy.ornament !== "NONE";
+                              const nextEnabled = !currentlyActive;
+                              setAppliedTitleCalligraphy((prev) => ({
+                                ...prev,
+                                enableMoroccanHeaderOrnament: nextEnabled,
+                                ornament:
+                                  nextEnabled && prev.ornament === "NONE"
+                                    ? "ANDALUSI_MOROCCAN"
+                                    : prev.ornament,
+                              }));
+                              setStatusMessage({
+                                type: "info",
+                                text: nextEnabled
+                                  ? "تم تفعيل الزخرفة الأندلسية الخاصة بالترويسة المغربية ❁ ﴾ ... ﴿ ❁ في المعاينة الحية."
+                                  : "تم إلغاء الزخرفة الخاصة بالترويسة المغربية مع الاحتفاظ بالخط المختار.",
+                              });
+                            }}
+                            className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              isMoroccanOrnamentEnabled &&
+                              appliedTitleCalligraphy.ornament !== "NONE"
+                                ? "bg-amber-700"
+                                : "bg-slate-300"
+                            }`}
+                            title="تفعيل أو إلغاء الزخرفة الخاصة بالترويسة المغربية"
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                isMoroccanOrnamentEnabled &&
+                                appliedTitleCalligraphy.ornament !== "NONE"
+                                  ? "-translate-x-5"
+                                  : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* 2. شريط تمرير (Slider) للتحكم الدقيق في التباعد الأفقي بين الحروف (Letter Spacing) للترويسة مع تحديث المعاينة فورياً */}
+                        <div className="bg-white/95 border border-amber-200 rounded-lg p-2 space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <label
+                              htmlFor="sidebar-andalusi-letter-spacing"
+                              className="text-[10.5px] font-black text-slate-800 flex items-center gap-1"
+                            >
+                              <Sliders className="w-3 h-3 text-amber-800" />
+                              <span>التباعد الأفقي للحروف (Letter Spacing):</span>
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-mono text-[10px] font-black border border-amber-300">
+                                {currentSpacingEm.toFixed(3)}em
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAppliedTitleCalligraphy((prev) => ({
+                                    ...prev,
+                                    customLetterSpacingEm: 0.025,
+                                  }))
+                                }
+                                className="text-[9.5px] font-bold text-amber-800 hover:underline cursor-pointer"
+                                title="إعادة ضبط التباعد الأفقي إلى القيمة المعيارية (0.025em)"
+                              >
+                                قياسي
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-mono text-slate-500">0.00</span>
+                            <input
+                              id="sidebar-andalusi-letter-spacing"
+                              type="range"
+                              min={0}
+                              max={0.12}
+                              step={0.005}
+                              value={currentSpacingEm}
+                              onChange={(e) => {
+                                const nextVal = parseFloat(e.target.value);
+                                setAppliedTitleCalligraphy((prev) => ({
+                                  ...prev,
+                                  customLetterSpacingEm: nextVal,
+                                }));
+                              }}
+                              className="w-full h-1.5 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-800"
+                            />
+                            <span className="text-[9px] font-mono text-slate-500">0.12em</span>
+                          </div>
+                        </div>
+
+                        {/* شريط اختيار الإطار الهندسي الشعاعي SVG للترويسة المغربية */}
+                        <div className="bg-white/95 border border-amber-200 rounded-lg p-2 space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-black text-slate-800">
+                            <span>الإطار الزخرفي الشعاعي للترويسة (SVG):</span>
+                            <span className="text-[9px] text-amber-800 font-bold">Vector 300 DPI</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {MOROCCAN_HEADER_SVG_FRAME_OPTIONS.map((frameOpt) => {
+                              const currentSvgFrame =
+                                appliedTitleCalligraphy.svgHeaderFrame || "ZELLIGE_FEZ";
+                              const isSelected = currentSvgFrame === frameOpt.id;
+                              return (
+                                <button
+                                  key={frameOpt.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setAppliedTitleCalligraphy((prev) => ({
+                                      ...prev,
+                                      svgHeaderFrame: frameOpt.id,
+                                    }))
+                                  }
+                                  className={`px-2 py-1 rounded border text-[9.5px] font-bold text-right transition cursor-pointer ${
+                                    isSelected
+                                      ? "bg-amber-900 text-amber-100 border-amber-950 font-black"
+                                      : "bg-amber-50/60 hover:bg-amber-100/70 text-slate-800 border-amber-200"
+                                  }`}
+                                >
+                                  {frameOpt.shortAr}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between text-[10px] text-amber-900/90 font-mono px-0.5">
+                          <span>تباعد الحروف: {currentSpacingEm.toFixed(3)}em · الكلمات: 0.14em</span>
+                          <span>الزخرفة: {ornamentMiniMeta.miniIconGlyph} (AREF)</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* حجم الخط واتجاه الورقة في صف واحد */}
@@ -6237,7 +7229,7 @@ export default function App() {
                       <Layers className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
                       <span>حزمة تأطير المسائل والتمارين (LaTeX Package):</span>
                     </label>
-                    <span className="font-mono text-[10px] font-bold bg-indigo-950 text-cyan-300 px-2 py-0.5 rounded">
+                    <span className="font-mono text-[10px] font-bold text-indigo-800">
                       {LATEX_PACKAGE_OPTIONS.find((p) => p.id === latexPackageTheme)?.badge}
                     </span>
                   </div>
@@ -6401,7 +7393,7 @@ export default function App() {
                           🌈 تفعيل التدرج اللوني للنصوص والترويسات حسب تخصص المادة
                         </span>
                       </label>
-                      <span className="font-mono text-[9.5px] font-bold bg-gradient-to-r from-blue-600 via-emerald-600 to-amber-600 text-white px-2 py-0.5 rounded">
+                      <span className="font-mono text-[9.5px] font-bold text-indigo-700">
                         Specialty Gradient
                       </span>
                     </div>
@@ -6620,8 +7612,61 @@ export default function App() {
                         <option value="COMPLETE_EXAM_MAROC">
                           4. فرض شامل متكامل (QCM + تمارين + مسألة توليفية شاملة)
                         </option>
+                        <option value="EXAMEN_BLANC_2BAC">
+                          5. الامتحان التجريبي للبكالوريا (Examen Blanc 2BAC — الإطار المرجعي الوطني)
+                        </option>
                       </select>
                     </div>
+
+                    {/* بطاقة الأطر المرجعية للامتحان التجريبي للبكالوريا (Examen Blanc 2BAC) */}
+                    {dsStructureMode === "EXAMEN_BLANC_2BAC" && (() => {
+                      const bacSpec = getExamenBlanc2BacConfig(currentTrack.code);
+                      return (
+                        <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 space-y-2 text-[11px]">
+                          <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-amber-200 pb-1.5">
+                            <span className="font-black text-amber-950">
+                              🎓 {bacSpec.cadreReferenceTitleAr}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-amber-900 text-amber-100 font-mono text-[10px] font-black">
+                              {bacSpec.officialDurationAr} · المعامل {bacSpec.coefficient}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {bacSpec.domains.map((dom, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between gap-2 bg-white/90 border border-amber-200/80 rounded-lg px-2 py-1 text-[10.5px]"
+                              >
+                                <span className="font-bold text-slate-800 truncate">
+                                  {dom.domainAr}
+                                </span>
+                                <span className="font-mono font-black text-amber-900 shrink-0">
+                                  {dom.targetPoints} ن ({dom.percentage}%)
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setN1(30);
+                              setN2(50);
+                              setN3(20);
+                              setCustomDocTitle(
+                                `الامتحان التجريبي الموحد للبكالوريا (${currentTrack.labelAr})`
+                              );
+                              setCustomDocSubtitle(
+                                `المدة: ${bacSpec.officialDurationAr} — المعامل: ${bacSpec.coefficient}`
+                              );
+                              setDiagDuration(bacSpec.officialDurationFr);
+                            }}
+                            className="w-full py-1.5 px-2.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white font-black text-[10.5px] transition cursor-pointer shadow-2xs"
+                          >
+                            ⚡ ضبط العنوان والمدة والمستويات المهارية (30% / 50% / 20%) وفق الإطار المرجعي
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {/* قسم تطوير وإدراج أسئلة الاختيار من متعدد (QCM) في الفروض المحروسة */}
                     <div className="bg-white border border-indigo-200 rounded-xl p-2.5 space-y-2">
@@ -7610,6 +8655,108 @@ export default function App() {
                           <span className="text-xs font-bold text-slate-500">%</span>
                         </div>
 
+                        {/* اختيار أيقونة مخصصة لترويسة التمرين داخل الورقة المطبوعة */}
+                        {(() => {
+                          const lessonStorageKey = `${currentTrack.code}_${item.lessonFr}`;
+                          const currentSelectedIconId: LessonHeaderIconId =
+                            customLessonIconsMap[lessonStorageKey] ||
+                            item.customHeaderIcon ||
+                            "AUTO";
+                          const resolvedPreviewIcon = resolveLessonHeaderIcon(
+                            item,
+                            currentSelectedIconId
+                          );
+                          const quickPills: Array<{
+                            id: LessonHeaderIconId;
+                            shortLabel: string;
+                          }> = [
+                            { id: "AUTO", shortLabel: "تلقائي" },
+                            { id: "FUNCTION", shortLabel: "دالة f(x)" },
+                            { id: "SEQUENCE", shortLabel: "متتالية (uₙ)" },
+                            { id: "GEOMETRY", shortLabel: "هندسة △" },
+                            { id: "COMPLEX", shortLabel: "عقدية ℂ" },
+                            { id: "PROBABILITY", shortLabel: "احتمالات P" },
+                            { id: "INTEGRAL", shortLabel: "تكامل ∫" },
+                            { id: "NONE", shortLabel: "بدون" },
+                          ];
+
+                          return (
+                            <div className="bg-indigo-50/55 border border-indigo-200/80 rounded-lg p-2 space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-[10.5px] font-extrabold text-indigo-950 flex items-center gap-1.5">
+                                  <span>أيقونة ترويسة التمرين في الورقة المطبوعة:</span>
+                                  {resolvedPreviewIcon ? (
+                                    <LessonHeaderIconBadge
+                                      lesson={item}
+                                      overrideIconId={currentSelectedIconId}
+                                      accentHex="#312e81"
+                                      bgHex="#eef2ff"
+                                      borderHex="#a5b4fc"
+                                    />
+                                  ) : (
+                                    <span className="text-[9.5px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                      بدون أيقونة
+                                    </span>
+                                  )}
+                                </span>
+
+                                <select
+                                  value={currentSelectedIconId}
+                                  onChange={(e) =>
+                                    handleLessonIconChange(
+                                      item.lessonFr,
+                                      e.target.value as LessonHeaderIconId,
+                                      isMission ? item.lessonFr : item.lessonAr
+                                    )
+                                  }
+                                  aria-label={`أيقونة ترويسة التمرين لدرس ${item.lessonAr}`}
+                                  className="text-[10.5px] font-bold bg-white border border-indigo-300 text-indigo-950 rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-600 cursor-pointer"
+                                >
+                                  {LESSON_HEADER_ICON_OPTIONS.map((opt) => (
+                                    <option key={opt.id} value={opt.id}>
+                                      {opt.labelAr}{" "}
+                                      {opt.mathSymbol ? `(${opt.mathSymbol})` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* أزرار اختيار سريع للأيقونات الرياضية الأكثر استخداماً */}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {quickPills.map((pill) => {
+                                  const isActive = currentSelectedIconId === pill.id;
+                                  return (
+                                    <button
+                                      key={pill.id}
+                                      type="button"
+                                      onClick={() =>
+                                        handleLessonIconChange(
+                                          item.lessonFr,
+                                          pill.id,
+                                          isMission ? item.lessonFr : item.lessonAr
+                                        )
+                                      }
+                                      className={`px-1.5 py-0.5 rounded text-[9.5px] font-extrabold border transition flex items-center gap-1 cursor-pointer ${
+                                        isActive
+                                          ? "bg-indigo-800 text-white border-indigo-900 shadow-xs"
+                                          : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                                      }`}
+                                    >
+                                      {pill.id !== "AUTO" && pill.id !== "NONE" && (
+                                        <LessonHeaderIconSvg
+                                          iconId={pill.id}
+                                          className="w-2.5 h-2.5 shrink-0"
+                                        />
+                                      )}
+                                      <span>{pill.shortLabel}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         <ul className="list-disc list-inside text-[11px] text-slate-500 space-y-0.5">
                           {caps.slice(0, 2).map((c, cIdx) => (
                             <li key={cIdx} className="truncate">
@@ -7758,7 +8905,7 @@ export default function App() {
                       النماذج والضوابط والمختبرات
                     </h2>
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                  <span className="text-[11px] font-mono font-bold text-slate-500">
                     Sujet {examModel}
                   </span>
                 </div>
@@ -7888,7 +9035,7 @@ export default function App() {
                               ? "Graduation des niveaux de difficulté :"
                               : "توزيع المستويات المهارية (مذكرة 142-08):"}
                           </span>
-                          <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-mono font-bold text-teal-800">
                             {isMission ? "BOEN / AEFE" : "Réf : Note 142-08"}
                           </span>
                         </div>
@@ -8030,6 +9177,19 @@ export default function App() {
                             <Sliders className="w-3.5 h-3.5 text-cyan-400" />
                             <span>فتح مدير تجزئة النقط وتعديل الأسئلة ({liveExamStats.totalQuestions} سؤالاً)</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMathInspectorStudioTab("MATHJS_VALIDATOR");
+                              setShowMathInspectorStudioModal(true);
+                            }}
+                            className="w-full py-1.5 px-3 rounded-lg text-xs font-black bg-gradient-to-l from-indigo-950 via-slate-900 to-teal-950 hover:from-indigo-900 hover:to-teal-900 text-cyan-200 border border-cyan-500/40 flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span>
+                              مختبر MathJS وأدوات الأستاذ والمفتش (المنحنيات + المتتاليات + العقوبة المزدوجة)
+                            </span>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -8038,6 +9198,38 @@ export default function App() {
                     <div className="space-y-1.5 text-[11.5px]">
                       {activeModule === "DS_142_08" && (
                         <>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={differentiatedPathConfig.enabled}
+                              onChange={(e) =>
+                                setDifferentiatedPathConfig((prev) => ({
+                                  ...prev,
+                                  enabled: e.target.checked,
+                                }))
+                              }
+                              className="rounded text-indigo-700 w-3.5 h-3.5"
+                            />
+                            <span className="font-bold text-indigo-950">
+                              إدراج المسار الفارقي بالاختيار (Piste Guidée / Experte) وسؤال التميز (+1 ن)
+                            </span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={longitudinalCohortConfig.includeInPrintablePreview}
+                              onChange={(e) =>
+                                setLongitudinalCohortConfig((prev) => ({
+                                  ...prev,
+                                  includeInPrintablePreview: e.target.checked,
+                                }))
+                              }
+                              className="rounded text-emerald-700 w-3.5 h-3.5"
+                            />
+                            <span className="font-bold text-emerald-950">
+                              إدراج بطاقة التتبع الطولي لمكتسبات الفوج (DS1 → DS2 → DS3) للتفتيش التربوي
+                            </span>
+                          </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -8841,7 +10033,7 @@ export default function App() {
                     placeholder={
                       isMission
                         ? "Ex: Insister sur la convexité et le TVI..."
-                        : "مثال: التركيز على المتتاليات الترجعية أو مبرهنة القيم الوسطية..."
+                        : "مثال: التركيز على المتتاليات الترجعية أو مبرهنة القيم الوسيطية..."
                     }
                     className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition"
                   />
@@ -9255,15 +10447,126 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* أزرار الانتقال لإعدادات الخطوط والتنسيق، محاكي الخطوط التقليدية، التعديل الحر، وطي المحرر */}
+                {/* أزرار الانتقال لإعدادات الخطوط والتنسيق، قائمة خطوط تبويبات العناوين، محاكي الخطوط التقليدية، التعديل الحر، وطي المحرر */}
                 <div className="flex items-center gap-1.5 text-xs shrink-0">
+                  <select
+                    aria-label="اختيار خط العناوين التقليدي"
+                    value={appliedTitleCalligraphy.fontId}
+                    onChange={(e) => {
+                      const nextFontId = e.target.value as TraditionalTitleFontId;
+                      const fontOpt = TRADITIONAL_TITLE_FONT_OPTIONS.find(
+                        (f) => f.id === nextFontId
+                      );
+                      const nextOrnament =
+                        fontOpt?.recommendedOrnament ??
+                        (nextFontId === "DEFAULT_DOC" ? "NONE" : appliedTitleCalligraphy.ornament);
+                      const nextScale = fontOpt?.recommendedScale ?? appliedTitleCalligraphy.scale;
+                      const parsedDefaultSpacing = fontOpt?.letterSpacing
+                        ? parseFloat(fontOpt.letterSpacing.replace("em", ""))
+                        : 0.025;
+                      setAppliedTitleCalligraphy((prev) => ({
+                        ...prev,
+                        fontId: nextFontId,
+                        ornament: nextOrnament,
+                        scale: nextScale,
+                        enableMoroccanHeaderOrnament: nextOrnament !== "NONE",
+                        customLetterSpacingEm: Number.isNaN(parsedDefaultSpacing)
+                          ? 0.025
+                          : parsedDefaultSpacing,
+                      }));
+                      if (fontOpt?.moroccanHeaderFramePreset && !isMission) {
+                        setHeaderStyle("OFFICIAL_AREF");
+                      }
+                      setStatusMessage({
+                        type: "success",
+                        text:
+                          nextFontId === "DEFAULT_DOC"
+                            ? "تمت استعادة خط العناوين القياسي للوثيقة."
+                            : `تم اختيار «${fontOpt?.nameAr}» لتبويبات العناوين مع ضبط التباعد والزخرفة للترويسة المغربية الرسمية!`,
+                      });
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-amber-50/90 hover:bg-amber-100 text-amber-950 border border-amber-300 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    title="اختيار خط تبويبات العناوين من قوالب الخطوط التقليدية (شامل الخط الأندلسي المغربي Maghribi Script)"
+                  >
+                    {TRADITIONAL_TITLE_FONT_OPTIONS.map((tFont) => (
+                      <option key={tFont.id} value={tFont.id}>
+                        {tFont.id === "DEFAULT_DOC"
+                          ? "خط العناوين: القياسي"
+                          : `خط العناوين: ${tFont.nameAr}`}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* زر تبديل سريع (Toggle) للزخرفة المغربية مع أيقونة مصغرة + شريط تمرير التباعد الأفقي (Letter Spacing) في شريط محرر العناوين */}
+                  {(() => {
+                    const isOrnEnabled =
+                      (appliedTitleCalligraphy.enableMoroccanHeaderOrnament ?? true) &&
+                      appliedTitleCalligraphy.ornament !== "NONE";
+                    const miniMeta = getTitleOrnamentMiniPreview(
+                      appliedTitleCalligraphy.ornament === "NONE"
+                        ? "ANDALUSI_MOROCCAN"
+                        : appliedTitleCalligraphy.ornament,
+                      isOrnEnabled
+                    );
+                    const spacingVal =
+                      appliedTitleCalligraphy.customLetterSpacingEm ?? 0.025;
+                    return (
+                      <div className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-amber-50/85 border border-amber-300 text-[10.5px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextEnabled = !isOrnEnabled;
+                            setAppliedTitleCalligraphy((prev) => ({
+                              ...prev,
+                              enableMoroccanHeaderOrnament: nextEnabled,
+                              ornament:
+                                nextEnabled && prev.ornament === "NONE"
+                                  ? "ANDALUSI_MOROCCAN"
+                                  : prev.ornament,
+                            }));
+                          }}
+                          title="تفعيل أو إلغاء الزخرفة الخاصة بالترويسة المغربية (مع أيقونة مصغرة لشكل الزخرفة)"
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-black border transition cursor-pointer ${
+                            isOrnEnabled
+                              ? "bg-amber-900 text-amber-200 border-amber-800"
+                              : "bg-white text-slate-600 border-slate-300"
+                          }`}
+                        >
+                          <span className="font-serif">{miniMeta.miniIconGlyph}</span>
+                          <span>{isOrnEnabled ? "زخرفة مفعّلة" : "بدون زخرفة"}</span>
+                        </button>
+                        <div className="flex items-center gap-1.5" title="التباعد الأفقي بين الحروف للترويسة (Letter Spacing)">
+                          <span className="font-bold text-amber-950">تباعد:</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={0.12}
+                            step={0.005}
+                            value={spacingVal}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setAppliedTitleCalligraphy((prev) => ({
+                                ...prev,
+                                customLetterSpacingEm: val,
+                              }));
+                            }}
+                            className="w-16 h-1.5 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-800"
+                          />
+                          <span className="font-mono text-[10px] font-black text-amber-900">
+                            {spacingVal.toFixed(3)}em
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <button
                     type="button"
                     onClick={() => {
                       setShowQuickEditor(true);
                       setShowCalligraphySimulator((v) => !v);
                     }}
-                    title="فتح أو إغلاق محاكي معاينة الخطوط العربية التقليدية (الديواني، الثلث، المغربي، الرقعة، الكوفي) للتأكد من تناسق العناوين قبل التصميم النهائي"
+                    title="فتح أو إغلاق محاكي معاينة الخطوط العربية التقليدية (الخط الأندلسي المغربي، الديواني، الثلث، الرقعة، الكوفي) للتأكد من تناسق العناوين قبل التصميم النهائي"
                     className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 border whitespace-nowrap cursor-pointer ${
                       showCalligraphySimulator
                         ? "bg-slate-900 text-amber-300 border-slate-900 shadow-2xs"
@@ -9272,7 +10575,7 @@ export default function App() {
                   >
                     <span className="font-serif text-xs">ق</span>
                     <span>
-                      محاكي الخطوط التقليدية (الديواني / الثلث)
+                      محاكي الخطوط التقليدية (الأندلسي المغربي / الثلث)
                       {appliedTitleCalligraphy.fontId !== "DEFAULT_DOC"
                         ? ` · ${
                             TRADITIONAL_TITLE_FONT_OPTIONS.find(
@@ -9700,12 +11003,26 @@ export default function App() {
                                 </button>
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {quickEditorExercises.map(({ lesson, idx }) => {
+                                  {quickEditorExercises.map(({ lesson, idx }) => {
                                   const exVal = customExerciseTitles[idx] ?? "";
                                   const isExEmpty = exVal.trim().length === 0;
+                                  const lessonKey = lesson
+                                    ? `${currentTrack.code}_${lesson.lessonFr}`
+                                    : "";
+                                  const currentLessonIconId: LessonHeaderIconId = lesson
+                                    ? customLessonIconsMap[lessonKey] ||
+                                      lesson.customHeaderIcon ||
+                                      "AUTO"
+                                    : "AUTO";
                                   return (
-                                    <div key={idx}>
+                                    <div key={idx} className="space-y-1">
                                       <div className="flex items-center gap-1">
+                                        {lesson && (
+                                          <LessonHeaderIconBadge
+                                            lesson={lesson}
+                                            overrideIconId={currentLessonIconId}
+                                          />
+                                        )}
                                         <input
                                           type="text"
                                           required
@@ -9734,6 +11051,28 @@ export default function App() {
                                               : "border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-600"
                                           }`}
                                         />
+                                        {lesson && (
+                                          <select
+                                            value={currentLessonIconId}
+                                            onChange={(e) =>
+                                              handleLessonIconChange(
+                                                lesson.lessonFr,
+                                                e.target.value as LessonHeaderIconId,
+                                                isMission ? lesson.lessonFr : lesson.lessonAr
+                                              )
+                                            }
+                                            title="تخصيص أيقونة ترويسة التمرين في الورقة المطبوعة"
+                                            className="border border-indigo-200 bg-indigo-50/70 text-indigo-950 rounded-md px-1.5 py-1 text-[10px] font-bold shrink-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-600"
+                                          >
+                                            {LESSON_HEADER_ICON_OPTIONS.map((opt) => (
+                                              <option key={opt.id} value={opt.id}>
+                                                {opt.mathSymbol
+                                                  ? `${opt.mathSymbol} ${opt.labelAr}`
+                                                  : opt.labelAr}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        )}
                                         {isExEmpty && (
                                           <button
                                             type="button"
@@ -10040,12 +11379,81 @@ export default function App() {
                     onToggleInteractiveQrFooter={() => setIncludeInteractiveQrFooter((v) => !v)}
                     interactiveExamUrl={interactiveExamUrl}
                     onOpenInteractiveQuiz={handleOpenInteractiveQuiz}
+                    differentiatedPathConfig={differentiatedPathConfig}
+                    longitudinalCohortConfig={longitudinalCohortConfig}
+                    onOpenMathInspectorStudio={() => {
+                      setMathInspectorStudioTab("LONGITUDINAL_COHORT");
+                      setShowMathInspectorStudioModal(true);
+                    }}
+                    customPageMarginsMm={customPageMarginsMm}
+                    onChangePageMarginsMm={setCustomPageMarginsMm}
+                    onSwitchDocumentViewModel={(nextModule, nextDmSubType) => {
+                      setActiveModule(nextModule);
+                      if (nextDmSubType) {
+                        setDmSubType(nextDmSubType);
+                      }
+                      const autoSpec = resolveAutoDocViewMarginModel(
+                        nextModule,
+                        nextDmSubType || dmSubType
+                      );
+                      setStatusMessage({
+                        type: "info",
+                        text: `تم التبديل إلى « ${autoSpec.labelAr} » وضبط هوامش الورقة تلقائياً (${autoSpec.topMm}mm أعلى/أسفل · ${autoSpec.xMm}mm يمين/يسار).`,
+                      });
+                    }}
                   />
               </TouchPreviewCanvas>
             )}
           </div>
         </section>
       </main>
+      {/* استوديو الابتكارات التطبيقية الأربعة (منحنى C_f التفاعلي · مصنف مسار Excel · بنك أخطاء BIOF · تلميحات QR) */}
+      {showFourProposalsModal && (
+        <FourProposalsInnovationStudioModal
+          isOpen={showFourProposalsModal}
+          onClose={() => setShowFourProposalsModal(false)}
+          initialTab={fourProposalsTab}
+          lessons={activeCustomLessons}
+          trackCode={currentTrack.code}
+          trackLabelAr={currentTrack.labelAr}
+          trackLabelFr={currentTrack.labelFr}
+          school={school}
+          prof={prof}
+          year={year}
+          semester={semester}
+          dsKey={dsKey}
+          isFr={isMission || docLang === "FR"}
+          onInsertFigureToExam={handleAddFigure}
+          onUpdateCustomQuestions={handleUpdateCustomQuestions}
+          longitudinalConfig={longitudinalCohortConfig}
+          onChangeLongitudinalConfig={setLongitudinalCohortConfig}
+          onNotify={(type, text) => setStatusMessage({ type, text })}
+        />
+      )}
+
+      {/* أستوديو التحقق الجبري (MathJS) ومقترحات أستاذ المادة والمفتش التربوي (محمل بشكل كسول Code-Split) */}
+      {showMathInspectorStudioModal && (
+        <React.Suspense fallback={null}>
+          <MathTeacherInspectorStudioModal
+            isOpen={showMathInspectorStudioModal}
+            onClose={() => setShowMathInspectorStudioModal(false)}
+            initialTab={mathInspectorStudioTab}
+            lessons={activeCustomLessons}
+            trackCode={currentTrack.code}
+            trackLabelAr={currentTrack.labelAr}
+            trackLabelFr={currentTrack.labelFr}
+            dsQuestionDensity={dsQuestionDensity}
+            isFr={isMission || docLang === "FR"}
+            onUpdateCustomQuestions={handleUpdateCustomQuestions}
+            onInsertFigureToExam={handleAddFigure}
+            differentiatedPathConfig={differentiatedPathConfig}
+            onChangeDifferentiatedPathConfig={setDifferentiatedPathConfig}
+            longitudinalConfig={longitudinalCohortConfig}
+            onChangeLongitudinalConfig={setLongitudinalCohortConfig}
+            onNotify={(type, text) => setStatusMessage({ type, text })}
+          />
+        </React.Suspense>
+      )}
       {/* نافذة الاختبار التفاعلي (Interactive Quiz) والتصحيح الآلي المباشر للتلاميذ */}
       {currentInteractiveQuiz && (
         <InteractiveQuizModal

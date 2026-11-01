@@ -637,3 +637,779 @@ lang="${dirAttr === "ltr" ? "fr" : "ar"}" dir="${dirAttr}">
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * ============================================================================
+ * 1. التصدير التلقائي والمستقل لتقرير "مرصد التدقيق البيداغوجي والتقني الشامل" (PDF)
+ * يحتوي على جميع التوصيات البيداغوجية والتقنية الحالية، مصفوفة الأوزان، والمؤشرات القياسية
+ * ============================================================================
+ */
+export interface PedagogicalAuditPDFItem {
+  id: string;
+  title: string;
+  status: "PASS" | "WARN" | "RECOMMEND";
+  detail: string;
+  actionLabel?: string;
+}
+
+export interface PedagogicalAuditPDFPayload {
+  fileName?: string;
+  academy: string;
+  direction: string;
+  school: string;
+  prof: string;
+  year: string;
+  trackLabelAr: string;
+  trackLabelFr: string;
+  trackCode: string;
+  semester: string;
+  dsKey: string;
+  docTitle: string;
+  durationFr: string;
+  examModel: string;
+  scorePercent: number;
+  passCount: number;
+  issueCount: number;
+  totalPoints: number;
+  totalQuestions: number;
+  totalExercises: number;
+  n1: number;
+  n2: number;
+  n3: number;
+  items: PedagogicalAuditPDFItem[];
+  technicalMetrics?: {
+    doublePenaltyCount: number;
+    doublePenaltySummary: string;
+    estimatedStudentMinutes: number;
+    officialDurationMinutes: number;
+    timeBudgetStatus: string;
+    inversionCount: number;
+    estimatedA4Pages: number;
+    lastPageFillPercent: number;
+    latexDelimiterWarningsCount: number;
+  };
+  lessonsSummary?: Array<{
+    lessonAr: string;
+    lessonFr: string;
+    weight: number;
+    points: number;
+  }>;
+}
+
+function escapeHtmlSafe(text: string): string {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function exportPedagogicalAuditReportToPDF(
+  payload: PedagogicalAuditPDFPayload
+): Promise<string> {
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-99999px";
+  host.style.top = "0";
+  host.style.width = "794px";
+  host.style.backgroundColor = "#ffffff";
+  host.style.zIndex = "-100";
+  host.setAttribute("dir", "rtl");
+
+  const nowDateAr = new Date().toLocaleDateString("ar-MA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const metrics = payload.technicalMetrics || {
+    doublePenaltyCount: 0,
+    doublePenaltySummary: "خالٍ من الأسئلة الوسطية المفتوحة المسببة للعقوبة المزدوجة.",
+    estimatedStudentMinutes: 90,
+    officialDurationMinutes: 120,
+    timeBudgetStatus: "OPTIMAL",
+    inversionCount: 0,
+    estimatedA4Pages: 2,
+    lastPageFillPercent: 85,
+    latexDelimiterWarningsCount: 0,
+  };
+
+  const pendingRecommendations = payload.items.filter((i) => i.status !== "PASS");
+
+  const lessonsRowsHtml =
+    payload.lessonsSummary && payload.lessonsSummary.length > 0
+      ? payload.lessonsSummary
+          .map(
+            (l, idx) => `
+          <tr style="background:${idx % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+            <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:800; text-align:center;">${idx + 1}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:700; color:#0f172a;">${escapeHtmlSafe(l.lessonAr)}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px 10px; font-family:monospace; color:#334155; direction:ltr; text-align:left;">${escapeHtmlSafe(l.lessonFr)}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:800; text-align:center; color:#0f766e;">${l.weight}%</td>
+            <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:800; text-align:center; color:#1e1b4b;">${l.points.toFixed(2)} ن</td>
+          </tr>`
+          )
+          .join("")
+      : "";
+
+  const auditRowsHtml = payload.items
+    .map((item, idx) => {
+      const isPass = item.status === "PASS";
+      const isWarn = item.status === "WARN";
+      const statusLabel = isPass
+        ? "✓ مستوفى ومطابق"
+        : isWarn
+        ? "! تنبيه عاجل"
+        : "★ توصية تطويرية";
+      const statusBg = isPass ? "#ecfdf5" : isWarn ? "#fff1f2" : "#fffbeb";
+      const statusColor = isPass ? "#065f46" : isWarn ? "#9f1239" : "#92400e";
+      const statusBorder = isPass ? "#a7f3d0" : isWarn ? "#fecdd3" : "#fde68a";
+
+      return `
+        <div class="avoid-break" style="border:1px solid ${statusBorder}; background:${statusBg}; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
+            <div style="font-size:12.5px; font-weight:900; color:#0f172a;">
+              ${idx + 1}. ${escapeHtmlSafe(item.title)}
+            </div>
+            <span style="font-size:10.5px; font-weight:900; color:${statusColor}; border:1px solid ${statusBorder}; background:#ffffff; padding:2px 8px; border-radius:4px; white-space:nowrap;">
+              ${statusLabel}
+            </span>
+          </div>
+          <div style="font-size:11.5px; color:#334155; line-height:1.55;">
+            ${escapeHtmlSafe(item.detail)}
+          </div>
+          ${
+            !isPass && item.actionLabel
+              ? `<div style="margin-top:5px; font-size:10.5px; font-weight:800; color:${statusColor};">
+                  ← الإجراء التصحيحي المقترح: ${escapeHtmlSafe(item.actionLabel)}
+                 </div>`
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+
+  const actionableListHtml =
+    pendingRecommendations.length > 0
+      ? pendingRecommendations
+          .map(
+            (rec, idx) => `
+          <li style="margin-bottom:6px; font-size:11.5px; color:#1e293b; line-height:1.5;">
+            <strong style="color:#92400e;">[توصية ${idx + 1} — ${escapeHtmlSafe(rec.title)}]:</strong>
+            ${escapeHtmlSafe(rec.detail)}
+            ${rec.actionLabel ? `<span style="color:#0f766e; font-weight:800;"> (${escapeHtmlSafe(rec.actionLabel)})</span>` : ""}
+          </li>`
+          )
+          .join("")
+      : `<li style="font-size:12px; font-weight:800; color:#065f46; line-height:1.6;">
+          ✓ جميع المعايير الـ ${payload.items.length} البيداغوجية والديداكتيكية والتقنية مستوفاة بنسبة 100% وفق المذكرة الوزارية 142-08 والتوجيهات التربوية 2007. الوثيقة جاهزة للطباعة والتأشير التربوي.
+        </li>`;
+
+  host.innerHTML = `
+    <div style="font-family:'Cairo','IBM Plex Sans Arabic','Amiri',sans-serif; color:#0f172a; padding:28px 34px; background:#ffffff; line-height:1.5;">
+      <!-- الترويسة الرسمية للتقرير -->
+      <div class="avoid-break" style="border:2px solid #0f172a; border-radius:10px; padding:14px 18px; margin-bottom:16px; background:#f8fafc;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; border-bottom:1.5px solid #cbd5e1; padding-bottom:10px; margin-bottom:10px;">
+          <div style="font-size:11.5px; font-weight:800; color:#0f172a; line-height:1.6;">
+            <div>المملكة المغربية — وزارة التربية الوطنية والتعليم الأولي والرياضة</div>
+            <div>الأكاديمية الجهوية للتربية والتكوين: ${escapeHtmlSafe(payload.academy)}</div>
+            <div>المديرية الإقليمية: ${escapeHtmlSafe(payload.direction)}</div>
+            <div>المؤسسة: ${escapeHtmlSafe(payload.school)}</div>
+          </div>
+          <div style="text-align:left; font-size:11.5px; font-weight:800; color:#1e293b; line-height:1.6;">
+            <div>السنة الدراسية: <span style="font-family:monospace;">${escapeHtmlSafe(payload.year)}</span></div>
+            <div>الأستاذ(ة) المنجز(ة): ${escapeHtmlSafe(payload.prof)}</div>
+            <div>المسلك: ${escapeHtmlSafe(payload.trackLabelAr)} (<span style="font-family:monospace;">${escapeHtmlSafe(payload.trackCode)}</span>)</div>
+            <div>تاريخ استخراج التقرير: ${escapeHtmlSafe(nowDateAr)}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div>
+            <div style="font-size:17px; font-weight:900; color:#0f172a;">
+              تقرير مرصد التدقيق البيداغوجي والتقني الشامل (المذكرة الوزارية 142-08)
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#475569; margin-top:2px;">
+              الوثيقة المفحوصة: ${escapeHtmlSafe(payload.docTitle)} · الدورة ${escapeHtmlSafe(payload.semester)} · الفرض ${escapeHtmlSafe(payload.dsKey)} · النموذج (${escapeHtmlSafe(payload.examModel)}) · المدة (${escapeHtmlSafe(payload.durationFr)})
+            </div>
+          </div>
+          <div style="background:${payload.scorePercent >= 90 ? "#065f46" : payload.scorePercent >= 70 ? "#0f766e" : "#b45309"}; color:#ffffff; padding:8px 16px; border-radius:8px; text-align:center; min-width:125px;">
+            <div style="font-size:10px; font-weight:700; opacity:0.9;">نسبة المطابقة الرسمية</div>
+            <div style="font-size:22px; font-weight:900; font-family:monospace; line-height:1.15;">${payload.scorePercent}%</div>
+            <div style="font-size:9.5px; font-weight:700;">${payload.passCount} مستوفى / ${payload.items.length} معياراً</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- القسم 1: خلاصة المؤشرات القياسية والتقنية (Telemetry & Didactic Metrics) -->
+      <div class="avoid-break" style="margin-bottom:16px;">
+        <h3 style="font-size:13.5px; font-weight:900; color:#0f172a; margin:0 0 8px 0; border-right:4px solid #0f766e; padding-right:8px;">
+          أولاً: خلاصة المؤشرات البيداغوجية والقياسية والتقنية (Didactic & EdTech Diagnostics)
+        </h3>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:9px 10px; background:#f8fafc;">
+            <div style="font-size:10px; font-weight:800; color:#64748b;">سلم التنقيط وبنية الفرض</div>
+            <div style="font-size:14px; font-weight:900; color:#0f172a; margin-top:2px;">${payload.totalPoints.toFixed(2)} / 20.00 ن</div>
+            <div style="font-size:10.5px; color:#334155; margin-top:2px;">${payload.totalExercises} تمارين · ${payload.totalQuestions} سؤالاً فرعياً</div>
+          </div>
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:9px 10px; background:#f8fafc;">
+            <div style="font-size:10px; font-weight:800; color:#64748b;">توزيع المستويات المهارية (142-08)</div>
+            <div style="font-size:13px; font-weight:900; color:#0f766e; margin-top:2px; font-family:monospace;">N1:${payload.n1}% | N2:${payload.n2}% | N3:${payload.n3}%</div>
+            <div style="font-size:10.5px; color:#334155; margin-top:2px;">المعيار المرجعي: 35% / 45% / 20%</div>
+          </div>
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:9px 10px; background:#f8fafc;">
+            <div style="font-size:10px; font-weight:800; color:#64748b;">ميزانية الزمن (قاعدة المفتش 1×3)</div>
+            <div style="font-size:14px; font-weight:900; color:#1e1b4b; margin-top:2px;">${metrics.estimatedStudentMinutes} د / ${metrics.officialDurationMinutes} د</div>
+            <div style="font-size:10.5px; color:#334155; margin-top:2px;">انقلاب التدرج: ${metrics.inversionCount} · العقوبة المزدوجة: ${metrics.doublePenaltyCount}</div>
+          </div>
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:9px 10px; background:#f8fafc;">
+            <div style="font-size:10px; font-weight:800; color:#64748b;">معايرة الورقة A4 وشجرة LaTeX</div>
+            <div style="font-size:14px; font-weight:900; color:#0f172a; margin-top:2px;">${metrics.estimatedA4Pages} صفحات A4 (${metrics.lastPageFillPercent}%)</div>
+            <div style="font-size:10.5px; color:#334155; margin-top:2px;">أقواس LaTeX غير متوازنة: ${metrics.latexDelimiterWarningsCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- القسم 2: جدول موازنة الأوزان النسبية للدروس -->
+      ${
+        lessonsRowsHtml
+          ? `
+      <div class="avoid-break" style="margin-bottom:16px;">
+        <h3 style="font-size:13.5px; font-weight:900; color:#0f172a; margin:0 0 8px 0; border-right:4px solid #1e1b4b; padding-right:8px;">
+          ثانياً: جدول موازنة الأوزان النسبية للدروس المختارة وتوزيع النقط (مصفوفة التخصيص)
+        </h3>
+        <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+          <thead>
+            <tr style="background:#f1f5f9; color:#0f172a;">
+              <th style="border:1px solid #cbd5e1; padding:6px 10px; width:40px;">#</th>
+              <th style="border:1px solid #cbd5e1; padding:6px 10px; text-align:right;">عنوان الدرس / المكون البيداغوجي (عربي)</th>
+              <th style="border:1px solid #cbd5e1; padding:6px 10px; text-align:left;">Intitulé du Chapitre (BIOF / FR)</th>
+              <th style="border:1px solid #cbd5e1; padding:6px 10px; width:90px;">الوزن النسبي</th>
+              <th style="border:1px solid #cbd5e1; padding:6px 10px; width:95px;">الحصة من 20</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lessonsRowsHtml}
+          </tbody>
+        </table>
+      </div>`
+          : ""
+      }
+
+      <!-- القسم 3: مصفوفة بنود التدقيق البيداغوجي والتقني المفصلة -->
+      <div style="margin-bottom:16px;">
+        <h3 style="font-size:13.5px; font-weight:900; color:#0f172a; margin:0 0 8px 0; border-right:4px solid #0f766e; padding-right:8px;">
+          ثالثاً: مصفوفة الفحص التفصيلي لبنود المطابقة البيداغوجية والتقنية (${payload.items.length} معياراً)
+        </h3>
+        ${auditRowsHtml}
+      </div>
+
+      <!-- القسم 4: خلاصة التوصيات البيداغوجية والتقنية الحالية وتأشيرة المصادقة -->
+      <div class="avoid-break" style="border:1.5px solid #0f172a; border-radius:10px; padding:14px 16px; background:#f8fafc;">
+        <h3 style="font-size:13.5px; font-weight:900; color:#0f172a; margin:0 0 8px 0;">
+          رابعاً: التوصيات البيداغوجية والتقنية الحالية وخلاصة الخبرة التربوية
+        </h3>
+        <ul style="margin:0 0 14px 0; padding-right:18px;">
+          ${actionableListHtml}
+          <li style="margin-top:6px; font-size:11.5px; color:#334155; line-height:1.5;">
+            <strong>تشخيص العقوبة المزدوجة (Double Penalty):</strong> ${escapeHtmlSafe(metrics.doublePenaltySummary)}
+          </li>
+        </ul>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; border-top:1px dashed #94a3b8; padding-top:12px; margin-top:8px; text-align:center; font-size:11px; font-weight:800; color:#334155;">
+          <div style="border:1px solid #cbd5e1; background:#ffffff; border-radius:6px; padding:10px 8px; min-height:64px;">
+            <div>توقيع الأستاذ(ة) المنجز(ة)</div>
+            <div style="font-size:10px; color:#64748b; margin-top:4px;">${escapeHtmlSafe(payload.prof)}</div>
+          </div>
+          <div style="border:1px solid #cbd5e1; background:#ffffff; border-radius:6px; padding:10px 8px; min-height:64px;">
+            <div>خاتم وتأشيرة إدارة المؤسسة</div>
+            <div style="font-size:10px; color:#64748b; margin-top:4px;">${escapeHtmlSafe(payload.school)}</div>
+          </div>
+          <div style="border:1px solid #cbd5e1; background:#ffffff; border-radius:6px; padding:10px 8px; min-height:64px;">
+            <div>تأشيرة السيد(ة) المفتش(ة) التربوي(ة)</div>
+            <div style="font-size:10px; color:#64748b; margin-top:4px;">المذكرة الوزارية 142-08</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(host);
+
+  try {
+    const dataUrl = await toPng(host, {
+      quality: 1.0,
+      pixelRatio: 2.5,
+      backgroundColor: "#ffffff",
+      cacheBust: true,
+    });
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () =>
+        reject(new Error("تعذر معالجة صورة تقرير التدقيق البيداغوجي لتوليد ملف PDF."));
+      img.src = dataUrl;
+    });
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+
+    const pageWidthMm = pdf.internal.pageSize.getWidth(); // 210mm
+    const pageHeightMm = pdf.internal.pageSize.getHeight(); // 297mm
+    const marginMm = 9;
+    const footerHeightMm = 8.5;
+    const runningHeaderMm = 6.5;
+
+    const contentWidthMm = pageWidthMm - marginMm * 2;
+    const firstPageBodyMm = pageHeightMm - marginMm * 2 - footerHeightMm;
+
+    const pxPerMm = img.width / contentWidthMm;
+    const maxSliceHeightPx = Math.floor((firstPageBodyMm - runningHeaderMm) * pxPerMm);
+    const footerHeightPx = Math.round(footerHeightMm * pxPerMm);
+    const runningHeaderPx = Math.round(runningHeaderMm * pxPerMm);
+
+    const cuts = calculateSmartPageSlices(host, img.width, img.height, maxSliceHeightPx);
+    const totalPages = Math.max(1, cuts.length - 1);
+
+    for (let i = 0; i < totalPages; i++) {
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      const startY = cuts[i];
+      const endY = cuts[i + 1];
+      const sliceHeightPx = endY - startY;
+      if (sliceHeightPx <= 0) continue;
+
+      const currentHeaderPx = i > 0 ? runningHeaderPx : 0;
+      const totalCanvasHeightPx = currentHeaderPx + sliceHeightPx + footerHeightPx;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = totalCanvasHeightPx;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(
+          img,
+          0,
+          startY,
+          img.width,
+          sliceHeightPx,
+          0,
+          currentHeaderPx,
+          img.width,
+          sliceHeightPx
+        );
+
+        drawCanvasRunningHeaderAndFooter(
+          ctx,
+          canvas.width,
+          canvas.height,
+          currentHeaderPx,
+          footerHeightPx,
+          i,
+          totalPages,
+          {
+            docTitle: `تقرير مرصد التدقيق البيداغوجي (${payload.scorePercent}%) — ${payload.trackLabelAr}`,
+            headerMeta: `${payload.school} · ${payload.prof} · ${payload.year}`,
+            isMission: false,
+            isFrench: false,
+          }
+        );
+
+        const sliceDataUrl = canvas.toDataURL("image/png", 0.98);
+        const totalSliceMm = totalCanvasHeightPx / pxPerMm;
+
+        pdf.addImage(
+          sliceDataUrl,
+          "PNG",
+          marginMm,
+          marginMm,
+          contentWidthMm,
+          Math.min(totalSliceMm, pageHeightMm - marginMm * 2),
+          undefined,
+          "FAST"
+        );
+      }
+    }
+
+    const defaultName = `Rapport_Audit_Pedagogique_${payload.trackCode}_${payload.semester}_${payload.dsKey}_${payload.year}.pdf`;
+    const finalFileName = payload.fileName
+      ? payload.fileName.endsWith(".pdf")
+        ? payload.fileName
+        : `${payload.fileName}.pdf`
+      : defaultName;
+
+    pdf.save(finalFileName);
+    return finalFileName;
+  } finally {
+    if (host.parentNode) {
+      host.parentNode.removeChild(host);
+    }
+  }
+}
+
+/**
+ * ============================================================================
+ * 2. محرك الترتيب والطي التلقائي بتخطيط "كتيب" (Booklet Imposition A4 -> A5)
+ * يرتب صفحات الوثيقة ليتم طباعتها على ورق A4 أفقي (Landscape) وطيها من الوسط إلى كتيب A5
+ * ============================================================================
+ */
+export interface BookletSpreadPair {
+  sheetIndex: number; // رقم الورقة الفعلية A4 (1, 2, ...)
+  side: "RECTO" | "VERSO"; // وجه الورقة أو ظهرها
+  sideLabelAr: string;
+  leftPageNumber: number; // رقم الصفحة على النصف الأيسر من ورقة A4
+  rightPageNumber: number; // رقم الصفحة على النصف الأيمن من ورقة A4
+  isLeftBlankPadding: boolean;
+  isRightBlankPadding: boolean;
+}
+
+/**
+ * حساب خريطة ترتيب صفحات الكتيب المطوي (Saddle-Stitch Booklet Imposition)
+ * حيث يتم تكميل عدد الصفحات إلى أقرب مضاعف للعدد 4، ثم توزيع الصفحات المتقابلة
+ * بحيث بعد طي الأوراق من المنتصف، تتسلسل الصفحات (1، 2، 3، ... N) بشكل طبيعي.
+ */
+export function computeBookletImpositionSpreads(
+  originalPageCount: number,
+  bindingEdge: "RTL_RIGHT" | "LTR_LEFT" = "RTL_RIGHT"
+): {
+  originalPages: number;
+  paddedBookletPages: number;
+  physicalA4Sheets: number;
+  spreads: BookletSpreadPair[];
+} {
+  const safeOriginal = Math.max(1, Math.round(originalPageCount));
+  const paddedBookletPages = Math.max(4, Math.ceil(safeOriginal / 4) * 4);
+  const physicalA4Sheets = paddedBookletPages / 4;
+  const spreads: BookletSpreadPair[] = [];
+
+  for (let s = 0; s < physicalA4Sheets; s++) {
+    // في الكتيب القياسي (LTR): الوجه الخارجي للورقة s يحمل [P - 2s | 1 + 2s] والظهر يحمل [2 + 2s | P - 1 - 2s]
+    // في الكتيب العربي (RTL - الطي من اليمين): الغلاف الأمامي (ص 1) يكون على اليسار الخارجي عند الفتح أو اليمين عند الطي
+    // بحيث عند طي الورقة A4 نصفين عمودياً يصبح الغلاف العربي (ص 1) في الواجهة اليمنى
+    const outerFirst = 1 + 2 * s;
+    const outerLast = paddedBookletPages - 2 * s;
+    const innerFirst = 2 + 2 * s;
+    const innerLast = paddedBookletPages - 1 - 2 * s;
+
+    const rectoLeft = bindingEdge === "RTL_RIGHT" ? outerFirst : outerLast;
+    const rectoRight = bindingEdge === "RTL_RIGHT" ? outerLast : outerFirst;
+
+    const versoLeft = bindingEdge === "RTL_RIGHT" ? innerLast : innerFirst;
+    const versoRight = bindingEdge === "RTL_RIGHT" ? innerFirst : innerLast;
+
+    spreads.push({
+      sheetIndex: s + 1,
+      side: "RECTO",
+      sideLabelAr: `الورقة ${s + 1} — الوجه (Recto)`,
+      leftPageNumber: rectoLeft,
+      rightPageNumber: rectoRight,
+      isLeftBlankPadding: rectoLeft > safeOriginal,
+      isRightBlankPadding: rectoRight > safeOriginal,
+    });
+
+    spreads.push({
+      sheetIndex: s + 1,
+      side: "VERSO",
+      sideLabelAr: `الورقة ${s + 1} — الظهر (Verso)`,
+      leftPageNumber: versoLeft,
+      rightPageNumber: versoRight,
+      isLeftBlankPadding: versoLeft > safeOriginal,
+      isRightBlankPadding: versoRight > safeOriginal,
+    });
+  }
+
+  return {
+    originalPages: safeOriginal,
+    paddedBookletPages,
+    physicalA4Sheets,
+    spreads,
+  };
+}
+
+export interface ExportBookletPDFOptions {
+  elementId?: string;
+  fileName?: string;
+  bindingEdge?: "RTL_RIGHT" | "LTR_LEFT";
+  addFoldGuides?: boolean;
+  docTitle?: string;
+  headerMeta?: string;
+  isMission?: boolean;
+  isFrench?: boolean;
+  colorMode?: PrintColorMode;
+}
+
+/**
+ * تصدير ملف PDF جاهز للطباعة بتخطيط "كتيب" (Booklet A4 Landscape -> Folded A5)
+ * يقوم بتقطيع الوثيقة إلى صفحات A5، ويكملها إلى مضاعفات 4 بصفحات مسودة مؤطرة،
+ * ثم يرتب كل صفحتين متقابلتين في ورقة A4 أفقية وفق خوارزمية الطي المركزي (Saddle-Stitch).
+ */
+export async function exportBookletImposedPDF(
+  options: ExportBookletPDFOptions = {}
+): Promise<{
+  fileName: string;
+  originalPages: number;
+  paddedBookletPages: number;
+  physicalA4Sheets: number;
+}> {
+  const {
+    elementId = "printable-document-sheet",
+    fileName = "Livret_Booklet_A4_to_A5.pdf",
+    bindingEdge = "RTL_RIGHT",
+    addFoldGuides = true,
+    docTitle = "كتيب الفرض المحروس (Booklet A4 → A5)",
+    headerMeta = "وزارة التربية الوطنية · المملكة المغربية",
+    isMission = false,
+    isFrench = false,
+    colorMode = "FULL_COLOR",
+  } = options;
+
+  const element = document.getElementById(elementId);
+  if (!element) {
+    throw new Error("تعذر العثور على عنصر الوثيقة لتوليد كتيب الطباعة (Booklet).");
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
+  const dataUrl = await toPng(element, {
+    quality: 1.0,
+    pixelRatio: 2.4,
+    backgroundColor: "#ffffff",
+    cacheBust: true,
+    filter: (node: Node) => {
+      if (node instanceof HTMLElement && node.classList.contains("no-print")) {
+        return false;
+      }
+      return true;
+    },
+    style: {
+      transform: "none",
+      margin: "0",
+      boxShadow: "none",
+      borderRadius: "0",
+      border: "none",
+    },
+  });
+
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("تعذر معالجة صورة الوثيقة لتوليد الكتيب."));
+    img.src = dataUrl;
+  });
+
+  // أبعاد صفحة A5 العمودية داخل ورقة A4 الأفقية: 148.5mm × 210mm
+  const a5WidthMm = 148.5;
+  const a5HeightMm = 210;
+  const a5MarginMm = 7.5;
+  const footerHeightMm = 7.5;
+  const runningHeaderMm = 5.5;
+
+  const contentWidthMm = a5WidthMm - a5MarginMm * 2;
+  const bodyHeightMm = a5HeightMm - a5MarginMm * 2 - footerHeightMm - runningHeaderMm;
+
+  const pxPerMm = img.width / contentWidthMm;
+  const maxSliceHeightPx = Math.floor(bodyHeightMm * pxPerMm);
+  const footerHeightPx = Math.round(footerHeightMm * pxPerMm);
+  const runningHeaderPx = Math.round(runningHeaderMm * pxPerMm);
+  const fullA5CanvasHeightPx = runningHeaderPx + maxSliceHeightPx + footerHeightPx;
+
+  const cuts = calculateSmartPageSlices(element, img.width, img.height, maxSliceHeightPx);
+  const originalPages = Math.max(1, cuts.length - 1);
+
+  const imposition = computeBookletImpositionSpreads(originalPages, bindingEdge);
+
+  // دالة مساعدة لتوليد صورة صفحة فردية رقْم pageNumber (من 1 إلى paddedBookletPages)
+  const renderSingleA5PageCanvas = (pageNumber1Based: number): HTMLCanvasElement => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = fullA5CanvasHeightPx;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (pageNumber1Based <= originalPages) {
+      const idx = pageNumber1Based - 1;
+      const startY = cuts[idx];
+      const endY = cuts[idx + 1];
+      const sliceHeightPx = Math.max(0, endY - startY);
+
+      if (sliceHeightPx > 0) {
+        ctx.drawImage(
+          img,
+          0,
+          startY,
+          img.width,
+          sliceHeightPx,
+          0,
+          runningHeaderPx,
+          img.width,
+          sliceHeightPx
+        );
+      }
+    } else {
+      // صفحة مسودة منقطة ومؤطرة لتكميل مضاعفات 4 في الكتيب المطوي
+      const padX = Math.round(canvas.width * 0.05);
+      const topY = runningHeaderPx + Math.round(canvas.height * 0.04);
+      const boxH = maxSliceHeightPx - Math.round(canvas.height * 0.08);
+
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = Math.max(1.5, Math.round(canvas.width / 450));
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(padX, topY, canvas.width - padX * 2, boxH);
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#475569";
+      const titleFontPx = Math.max(18, Math.round(canvas.width / 36));
+      ctx.font = `700 ${titleFontPx}px "Cairo", "IBM Plex Sans Arabic", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(
+        isMission || isFrench
+          ? `Page de brouillon et notes (${pageNumber1Based}/${imposition.paddedBookletPages})`
+          : `مسودة العمليات الحسابية وملاحظات المترشح(ة) — صفحة (${pageNumber1Based}/${imposition.paddedBookletPages})`,
+        canvas.width / 2,
+        topY + titleFontPx * 1.8
+      );
+
+      // رسم أسطر مسودة خفيفة
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      const lineStep = Math.round(titleFontPx * 1.9);
+      for (
+        let y = topY + titleFontPx * 3.2;
+        y < topY + boxH - lineStep;
+        y += lineStep
+      ) {
+        ctx.beginPath();
+        ctx.moveTo(padX + 24, y);
+        ctx.lineTo(canvas.width - padX - 24, y);
+        ctx.stroke();
+      }
+    }
+
+    drawCanvasRunningHeaderAndFooter(
+      ctx,
+      canvas.width,
+      canvas.height,
+      runningHeaderPx,
+      footerHeightPx,
+      pageNumber1Based - 1,
+      imposition.paddedBookletPages,
+      {
+        docTitle,
+        headerMeta,
+        isMission,
+        isFrench,
+      }
+    );
+
+    if (colorMode === "LASER_MONO") {
+      applyLaserMonochromeFilter(ctx, canvas.width, canvas.height);
+    }
+
+    return canvas;
+  };
+
+  // تخزين الصفحات المولدة في الذاكرة لتوزيعها على أوراق A4 الأفقية
+  const pageCanvasesMap = new Map<number, string>();
+  for (let p = 1; p <= imposition.paddedBookletPages; p++) {
+    const c = renderSingleA5PageCanvas(p);
+    pageCanvasesMap.set(p, c.toDataURL("image/png", 0.96));
+  }
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  });
+
+  // كل Spread يمثل وجهاً واحداً لورقة A4 أفقية (297mm × 210mm) مقسومة إلى صفحتي A5 (148.5mm لكل نصف)
+  imposition.spreads.forEach((spread, idx) => {
+    if (idx > 0) {
+      pdf.addPage("a4", "landscape");
+    }
+
+    const leftDataUrl = pageCanvasesMap.get(spread.leftPageNumber);
+    const rightDataUrl = pageCanvasesMap.get(spread.rightPageNumber);
+
+    const halfWidthMm = 148.5;
+    const fullHeightMm = 210;
+    const innerPadMm = 6;
+    const targetW = halfWidthMm - innerPadMm * 2;
+    const targetH = fullHeightMm - innerPadMm * 2;
+
+    if (leftDataUrl) {
+      pdf.addImage(
+        leftDataUrl,
+        "PNG",
+        innerPadMm,
+        innerPadMm,
+        targetW,
+        targetH,
+        undefined,
+        "FAST"
+      );
+    }
+
+    if (rightDataUrl) {
+      pdf.addImage(
+        rightDataUrl,
+        "PNG",
+        halfWidthMm + innerPadMm,
+        innerPadMm,
+        targetW,
+        targetH,
+        undefined,
+        "FAST"
+      );
+    }
+
+    if (addFoldGuides) {
+      pdf.setDrawColor(148, 163, 184);
+      pdf.setLineWidth(0.35);
+      pdf.setLineDashPattern([2.5, 2.5], 0);
+      pdf.line(halfWidthMm, 4, halfWidthMm, fullHeightMm - 4);
+      pdf.setLineDashPattern([], 0);
+
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(
+        `Sheet ${spread.sheetIndex} (${spread.side}) | Fold A4 -> A5 | [P.${spread.leftPageNumber} | P.${spread.rightPageNumber}]`,
+        halfWidthMm,
+        3.5,
+        { align: "center" }
+      );
+    }
+  });
+
+  const cleanFileName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+  pdf.save(cleanFileName);
+
+  return {
+    fileName: cleanFileName,
+    originalPages: imposition.originalPages,
+    paddedBookletPages: imposition.paddedBookletPages,
+    physicalA4Sheets: imposition.physicalA4Sheets,
+  };
+}
+

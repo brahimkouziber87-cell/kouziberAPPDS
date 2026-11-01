@@ -87,6 +87,7 @@ export interface BuildEvaluationGridParams {
   dsQuestionDensity?: DSQuestionDensity;
   dsStructureMode?: MoroccanDSStructureMode;
   isMission?: boolean;
+  qcmQuestionCount?: number;
 }
 
 /**
@@ -113,6 +114,7 @@ export function buildCustomEvaluationGrid(
     dsQuestionDensity = "INTENSIVE",
     dsStructureMode = "EXERCICES_ET_PROBLEME",
     isMission = false,
+    qcmQuestionCount = 4,
   } = params;
 
   const isDMModule = activeModule === "DM_SERIE";
@@ -121,7 +123,6 @@ export function buildCustomEvaluationGrid(
 
   const hasQCM =
     isDS &&
-    !isMission &&
     (dsStructureMode === "QCM_ET_EXERCICES" ||
       dsStructureMode === "COMPLETE_EXAM_MAROC");
   const hasSynthesisProblem =
@@ -129,7 +130,7 @@ export function buildCustomEvaluationGrid(
     !isMission &&
     (dsStructureMode === "EXERCICES_ET_PROBLEME" ||
       dsStructureMode === "COMPLETE_EXAM_MAROC");
-  const fixedQcmPoints = hasQCM ? 4.0 : 0;
+  const fixedQcmPoints = hasQCM ? Number((Math.min(6, Math.max(2, qcmQuestionCount)) * 1.0).toFixed(2)) : 0;
   const fixedProblemPoints = hasSynthesisProblem ? 8.5 : 0;
   const exercisesPointBudget = Math.max(
     4,
@@ -230,9 +231,12 @@ export function buildCustomEvaluationGrid(
 
     // 1. إدراج تمرين QCM التمهيدي في شبكة التقويم إذا كان مفعلاً
     if (hasQCM) {
-      const qcmBlock = generateMoroccanQCMExercise(lessons, modelCode);
+      const qcmBlock = generateMoroccanQCMExercise(lessons, modelCode, track.cycle, {
+        questionCount: qcmQuestionCount,
+        isMission,
+      });
       const qcmExNum = currentExNum++;
-      const qcmWeight = 20;
+      const qcmWeight = Math.round((fixedQcmPoints / 20) * 100);
       const qcmQuestions: EvaluationQuestionRow[] = qcmBlock.items.map(
         (item, qIdx) => {
           const row: EvaluationQuestionRow = {
@@ -243,7 +247,7 @@ export function buildCustomEvaluationGrid(
             subCategoryAr: "أسئلة الاختيار من متعدد (QCM)",
             subCategoryFr: "Questions à Choix Multiples (QCM)",
             exerciseWeight: qcmWeight,
-            exerciseTotalPoints: 4.0,
+            exerciseTotalPoints: fixedQcmPoints,
             questionIndex: qIdx,
             questionCode: `QCM-Q${qIdx + 1}`,
             questionLabelAr: `QCM - س${qIdx + 1}`,
@@ -276,7 +280,7 @@ export function buildCustomEvaluationGrid(
         subCategoryAr: "أسئلة موضوعية (QCM)",
         subCategoryFr: "QCM / Vrai-Faux",
         weight: qcmWeight,
-        totalPoints: 4.0,
+        totalPoints: fixedQcmPoints,
         questionCount: qcmQuestions.length,
         capacitiesAr: ["التحقق من صحة المتساويات والخاصيات مع التعليل"],
         capacitiesFr: ["Vérification des propriétés et justification"],
@@ -1093,6 +1097,9 @@ export interface MassarStudentEntry {
   massarCode: string;
   fullNameAr: string;
   fullNameFr: string;
+  codeMassar?: string;
+  nomFr?: string;
+  nomAr?: string;
 }
 
 export const DEFAULT_MOROCCAN_CLASS_ROSTER: MassarStudentEntry[] = [
@@ -1223,6 +1230,151 @@ export function exportMassarPronoteGradeSheet(
   const a = document.createElement("a");
   a.href = url;
   a.download = `Massar_Pronote_Notes_${semester}_${dsKey}_${year}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * تصدير بوابة مسار الرسمية بصيغة مصنف Excel المنسق (.xls XML Spreadsheet)
+ * يتضمن: لائحة مسار الرسمية + توزيع نقط المهارات (N1/N2/N3) + المؤشرات الإحصائية للقسم (المعدل، الانحراف الطرازي، نسبة التحكم) + قرار الدعم التربوي
+ */
+export function exportMassarExcelXmlWorkbook(options: {
+  school: string;
+  prof: string;
+  year: string;
+  trackLabel: string;
+  semester?: string;
+  dsKey?: string;
+  students?: Array<{
+    cne: string;
+    fullNameAr: string;
+    fullNameFr: string;
+    grade20: number;
+    n1Mastery?: string;
+    n2Mastery?: string;
+    n3Mastery?: string;
+    observation?: string;
+  }>;
+}): void {
+  const {
+    school,
+    prof,
+    year,
+    trackLabel,
+    semester = "S1",
+    dsKey = "DS1",
+    students,
+  } = options;
+
+  const activeList =
+    students && students.length > 0
+      ? students
+      : DEFAULT_MOROCCAN_CLASS_ROSTER.map((st, idx) => {
+          const sampleGrades = [17.5, 14.25, 11.5, 8.75, 16.0, 12.5, 9.25, 18.25, 13.0, 7.5, 15.25, 10.5, 14.0, 11.75, 16.5];
+          const g = sampleGrades[idx % sampleGrades.length];
+          return {
+            cne: st.massarCode,
+            fullNameAr: st.fullNameAr,
+            fullNameFr: st.fullNameFr,
+            grade20: g,
+            n1Mastery: g >= 10 ? "مكتسبة (A)" : "في طور الاكتساب (ECA)",
+            n2Mastery: g >= 12 ? "مكتسبة (A)" : g >= 9 ? "في طور الاكتساب (ECA)" : "غير مكتسبة (NA)",
+            n3Mastery: g >= 15 ? "مكتسبة (A)" : g >= 11 ? "في طور الاكتساب (ECA)" : "غير مكتسبة (NA)",
+            observation:
+              g >= 16
+                ? "تميز واضح في الاستدلال والتوليف الرياضي — يُوجه لأنشطة الأولمبياد"
+                : g >= 12
+                ? "تحكم جيد في القدرات الأساسية؛ يُنصح بتعميق أسئلة التوليف N3"
+                : g >= 10
+                ? "متوسط؛ يحتاج إلى تثبيت تقنيات الحساب والاشتقاق (المستوى N2)"
+                : "متعثر؛ مُدرج ضمن فوج الدعم التربوي الفردي في الأساسيات N1",
+          };
+        });
+
+  const grades = activeList.map((s) => s.grade20);
+  const count = Math.max(1, grades.length);
+  const mean = grades.reduce((a, b) => a + b, 0) / count;
+  const variance = grades.reduce((acc, g) => acc + Math.pow(g - mean, 2), 0) / count;
+  const stdDev = Math.sqrt(variance);
+  const maxGrade = Math.max(...grades);
+  const minGrade = Math.min(...grades);
+  const passedCount = grades.filter((g) => g >= 10).length;
+  const masteryRate = Math.round((passedCount / count) * 100);
+
+  const xmlEsc = (s: string | number) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const rowsXml = activeList
+    .map(
+      (st, idx) => `
+      <Row>
+        <Cell><Data ss:Type="Number">${idx + 1}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.cne)}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.fullNameAr)}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.fullNameFr)}</Data></Cell>
+        <Cell><Data ss:Type="Number">${st.grade20.toFixed(2)}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.n1Mastery || "A")}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.n2Mastery || "ECA")}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.n3Mastery || "ECA")}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(
+          st.grade20 >= 10 ? "متحكم — تعميق" : "يحتاج دعماً فردياً (Fiche N1/N2)"
+        )}</Data></Cell>
+        <Cell><Data ss:Type="String">${xmlEsc(st.observation || "")}</Data></Cell>
+      </Row>`
+    )
+    .join("");
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Worksheet ss:Name="Massar_${xmlEsc(semester)}_${xmlEsc(dsKey)}">
+  <Table>
+   <Row>
+    <Cell><Data ss:Type="String">المملكة المغربية — وزارة التربية الوطنية والتعليم الأولي والرياضة (بوابة مسار الرسمية)</Data></Cell>
+    <Cell><Data ss:Type="String">المؤسسة: ${xmlEsc(school)}</Data></Cell>
+    <Cell><Data ss:Type="String">الأستاذ(ة): ${xmlEsc(prof)}</Data></Cell>
+    <Cell><Data ss:Type="String">القسم/المسلك: ${xmlEsc(trackLabel)} (${xmlEsc(year)})</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">المؤشرات الإحصائية للقسم (Note 142-08)</Data></Cell>
+    <Cell><Data ss:Type="String">المعدل العام: ${mean.toFixed(2)} / 20</Data></Cell>
+    <Cell><Data ss:Type="String">الانحراف الطرازي: σ = ${stdDev.toFixed(2)}</Data></Cell>
+    <Cell><Data ss:Type="String">نسبة التحكم (≥10/20): ${masteryRate}% (${passedCount}/${count})</Data></Cell>
+    <Cell><Data ss:Type="String">أعلى نقطة: ${maxGrade.toFixed(2)} | أدنى نقطة: ${minGrade.toFixed(2)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">الرقم الترتيبي</Data></Cell>
+    <Cell><Data ss:Type="String">رقم مسار (Code Massar / CNE)</Data></Cell>
+    <Cell><Data ss:Type="String">الاسم الكامل بالعربية</Data></Cell>
+    <Cell><Data ss:Type="String">Nom et Prénom (FR)</Data></Cell>
+    <Cell><Data ss:Type="String">النقطة النهائية /20 (${xmlEsc(dsKey)})</Data></Cell>
+    <Cell><Data ss:Type="String">تملك مهارات N1 (35%)</Data></Cell>
+    <Cell><Data ss:Type="String">تملك مهارات N2 (45%)</Data></Cell>
+    <Cell><Data ss:Type="String">تملك مهارات N3 (20%)</Data></Cell>
+    <Cell><Data ss:Type="String">قرار الدعم والمعالجة التربوية</Data></Cell>
+    <Cell><Data ss:Type="String">ملاحظة مسار والتوجيه البيداغوجي</Data></Cell>
+   </Row>
+   ${rowsXml}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+  const blob = new Blob([workbookXml], {
+    type: "application/vnd.ms-excel;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Massar_Gateway_${semester}_${dsKey}_${year}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

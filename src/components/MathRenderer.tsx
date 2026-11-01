@@ -143,13 +143,13 @@ export function normalizeMathSyntax(latex: string): string {
   // Normalisation des fractions algébriques abrégées : (A)/(B), (A)/B, A/(B), f(x)/g(x), a/b
   s = s
     .replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, "\\frac{$1}{$2}")
-    .replace(/\(([^()]+)\)\s*\/\s*([a-zA-Z0-9_^{}+-]+)/g, "\\frac{$1}{$2}")
+    .replace(/\(([^()]+)\)\s*\/\s*((?:[a-zA-Z0-9_]+|\{[^{}]*\})(?:\^(?:\{[^{}]*\}|[a-zA-Z0-9]+))?)/g, "\\frac{$1}{$2}")
     .replace(
       /((?:\\?[a-zA-Z]+)'?\([^()]+\)|[a-zA-Z0-9_^{}]+)\s*\/\s*\(([^()]+)\)/g,
       "\\frac{$1}{$2}"
     )
     .replace(
-      /((?:\\?[a-zA-Z]+)'?\([^()]+\)|\\pi\s*|[a-zA-Z0-9_^{}]+)\s*\/\s*([a-zA-Z0-9_^{}]+)/g,
+      /((?:\\?[a-zA-Z]+)'?\([^()]+\)|\\pi\s*|[a-zA-Z0-9_^{}]+)\s*\/\s*((?:[a-zA-Z0-9_]+|\{[^{}]*\})(?:\^(?:\{[^{}]*\}|[a-zA-Z0-9]+))?)/g,
       "\\frac{$1}{$2}"
     );
 

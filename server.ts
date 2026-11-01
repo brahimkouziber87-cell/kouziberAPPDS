@@ -3,7 +3,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import dotenv from "dotenv";
 import QRCode from "qrcode";
 
@@ -38,15 +38,15 @@ function resolveGeminiModel(modelChoice?: string): {
   sdkModel: string;
   displayLabel: string;
 } {
-  if (modelChoice === "gemini-4-argon") {
+  if (modelChoice === "gemini-4-argon" || modelChoice === "gemini-3.1-pro-preview") {
     return {
-      sdkModel: "gemini-4-argon",
-      displayLabel: "Gemini 4 Argon (High-Reasoning Math Engine)",
+      sdkModel: "gemini-3.1-pro-preview",
+      displayLabel: "Gemini 3.1 Pro (High-Reasoning Math Engine)",
     };
   }
   return {
-    sdkModel: "gemini-3.8-flash",
-    displayLabel: "Gemini Flash 3.8 (Fast Pedagogical Engine)",
+    sdkModel: "gemini-3-flash-preview",
+    displayLabel: "Gemini 3 Flash (Fast Pedagogical Engine)",
   };
 }
 
@@ -114,35 +114,22 @@ async function generateGeminiContentWithFallback(
       ...finalConfig,
     });
   } catch (firstErr) {
-    // Retry 1: fallback to gemini-3.8-flash with config
+    // Retry 1: fallback to gemini-3-flash-preview with config
     try {
       return await client.models.generateContent({
-        model: "gemini-3.8-flash",
+        model: "gemini-3-flash-preview",
         contents: contents as any,
         ...(config && Object.keys(config).length > 0 ? { config } : {}),
       });
     } catch {
-      // Retry 2: fallback to standard production Gemini 2.5 models for external API keys
-      const fallbackStandardModel =
-        targetModel === "gemini-4-argon" ? "gemini-2.5-pro" : "gemini-2.5-flash";
+      // Retry 2: fallback to gemini-2.5-flash
       try {
         return await client.models.generateContent({
-          model: fallbackStandardModel,
+          model: "gemini-2.5-flash",
           contents: contents as any,
           ...(config && Object.keys(config).length > 0 ? { config } : {}),
         });
       } catch {
-        if (fallbackStandardModel !== "gemini-2.5-flash") {
-          try {
-            return await client.models.generateContent({
-              model: "gemini-2.5-flash",
-              contents: contents as any,
-              ...(config && Object.keys(config).length > 0 ? { config } : {}),
-            });
-          } catch {
-            throw firstErr;
-          }
-        }
         throw firstErr;
       }
     }
@@ -180,6 +167,269 @@ function buildServerSidePedagogicalMathResponse(params: {
   const isProb = /احتمال|كيس|صندوق|urne|probabilit|عشوائي|binomiale|تعداد|سحب/i.test(
     cleanProblem
   );
+
+  if (task === "GENERATE_EPIS_REMEDIATION") {
+    return {
+      task,
+      titleAr:
+        "تشخيص العوائق الإبستيمولوجية والديداكتيكية وبطاقة الدعم الفردي الموجه (Brousseau)",
+      titleFr:
+        "Diagnostic des Obstacles Épistémologiques & Fiche de Remédiation Différenciée",
+      trackLabel,
+      latexFormulas: [
+        "\\ln(a + b) \\neq \\ln(a) + \\ln(b) \\quad ; \\quad \\ln(a \\cdot b) = \\ln(a) + \\ln(b)\\; (a,b > 0)",
+        "\\left(\\frac{u}{v}\\right)' = \\frac{u'v - uv'}{v^2} \\neq \\frac{u'}{v'}",
+        "(u(x))^2 = k > 0 \\iff u(x) = \\sqrt{k} \\;\\text{أو}\\; u(x) = -\\sqrt{k}",
+      ],
+      stepByStepProofAr: `1. رصد وتحليل العائق الإبستيمولوجي والديداكتيكي (Obstacle Épistémologique & Didactique - Guy Brousseau):
+- في الوضعية الرياضية المدخلة (${cleanProblem.slice(0, 90)}...)، يبرز عائق إبستيمولوجي كلاسيكي يتمثل في "التعميم الخطي المفرط" (Sur-généralisation de la linéarité): يميل المتعلم إلى معاملة المؤثرات غير الخطية (مثل $\\ln$ أو $\\exp$ أو الجذر المربع أو الاشتقاق لجداء/خارج) وكأنها تطبيقات خطية تحقق $f(a+b)=f(a)+f(b)$.
+- العائق الثاني المرصود هو "الخلط بين الشرط اللازم والشرط الكافي" أو "الانتقال إلى النهاية قبل إثبات التقارب".
+
+2. استراتيجية المعالجة الديداكتيكية وبناء التناقض المعرفي (Conflit Cognitif & Remédiation):
+- المرحلة أ (المثال المضاد الحاسم - Contre-exemple): مطالبة التلميذ بحساب الطرفين عددياً في حالة بسيطة (مثلاً $a=1, b=1$) ليدرك بنفسه استحالة المساواة الخاطئة.
+- المرحلة ب (إرساء القاعدة الصحيحة بالسجلين الجبري والهندسي): ربط القاعدة الجبرية بتأويلها المبياني (مماس، تقعر، أو مسافة).
+- المرحلة ج (تمرين الدعم الفردي التدرجي): تمرير بطاقة دعم قصيرة من 3 أسئلة موجهة (تحقق $\\leftarrow$ تصويب $\\leftarrow$ تطبيق مستقل).`,
+      stepByStepProofFr: `1. Identification de l'obstacle épistémologique (Théorie des situations didactiques - Brousseau) :
+- Dans l'énoncé analysé, l'obstacle principal relève du théorème-en-acte erroné de « pseudo-linéarité » des fonctions transcendantes ou de l'opérateur de dérivation d'un quotient.
+2. Dispositif de remédiation par conflit cognitif :
+- Étape A : Invalidation par un contre-exemple numérique immédiat.
+- Étape B : Institutionnalisation de la propriété exacte et de ses hypothèses de validité.
+- Étape C : Micro-exercice de remédiation ciblée gradué en 3 sous-questions.`,
+      theoremsUsed: [
+        "نظرية الوضعيات الديداكتيكية والعوائق الإبستيمولوجية (Guy Brousseau)",
+        "تقنية المثال المضاد لإحداث الصراع المعرفي (Conflit socio-cognitif)",
+        "شبكة الدعم الفردي الفارقي حسب مجموعات التحكم (A / ECA / NA)",
+      ],
+      commonPitfallsAr: [
+        "عائق الخطية الزائفة: كتابة ln(x + 1) = ln(x) + ln(1) أو √(a² + b²) = a + b.",
+        "عائق اشتقاق المركب: نسيان الضرب في مشتقة الدالة الداخلية u'(x) في (e^{u(x)})' = u'(x)e^{u(x)}.",
+        "عائق الرتابة والاتصال: تطبيق مبرهنة القيم الوسيطية (TVI) لإثبات الوحدانية دون ذكر الرتابة القطعية.",
+      ],
+      commonPitfallsFr: [
+        "Obstacle de pseudo-linéarité : écrire ln(a+b) = ln(a)+ln(b) ou (u/v)' = u'/v'.",
+        "Oubli de la dérivée intérieure u'(x) lors de la dérivation d'une fonction composée.",
+      ],
+      variantExercise: {
+        titleAr: "بطاقة تمرين الدعم الفردي الموجه لمعالجة التعثرات (Fiche de Remédiation Ciblée)",
+        titleFr: "Fiche d'Exercice de Remédiation Différenciée (Soutien Ciblé)",
+        statementAr: `تمرين الدعم الفردي (20 دقيقة — خاص بمعالجة العوائق المرصودة):
+1. [مثال مضاد وتصويب]: نعتبر التعبير A(x) = ln(e² · x) والتعبير B(x) = (ln x)² على ]0, +∞[.
+   أ) أحسب A(1) و B(e)، ثم بسط A(x) باستعمال خاصية لوغاريتم الجداء. (1.0 ن)
+   ب) علل لماذا الكتابة (B(x))' = 2/x خاطئة، ثم أحسب المشتقة الصحيحة لـ B(x) باستعمال قاعدة (u²)' = 2u'u. (1.5 ن)
+2. [تطبيق موجه]: نعتبر الدالة f(x) = (2 ln(x) - 1)/x على ]0, +∞[.
+   أ) بين أن لكل x > 0: f'(x) = (3 - 2 ln(x)) / x². (1.5 ن)
+   ب) أدرس إشارة 3 - 2 ln(x) على ]0, +∞[ ثم ضع جدول تغيرات الدالة f. (1.5 ن)`,
+        statementFr: `Exercice de Remédiation Ciblée (20 min) :
+1. [Contre-exemple et correction] : Soient A(x) = ln(e² · x) et B(x) = (ln x)² sur ]0, +∞[.
+   a) Calculer A(1) et B(e), puis simplifier A(x). (1.0 pt)
+   b) Expliquer pourquoi (B(x))' = 2/x est faux, puis calculer la dérivée exacte via (u²)' = 2u'u. (1.5 pt)
+2. [Application guidée] : Soit f(x) = (2 ln(x) - 1)/x sur ]0, +∞[.
+   a) Montrer que pour tout x > 0, f'(x) = (3 - 2 ln(x)) / x². (1.5 pt)
+   b) Étudier le signe de 3 - 2 ln(x) et dresser le tableau de variations de f. (1.5 pt)`,
+        solutionAr: `1. أ) A(1) = ln(e²) = 2 و B(e) = (1)² = 1. ولكل x > 0: A(x) = ln(e²) + ln(x) = 2 + ln(x).
+   ب) B(x) هي مربع الدالة u(x) = ln(x)، إذن مشتقتها هي B'(x) = 2 u'(x) u(x) = 2 ln(x) / x.
+2. أ) بتطبيق قاعدة خارج دالتين: f'(x) = [(2/x)·x - 1·(2 ln x - 1)] / x² = (2 - 2 ln x + 1) / x² = (3 - 2 ln x) / x².
+   ب) 3 - 2 ln(x) ≥ 0 ⇔ ln(x) ≤ 3/2 ⇔ 0 < x ≤ e^{3/2}. إذن f تزايدية على ]0, e^{3/2}] وتناقصية على [e^{3/2}, +∞[.`,
+        solutionFr: `1. a) A(x) = 2 + ln(x). b) B'(x) = 2 ln(x) / x.
+2. a) Par dérivation d'un quotient, f'(x) = (3 - 2 ln x)/x². b) f croît sur ]0, e^{3/2}] et décroît sur [e^{3/2}, +∞[.`,
+      },
+      gradingRubric: [
+        {
+          questionRef: "1.a",
+          criterionAr: "التمييز بين ln(ab) و (ln x)² وحساب القيم العددية بدقة",
+          criterionFr: "Distinction entre ln(ab) et (ln x)²",
+          points: 1.0,
+          skillLevel: "N1" as const,
+          remediationAr: "التذكير بأن ln يحول الجداء إلى مجموع داخل الأقواس فقط",
+        },
+        {
+          questionRef: "1.b",
+          criterionAr: "تطبيق قاعدة مشتقة القوة المركبة (u^n)' = n·u'·u^{n-1}",
+          criterionFr: "Dérivation de (u(x))^2 = 2 u'(x) u(x)",
+          points: 1.5,
+          skillLevel: "N2" as const,
+          remediationAr: "تفكيك الدالة المركبة إلى u(x) = ln(x) قبل الاشتقاق",
+        },
+        {
+          questionRef: "2.a-b",
+          criterionAr: "حساب مشتقة الخارج وحل المتراجحة اللوغاريتمية",
+          criterionFr: "Dérivée du quotient et résolution de 3 - 2ln(x) ≥ 0",
+          points: 3.0,
+          skillLevel: "N2" as const,
+          remediationAr: "الانتباه لعكس المتفاوتة عند القسمة على العدد السالب (-2)",
+        },
+      ],
+      pythonScenario: {
+        titleAr: "خوارزمية بايثون للتحقق العددي من المثال المضاد ومشتقة الدالة",
+        titleFr: "Script Python : Vérification numérique de la dérivée et contre-exemple",
+        objectiveAr: "مقارنة القيمة المضبوطة للمشتقة بمعدل التغير لمساعدة التلميذ على التحقق الذاتي",
+        objectiveFr: "Comparer le taux d'accroissement et la formule de la dérivée",
+        code: `import math
+
+def f(x):
+    return (2 * math.log(x) - 1) / x
+
+def f_prime_exacte(x):
+    return (3 - 2 * math.log(x)) / (x ** 2)
+
+x0, h = 2.0, 1e-6
+taux = (f(x0 + h) - f(x0)) / h
+print("Taux d'accroissement :", round(taux, 6))
+print("Formule exacte f'(2) :", round(f_prime_exacte(x0), 6))`,
+        questionsAr: [
+          "1. ماذا يمثل المتغير taux في السطر العاشر عندما يؤول h إلى 0؟",
+          "2. قارن النتيجة مع الصيغة الخاطئة (u'/v') لتستنتج صحة قانون اشتقاق الخارج.",
+        ],
+        questionsFr: [
+          "1. Que représente la variable taux lorsque h tend vers 0 ?",
+          "2. Vérifier la concordance avec f'(2).",
+        ],
+        sampleOutput: "Taux d'accroissement : 0.403426 | Formule exacte f'(2) : 0.403426",
+      },
+      didacticAudit: {
+        estimatedDurationMinutes: 25,
+        suggestedPoints: 5.5,
+        n1Percentage: 45,
+        n2Percentage: 45,
+        n3Percentage: 10,
+        complianceNotesAr: "بطاقة دعم فارقي مطابقة لتوجيهات معالجة التعثرات عقب الفروض المحروسة.",
+        complianceNotesFr: "Fiche de remédiation ciblée conforme aux directives d'accompagnement.",
+      },
+    };
+  }
+
+  if (task === "GENERATE_OLYMPIAD_CHALLENGE") {
+    return {
+      task,
+      titleAr:
+        "تحدي الأولمبياد الوطنية والمباراة العامة مع إرشادات جورج بوليا الاستكشافية (Polya Heuristics)",
+      titleFr:
+        "Défi Olympiades Nationales & Concours Général avec Heuristiques de Polya",
+      trackLabel,
+      latexFormulas: [
+        "\\forall n \\in \\mathbb{N}^*,\\; \\exists! x_n \\in ]0,1[,\\; f_n(x_n) = x_n^n + x_n - 1 = 0",
+        "x_n^n = 1 - x_n \\implies n \\ln(x_n) = \\ln(1 - x_n)",
+        "\\lim_{n \\to +\\infty} x_n = 1^- \\quad \\text{et} \\quad 1 - x_n \\underset{+\\infty}{\\sim} \\frac{\\ln n}{n}",
+      ],
+      stepByStepProofAr: `🧭 منهجية جورج بوليا الاستكشافية (Heuristiques de Polya — 4 مراحل):
+• المرحلة 1 (فهم البنية الرياضية للمسألة): نبحث عن السلوك المقارب للجذر الوحيد $x_n$ للمعادلة $x^n + x - 1 = 0$ على $]0, 1[$ عندما يؤول $n$ إلى $+\\infty$.
+• المرحلة 2 (بناء خطة الحل والربط بالمعارف): نستعمل رتابة المتتالية $(x_n)$ لإثبات تقاربها، ثم نأخذ اللوغاريتم النيبيري للعلاقة $x_n^n = 1 - x_n$ لكسر القوة النونية $n$.
+• المرحلة 3 (تنفيذ البرهان الصارم):
+  1) الدالة $f_n(x) = x^n + x - 1$ متصلة وتزايدية قطعا على $[0, 1]$ مع $f_n(0)=-1$ و $f_n(1)=1$، إذن تقبل جذراً وحيداً $x_n \\in ]0, 1[$.
+  2) بما أن $x_n \\in ]0, 1[$ فإن $x_n^{n+1} < x_n^n = 1 - x_n$ ومنه $f_{n+1}(x_n) < 0 = f_{n+1}(x_{n+1})$، وبما أن $f_{n+1}$ تزايدية فإن $x_n < x_{n+1}$. إذن $(x_n)$ تزايدية ومكبورة بـ 1 فهي متقاربة نحو $\\ell \\in ]0, 1]$.
+  3) لو كان $\\ell < 1$ لكان $\\lim x_n^n = 0$ ومنه $\\ell = 1 - 0 = 1$ (تناقض)، إذن $\\lim_{n \\to +\\infty} x_n = 1$.
+• المرحلة 4 (المراجعة والتعميم Asymptotics): بوضع $x_n = 1 - u_n$ مع $u_n \\to 0^+$ نجد $n \\ln(1 - u_n) = \\ln(u_n)$ ومنه $-n u_n \\sim \\ln(u_n)$ أي $1 - x_n \\sim \\frac{\\ln n}{n}$.`,
+      stepByStepProofFr: `🧭 Démarche Heuristique de Polya en 4 étapes :
+1. Comprendre le problème : Étudier la suite $(x_n)$ des racines uniques de $x^n + x - 1 = 0$ sur $]0, 1[$.
+2. Concevoir un plan : Utiliser la stricte croissance de $f_n$ pour comparer $f_{n+1}(x_n)$ et $0$, puis passer au logarithme dans $x_n^n = 1 - x_n$.
+3. Exécuter le plan : $f_{n+1}(x_n) = x_n^{n+1} + x_n - 1 < x_n^n + x_n - 1 = 0$, donc $(x_n)$ est croissante et majorée par 1, et converge vers 1.
+4. Regard rétrospectif : Développement asymptotique $x_n = 1 - \\frac{\\ln n}{n} + o\\left(\\frac{\\ln n}{n}\\right)$.`,
+      theoremsUsed: [
+        "استراتيجية جورج بوليا لحل المسائل غير النمطية (How to Solve It - G. Polya)",
+        "مبرهنة التقارب المطرد للمتتاليات الضمنية (Suites définies implicitement)",
+        "التحليل المقارب واستعمال اللوغاريتم لتفكيك القوى المتغيرة (Analyse asymptotique)",
+      ],
+      commonPitfallsAr: [
+        "الانتقال المباشر إلى النهاية في x_n^n عندما يؤول n إلى +∞ وكتابة 1^∞ = 1 (شكل غير محدد).",
+        "إغفال مقارنة x_n و x_{n+1} عبر الصورة بالدالة f_{n+1} بدل الدالة f_n.",
+      ],
+      commonPitfallsFr: [
+        "Passer à la limite dans x_n^n en écrivant 1^∞ = 1 (forme indéterminée).",
+        "Oublier d'évaluer f_{n+1}(x_n) pour déterminer la monotonie de (x_n).",
+      ],
+      variantExercise: {
+        titleAr: "مسألة التميز والمباراة العامة (Question Défi / Concours Général — مستوى N3+)",
+        titleFr: "Problème d'Excellence & Concours Général (Niveau N3+ / Bonus)",
+        statementAr: `مسألة التميز والأولمبياد (تضاف كسؤال تحدٍّ للمتفوقين أو في سلسلة التميز):
+لكل عدد صحيح طبيعي غير منعدم n، نعتبر الدالة f_n المعرفة على [0, 1] بـ: f_n(x) = x^n + x - 1.
+1. بين أن المعادلة f_n(x) = 0 تقبل حلاً وحيداً x_n في المجال المفتوح ]0, 1[. (1.0 ن)
+2. أ) أحسب إشارة f_{n+1}(x_n) واستنتج أن المتتالية (x_n)_{n≥1} تزايدية قطعا ومتقاربة. (1.5 ن)
+   ب) بإثبات بالخلف أن نهاية (x_n) لا يمكن أن تكون أصغر قطعا من 1، استنتج أن lim_{n→+∞} x_n = 1. (1.5 ن)
+3. [سؤال التحدي N3+]: بين أن lim_{n→+∞} n(1 - x_n) = +∞ ثم تحقق من أن lim_{n→+∞} n(1 - x_n)/ln(n) = 1. (2.0 ن)
+💡 إرشاد بوليا (Polya Hint): خذ اللوغاريتم النيبيري في المتساوية x_n^n = 1 - x_n واستعمل النهاية الاعتيادية lim_{u→0} ln(1 - u)/u = -1.`,
+        statementFr: `Problème d'Excellence / Concours Général :
+Pour tout entier n ≥ 1, soit f_n(x) = x^n + x - 1 sur [0, 1].
+1. Montrer que l'équation f_n(x) = 0 admet une unique solution x_n ∈ ]0, 1[. (1.0 pt)
+2. a) Étudier le signe de f_{n+1}(x_n) et en déduire que la suite (x_n) est croissante et convergente. (1.5 pt)
+   b) Montrer par l'absurde que lim_{n→+∞} x_n = 1. (1.5 pt)
+3. [Défi N3+] : Montrer que lim_{n→+∞} n(1 - x_n)/ln(n) = 1. (2.0 pts)
+💡 Indice de Polya : Appliquer le logarithme népérien à l'égalité x_n^n = 1 - x_n.`,
+        solutionAr: `1. f_n متصلة وتزايدية قطعا على [0,1] و f_n(0)·f_n(1) = -1 < 0، إذن حسب TVI يوجد x_n وحيد في ]0,1[.
+2. أ) f_{n+1}(x_n) = x_n^{n+1} + x_n - 1 = x_n^{n+1} - x_n^n = x_n^n(x_n - 1) < 0 = f_{n+1}(x_{n+1})، وبما أن f_{n+1} تزايدية قطعا فإن x_n < x_{n+1}.
+   ب) لو كانت النهاية L < 1 لكان lim x_n^n = 0 ومنه L = 1 - 0 = 1 تناقض، إذن L = 1.
+3. لدينا n ln(x_n) = ln(1 - x_n) → -∞ ومنه n(1 - x_n) ~ -n ln(x_n) = -ln(1 - x_n) → +∞، وبأخذ اللوغاريتم مرة ثانية نحصل على المكافئ ln(n)/n.`,
+        solutionFr: `1. Par stricte croissance et continuité de f_n sur [0, 1] avec f_n(0) = -1 et f_n(1) = 1.
+2. f_{n+1}(x_n) = x_n^n(x_n - 1) < 0 donc x_n < x_{n+1} et lim x_n = 1.
+3. En passant au logarithme : n ln(x_n) = ln(1 - x_n), d'où 1 - x_n ~ ln(n)/n.`,
+      },
+      gradingRubric: [
+        {
+          questionRef: "1",
+          criterionAr: "إثبات وجود ووحدانية الجذر الضمني x_n عبر مبرهنة القيم الوسيطية",
+          criterionFr: "Existence et unicité de x_n par le théorème de la bijection",
+          points: 1.0,
+          skillLevel: "N1" as const,
+          remediationAr: "التحقق من شروط الاتصال والرتابة القطعية وصور المحدات",
+        },
+        {
+          questionRef: "2.a-b",
+          criterionAr: "استثمار إشارة f_{n+1}(x_n) لإثبات الرتابة والبرهان بالخلف على النهاية",
+          criterionFr: "Monotonie de la suite implicite et raisonnement par l'absurde",
+          points: 3.0,
+          skillLevel: "N3" as const,
+          remediationAr: "تعميل الفرق x_n^{n+1} - x_n^n = x_n^n(x_n - 1)",
+        },
+        {
+          questionRef: "3",
+          criterionAr: "توظيف اللوغاريتم النيبيري لاستنتاج السلوك المقارب ln(n)/n",
+          criterionFr: "Équivalent asymptotique via le logarithme",
+          points: 2.0,
+          skillLevel: "N3" as const,
+          remediationAr: "استعمال النهاية المرجعية lim_{u→0} ln(1-u)/u = -1",
+        },
+      ],
+      pythonScenario: {
+        titleAr: "محاكاة بايثون لحساب الجذور الضمنية x_n والتحقق من السلوك المقارب ln(n)/n",
+        titleFr: "Simulation Python : Calcul numérique de x_n et vérification asymptotique",
+        objectiveAr: "ملاحظة تقارب x_n نحو 1 وتقارب النسبة n(1-x_n)/ln(n) نحو 1",
+        objectiveFr: "Observer la convergence de x_n vers 1 et le comportement asymptotique",
+        code: `import math
+
+def solve_xn(n, eps=1e-10):
+    a, b = 0.0, 1.0
+    while (b - a) > eps:
+        m = (a + b) / 2
+        if (m**n + m - 1) <= 0:
+            a = m
+        else:
+            b = m
+    return (a + b) / 2
+
+for n in [10, 50, 200]:
+    xn = solve_xn(n)
+    ratio = n * (1 - xn) / math.log(n)
+    print(f"n={n:3d} | x_n={xn:.6f} | n(1-x_n)/ln(n)={ratio:.4f}")`,
+        questionsAr: [
+          "1. ماذا تلاحظ حول قيم المتتالية x_n عندما يكبر العدد الصحيح n؟",
+          "2. نحو أي عدد تؤول النسبة n(1 - x_n)/ln(n) في العمود الأخير؟",
+        ],
+        questionsFr: [
+          "1. Que constate-t-on sur les valeurs de x_n lorsque n augmente ?",
+          "2. Vers quelle limite tend le quotient n(1 - x_n)/ln(n) ?",
+        ],
+        sampleOutput: "n= 10 | x_n=0.835079 | ratio=0.7162 ; n=200 | x_n=0.976085 | ratio=0.9027",
+      },
+      didacticAudit: {
+        estimatedDurationMinutes: 40,
+        suggestedPoints: 6.0,
+        n1Percentage: 15,
+        n2Percentage: 35,
+        n3Percentage: 50,
+        complianceNotesAr: "مسألة تميز وأولمبياد من المستوى العالي N3+ مناسبة لمسلك العلوم الرياضية والمباراة العامة.",
+        complianceNotesFr: "Problème d'excellence de niveau N3+ adapté aux Sciences Mathématiques et Olympiades.",
+      },
+    };
+  }
 
   if (isSequence) {
     return {
@@ -2464,6 +2714,10 @@ ${waContext}
             taskInstructions = `المهمة: تفكيك التمرين إلى سلم تنقيط رسمي دقيق ومفصل بـ 0.25 و 0.5 نقطة (Barème détaillé conforme à la note 142-08) مزدوج اللغة (عربي/فرنسي)، مع تحديد الكفايات المستهدفة وشبكة معالجة الأخطاء المتوقعة (Grille de remédiation pédagogique).`;
           } else if (task === "GENERATE_PYTHON_DIDACTIC") {
             taskInstructions = `المهمة: كتابة سيناريو وخوارزمية برمجية بلغة بايثون (Python Algorithm) مرتبطة بموضوع المسألة (متتاليات، بحث عن عتبة، تفريع ثنائي، تكامل عددي بطريقة المستطيلات أو شبه المنحرف، محاكاة احتمالية)، مع كتابة أسئلة موجهة للتلاميذ (أسئلة بملء الفراغات وتحليل الأثر العددي).`;
+          } else if (task === "GENERATE_EPIS_REMEDIATION") {
+            taskInstructions = `المهمة: تشخيص العوائق الإبستيمولوجية والديداكتيكية (Obstacles Épistémologiques & Didactiques selon Guy Brousseau) الكامنة في هذا التمرين، وتوليد بطاقة دعم فردي فارقي (Fiche de Remédiation Ciblée) تضم مثالاً مضاداً لإحداث الصراع المعرفي وتمرين دعم مركزاً مع الحل لمعالجة تعثرات المتعلمين.`;
+          } else if (task === "GENERATE_OLYMPIAD_CHALLENGE") {
+            taskInstructions = `المهمة: صياغة مسألة تميز وأولمبياد (Olympiades Nationales / Concours Général — مستوى N3+) مستلهمة من الموضوع المدخل، مرفقة بإرشادات جورج بوليا الاستكشافية الأربع (Polya's 4-Step Heuristics: فهم المسألة، بناء الخطة، تنفيذ البرهان، التعميم) مع الحل الرياضي الكامل.`;
           } else {
             taskInstructions = `المهمة: تدقيق ديداكتيكي شامل (Audit Didactique) للمسألة وفق المذكرة الوزارية 142-08 والمنهاج الوطني: تقييم التوزيع المئوي للمستويات المهارية (N1 تطبيق مباشر، N2 تعبئة وتوليف، N3 بحث ومبادرة)، المدة الزمنية التقديرية، ومدى ملاءمة التمرين لسقف 20 نقطة.`;
           }
@@ -2527,11 +2781,97 @@ ${taskInstructions}
   }
 }`;
 
+          const aiMathResponseSchema = {
+            type: Type.OBJECT,
+            properties: {
+              task: { type: Type.STRING },
+              titleAr: { type: Type.STRING },
+              titleFr: { type: Type.STRING },
+              trackLabel: { type: Type.STRING },
+              latexFormulas: { type: Type.ARRAY, items: { type: Type.STRING } },
+              stepByStepProofAr: { type: Type.STRING },
+              stepByStepProofFr: { type: Type.STRING },
+              theoremsUsed: { type: Type.ARRAY, items: { type: Type.STRING } },
+              commonPitfallsAr: { type: Type.ARRAY, items: { type: Type.STRING } },
+              commonPitfallsFr: { type: Type.ARRAY, items: { type: Type.STRING } },
+              variantExercise: {
+                type: Type.OBJECT,
+                properties: {
+                  titleAr: { type: Type.STRING },
+                  titleFr: { type: Type.STRING },
+                  statementAr: { type: Type.STRING },
+                  statementFr: { type: Type.STRING },
+                  solutionAr: { type: Type.STRING },
+                  solutionFr: { type: Type.STRING },
+                },
+                required: [
+                  "titleAr",
+                  "titleFr",
+                  "statementAr",
+                  "statementFr",
+                  "solutionAr",
+                  "solutionFr",
+                ],
+              },
+              gradingRubric: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    questionRef: { type: Type.STRING },
+                    criterionAr: { type: Type.STRING },
+                    criterionFr: { type: Type.STRING },
+                    points: { type: Type.NUMBER },
+                    skillLevel: { type: Type.STRING },
+                    remediationAr: { type: Type.STRING },
+                  },
+                },
+              },
+              pythonScenario: {
+                type: Type.OBJECT,
+                properties: {
+                  titleAr: { type: Type.STRING },
+                  titleFr: { type: Type.STRING },
+                  objectiveAr: { type: Type.STRING },
+                  objectiveFr: { type: Type.STRING },
+                  code: { type: Type.STRING },
+                  questionsAr: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  questionsFr: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  sampleOutput: { type: Type.STRING },
+                },
+              },
+              didacticAudit: {
+                type: Type.OBJECT,
+                properties: {
+                  estimatedDurationMinutes: { type: Type.NUMBER },
+                  suggestedPoints: { type: Type.NUMBER },
+                  n1Percentage: { type: Type.NUMBER },
+                  n2Percentage: { type: Type.NUMBER },
+                  n3Percentage: { type: Type.NUMBER },
+                  complianceNotesAr: { type: Type.STRING },
+                  complianceNotesFr: { type: Type.STRING },
+                },
+              },
+            },
+            required: [
+              "task",
+              "titleAr",
+              "titleFr",
+              "stepByStepProofAr",
+              "stepByStepProofFr",
+              "variantExercise",
+              "gradingRubric",
+              "pythonScenario",
+              "didacticAudit",
+            ],
+          };
+
           const response = await generateGeminiContentWithFallback(
             targetModel,
             systemPrompt,
             {
               responseMimeType: "application/json",
+              responseSchema: aiMathResponseSchema,
             },
             thinkingLevel
           );
@@ -2578,6 +2918,497 @@ ${taskInstructions}
         thinkingLevelUsed: req.body?.thinkingLevel || "HIGH",
         sourceMode: "HYBRID_SYMBOLIC_ENGINE",
         result: fallbackResult,
+        warning: err instanceof Error ? err.message : undefined,
+      });
+    }
+  });
+
+  // ============================================================================
+  // نقطة نهاية توليد التمارين الرياضية من المقاطع المظللة في عارض PDF التفاعلي
+  // (AI Highlight-to-Exercise Generator — Multimodal Text + Cropped PDF Region)
+  // ============================================================================
+  function buildFallbackExerciseFromHighlight(params: {
+    highlightedText: string;
+    generationMode: string;
+    trackLabel: string;
+    educationSystem: string;
+    pageNumber?: number;
+  }) {
+    const {
+      highlightedText,
+      generationMode = "ISOMORPHIC_EXERCISE",
+      trackLabel,
+      pageNumber = 1,
+    } = params;
+    const text = (highlightedText || "").trim();
+
+    const isSeq =
+      /u_n|u_\{n|v_n|متتالية|متتاليات|suite|récurrence|ترجع/i.test(text);
+    const isComplex =
+      /عقدي|عقدية|complexe|affixe|module|argument|z\^2|z²|ألحاق|لحق|الشكل الأسي/i.test(
+        text
+      );
+    const isIntegral =
+      /تكامل|intégrale|\\int|∫|أصلية|primitive|مكاملة بالأجزاء/i.test(text);
+    const isSpace =
+      /فضاء|فضائية|فلكة|sphère|متجهي|جداء سلمي|scalaire|vectoriel|بارامتري/i.test(
+        text
+      );
+    const isProb =
+      /احتمال|كيس|صندوق|urne|probabilit|عشوائي|binomiale|تعداد|سحب/i.test(text);
+
+    const modeBadgeAr =
+      generationMode === "GRADUATED_QUESTIONS"
+        ? "أسئلة متدرجة (N1 → N2 → N3)"
+        : generationMode === "REMEDIATION_DRILL"
+        ? "تمرين دعم وتثبيت للمقطع المظلل"
+        : generationMode === "SYNTHESIS_EXTENSION"
+        ? "توسيع توليفي على نمط الامتحان الوطني"
+        : "تمرين موازٍ للمقطع المظلل (Clone Isomorphe)";
+
+    const modeBadgeFr =
+      generationMode === "GRADUATED_QUESTIONS"
+        ? "Questions graduées (N1 → N2 → N3)"
+        : generationMode === "REMEDIATION_DRILL"
+        ? "Exercice de consolidation ciblée"
+        : generationMode === "SYNTHESIS_EXTENSION"
+        ? "Extension de synthèse Type Bac"
+        : "Exercice isomorphe basé sur la sélection";
+
+    if (isSeq) {
+      return {
+        titleAr: `المتتاليات العددية الترجعية — ${modeBadgeAr} (ص. ${pageNumber})`,
+        titleFr: `Suites numériques récurrentes — ${modeBadgeFr} (p. ${pageNumber})`,
+        detectedTopicAr: "دراسة المتتاليات العددية والبرهان بالترجع",
+        detectedTopicFr: "Étude des suites numériques et raisonnement par récurrence",
+        extractedMathSummaryAr:
+          text.length > 5
+            ? `المقطع المظلل المستخرج: « ${text.slice(0, 180)} »`
+            : "مقطع رياضي يتضمن متتالية عددية ترجعية ومتتالية مساعدة.",
+        extractedMathSummaryFr:
+          text.length > 5
+            ? `Extrait sélectionné : « ${text.slice(0, 180)} »`
+            : "Section portant sur une suite homographique et une suite auxiliaire.",
+        targetLevel: "N2" as const,
+        suggestedPoints: 5.0,
+        questions: [
+          {
+            num: "1",
+            level: "N1" as const,
+            points: 1.5,
+            statementAr:
+              "نعتبر المتتالية العددية $(u_n)$ المعرفة بـ $u_0 = 3$ و $u_{n+1} = \\frac{5u_n - 4}{u_n + 1}$ لكل $n \\in \\mathbb{N}$. أحسب $u_1$ و $u_2$ ثم بين بالترجع أن $u_n > 2$ لكل $n \\in \\mathbb{N}$.",
+            statementFr:
+              "Soit $(u_n)$ la suite définie par $u_0 = 3$ et $u_{n+1} = \\frac{5u_n - 4}{u_n + 1}$ pour tout $n \\in \\mathbb{N}$. Calculer $u_1$ et $u_2$, puis montrer par récurrence que $u_n > 2$ pour tout $n \\in \\mathbb{N}$.",
+            solutionAr:
+              "لدينا $u_1 = \\frac{15-4}{4} = \\frac{11}{4} = 2.75 > 2$. بالترجع: نلاحظ أن $u_{n+1} - 2 = \\frac{3(u_n - 2)}{u_n + 1} > 0$ لأن $u_n > 2$. إذن $(\\forall n \\in \\mathbb{N})\\; u_n > 2$.",
+            solutionFr:
+              "$u_1 = \\frac{11}{4} > 2$. Par récurrence : $u_{n+1} - 2 = \\frac{3(u_n - 2)}{u_n + 1} > 0$ car $u_n > 2$. D'où $u_n > 2$ pour tout $n \\in \\mathbb{N}$.",
+            hintAr: "أدرس إشارة الفرق $u_{n+1} - 2$ بتوحيد المقامات.",
+            hintFr: "Étudier le signe de la différence $u_{n+1} - 2$.",
+          },
+          {
+            num: "2",
+            level: "N2" as const,
+            points: 1.5,
+            statementAr:
+              "أدرس رتابة المتتالية $(u_n)$ وبين أنها متقاربة.",
+            statementFr:
+              "Étudier la monotonie de la suite $(u_n)$ et en déduire qu'elle est convergente.",
+            solutionAr:
+              "لدينا $u_{n+1} - u_n = \\frac{-(u_n - 2)^2}{u_n + 1} < 0$. إذن المتتالية $(u_n)$ تناقصية قطعا ومصغورة بالعدد $2$، فهي متقاربة.",
+            solutionFr:
+              "$u_{n+1} - u_n = \\frac{-(u_n - 2)^2}{u_n + 1} < 0$. La suite $(u_n)$ est strictement décroissante et minorée par $2$, donc elle converge.",
+            hintAr: "احسب $u_{n+1} - u_n$ ولاحظ المتطابقة الهامة في البسط.",
+            hintFr: "Factoriser le numérateur de $u_{n+1} - u_n$.",
+          },
+          {
+            num: "3",
+            level: "N3" as const,
+            points: 2.0,
+            statementAr:
+              "نضع $v_n = \\frac{1}{u_n - 2}$ لكل $n \\in \\mathbb{N}$. بين أن $(v_n)$ متتالية حسابية أساسها $r = \\frac{1}{3}$، ثم أكتب $u_n$ بدلالة $n$ وأحسب $\\lim_{n \\to +\\infty} u_n$.",
+            statementFr:
+              "On pose $v_n = \\frac{1}{u_n - 2}$. Montrer que $(v_n)$ est une suite arithmétique de raison $r = \\frac{1}{3}$, exprimer $u_n$ en fonction de $n$ et calculer $\\lim_{n \\to +\\infty} u_n$.",
+            solutionAr:
+              "$v_{n+1} = \\frac{u_n + 1}{3(u_n - 2)} = \\frac{u_n - 2 + 3}{3(u_n - 2)} = v_n + \\frac{1}{3}$. إذن $v_n = 1 + \\frac{n}{3}$ ومنه $u_n = 2 + \\frac{3}{n+3}$، وبالتالي $\\lim_{n \\to +\\infty} u_n = 2$.",
+            solutionFr:
+              "$v_{n+1} = v_n + \\frac{1}{3}$ avec $v_0 = 1$, donc $v_n = 1 + \\frac{n}{3}$ et $u_n = 2 + \\frac{3}{n+3}$. Ainsi $\\lim_{n \\to +\\infty} u_n = 2$.",
+            hintAr: "عوض $u_n + 1$ بـ $(u_n - 2) + 3$ في بسط $v_{n+1}$.",
+            hintFr: "Écrire $u_n + 1 = (u_n - 2) + 3$ au numérateur.",
+          },
+        ],
+        fullLatexSnippet: `% تمرين مولد من المقطع المظلل في PDF (${trackLabel})\n\\textbf{التمرين (5 نقط): المتتاليات العددية}\n\\begin{enumerate}\n  \\item نعتبر المتتالية $(u_n)$ المعرفة بـ $u_0=3$ و $u_{n+1}=\\frac{5u_n-4}{u_n+1}$. بين بالترجع أن $u_n > 2$.\n  \\item بين أن $(u_n)$ تناقصية واستنتج أنها متقاربة.\n  \\item نضع $v_n=\\frac{1}{u_n-2}$. بين أن $(v_n)$ حسابية أساسها $\\frac{1}{3}$ ثم أحسب $\\lim u_n$.\n\\end{enumerate}`,
+      };
+    }
+
+    if (isComplex) {
+      return {
+        titleAr: `الأعداد العقدية والتحويلات النقطية — ${modeBadgeAr} (ص. ${pageNumber})`,
+        titleFr: `Nombres complexes et transformations — ${modeBadgeFr} (p. ${pageNumber})`,
+        detectedTopicAr: "الأعداد العقدية والهندسة المستوية",
+        detectedTopicFr: "Nombres complexes et géométrie plane",
+        extractedMathSummaryAr:
+          text.length > 5
+            ? `المقطع المظلل المستخرج: « ${text.slice(0, 180)} »`
+            : "مقطع رياضي حول المعادلات في C والألحاق والتحويلات الاعتيادية.",
+        extractedMathSummaryFr:
+          text.length > 5
+            ? `Extrait sélectionné : « ${text.slice(0, 180)} »`
+            : "Section sur les équations dans C, forme exponentielle et rotation.",
+        targetLevel: "N2" as const,
+        suggestedPoints: 5.0,
+        questions: [
+          {
+            num: "1",
+            level: "N1" as const,
+            points: 1.5,
+            statementAr:
+              "حل في مجموعة الأعداد العقدية $\\mathbb{C}$ المعادلة: $z^2 - 4\\sqrt{3}z + 16 = 0$.",
+            statementFr:
+              "Résoudre dans l'ensemble $\\mathbb{C}$ des nombres complexes l'équation : $z^2 - 4\\sqrt{3}z + 16 = 0$.",
+            solutionAr:
+              "المميز $\\Delta = 48 - 64 = -16 = (4i)^2$. الحلان هما $z_1 = 2\\sqrt{3} + 2i$ و $z_2 = 2\\sqrt{3} - 2i$.",
+            solutionFr:
+              "$\\Delta = -16 = (4i)^2$. Les solutions sont $z_1 = 2\\sqrt{3} + 2i$ et $z_2 = 2\\sqrt{3} - 2i$.",
+            hintAr: "أحسب المميز $\\Delta = b^2 - 4ac$ وحوله إلى مربع عدد تخيلي صرف.",
+            hintFr: "Calculer le discriminant $\\Delta = b^2 - 4ac$.",
+          },
+          {
+            num: "2",
+            level: "N2" as const,
+            points: 1.75,
+            statementAr:
+              "نعتبر في المستوى العقدي النقط $A$ و $B$ و $C$ التي ألحاقها $a = 2\\sqrt{3} + 2i$ و $b = 2\\sqrt{3} - 2i$ و $c = 4i$. أكتب $a$ و $b$ على الشكل الأسي ثم بين أن $\\frac{c - b}{a - b} = e^{i\\frac{\\pi}{3}}$.",
+            statementFr:
+              "Soient $A(a)$, $B(b)$ et $C(c)$ avec $a = 2\\sqrt{3} + 2i$, $b = 2\\sqrt{3} - 2i$ et $c = 4i$. Écrire $a$ sous forme exponentielle et vérifier que $\\frac{c - b}{a - b} = \\frac{\\sqrt{3}}{2} + \\frac{1}{2}i$ ou étudier le triangle $OAC$.",
+            solutionAr:
+              "لدينا $|a| = \\sqrt{12+4} = 4$ ومنه $a = 4(\\frac{\\sqrt{3}}{2} + \\frac{1}{2}i) = 4e^{i\\frac{\\pi}{6}}$ و $b = 4e^{-i\\frac{\\pi}{6}}$. كما أن $c = 4e^{i\\frac{\\pi}{2}} = e^{i\\frac{\\pi}{3}} a$.",
+            solutionFr:
+              "$|a| = 4$ et $a = 4e^{i\\pi/6}$, $b = 4e^{-i\\pi/6}$. Comme $c = 4e^{i\\pi/2} = e^{i\\pi/3} a$, $C$ est l'image de $A$ par la rotation de centre $O$ et d'angle $\\pi/3$.",
+            hintAr: "أحسب معيار العدد $a$ ثم عمل به لإظهار $\\cos(\\pi/6)$ و $\\sin(\\pi/6)$.",
+            hintFr: "Factoriser par le module $|a| = 4$.",
+          },
+          {
+            num: "3",
+            level: "N3" as const,
+            points: 1.75,
+            statementAr:
+              "استنتج أن النقطة $C$ هي صورة النقطة $A$ بالدوران $R$ الذي مركزه $O$ وزاويته $\\frac{\\pi}{3}$، ثم حدد طبيعة المثلث $OAC$.",
+            statementFr:
+              "En déduire que $C$ est l'image de $A$ par la rotation $R$ de centre $O$ et d'angle $\\frac{\\pi}{3}$, puis déterminer la nature exacte du triangle $OAC$.",
+            solutionAr:
+              "بما أن $c = e^{i\\frac{\\pi}{3}} a$ فإن $R(A) = C$. ومنه $OA = OC = 4$ و $(\\overline{\\vec{OA}, \\vec{OC}}) \\equiv \\frac{\\pi}{3}\\;[2\\pi]$، إذن المثلث $OAC$ متساوي الأضلاع.",
+            solutionFr:
+              "On a $c = e^{i\\pi/3} a$, donc $OA = OC$ et $(\\vec{OA}, \\vec{OC}) \\equiv \\pi/3\\;[2\\pi]$. Le triangle $OAC$ est équilatéral.",
+            hintAr: "استعمل الكتابة العقدية للدوران الذي مركزه أصل المعلم $O$.",
+            hintFr: "Utiliser l'écriture complexe de la rotation de centre $O$.",
+          },
+        ],
+        fullLatexSnippet: `% تمرين مولد من المقطع المظلل في PDF (${trackLabel})\n\\textbf{التمرين (5 نقط): الأعداد العقدية}\n\\begin{enumerate}\n  \\item حل في $\\mathbb{C}$ المعادلة $z^2 - 4\\sqrt{3}z + 16 = 0$.\n  \\item نضع $a = 2\\sqrt{3} + 2i$ و $c = 4i$. أكتب $a$ على الشكل الأسي.\n  \\item بين أن $C$ صورة $A$ بالدوران الذي مركزه $O$ وزاويته $\\pi/3$ واستنتج طبيعة المثلث $OAC$.\n\\end{enumerate}`,
+      };
+    }
+
+    if (isSpace || isProb) {
+      return {
+        titleAr: `${isSpace ? "الهندسة الفضائية والجداء السلمي" : "حساب الاحتمالات والمتغيرات العشوائية"} — ${modeBadgeAr} (ص. ${pageNumber})`,
+        titleFr: `${isSpace ? "Géométrie dans l'espace" : "Calcul des probabilités"} — ${modeBadgeFr} (p. ${pageNumber})`,
+        detectedTopicAr: isSpace ? "الهندسة الفضائية والفلكة والمستويات" : "الاحتمالات والتجارب العشوائية",
+        detectedTopicFr: isSpace ? "Produit scalaire et sphère dans l'espace" : "Probabilités et variables aléatoires",
+        extractedMathSummaryAr:
+          text.length > 5
+            ? `المقطع المظلل المستخرج: « ${text.slice(0, 180)} »`
+            : "مقطع رياضي مستخرج من الوثيقة المرفوعة.",
+        extractedMathSummaryFr:
+          text.length > 5
+            ? `Extrait sélectionné : « ${text.slice(0, 180)} »`
+            : "Section extraite du document PDF.",
+        targetLevel: "N2" as const,
+        suggestedPoints: 4.5,
+        questions: [
+          {
+            num: "1",
+            level: "N1" as const,
+            points: 1.5,
+            statementAr: isSpace
+              ? "في الفضاء المنسوب إلى معلم متعامد ممنظم مباشر $(O,\\vec{i},\\vec{j},\\vec{k})$، نعتبر المستوى $(P): 2x - y + 2z - 3 = 0$ والفلكة $(S)$ التي مركزها $\\Omega(1,-1,2)$ وشعاعها $R = 3$. أحسب مسافة المركز $\\Omega$ عن المستوى $(P)$."
+              : "يحتوي صندوق على 5 كرات بيضاء و 3 كرات سوداء لا يمكن التمييز بينها باللمس. نسحب عشوائياً وفي آن واحد 3 كرات من الصندوق. بين أن عدد السحبات الممكنة هو $\\text{Card}(\\Omega) = 56$.",
+            statementFr: isSpace
+              ? "Dans l'espace muni d'un repère orthonormé direct, soit le plan $(P): 2x - y + 2z - 3 = 0$ et la sphère $(S)$ de centre $\\Omega(1,-1,2)$ et de rayon $R = 3$. Calculer la distance $d(\\Omega, (P))$."
+              : "Une urne contient 5 boules blanches et 3 boules noires indiscernables au toucher. On tire simultanément 3 boules. Vérifier que $\\text{Card}(\\Omega) = 56$.",
+            solutionAr: isSpace
+              ? "$d(\\Omega, (P)) = \\frac{|2(1) - (-1) + 2(2) - 3|}{\\sqrt{2^2 + (-1)^2 + 2^2}} = \\frac{|2 + 1 + 4 - 3|}{3} = \\frac{4}{3}$."
+              : "$\\text{Card}(\\Omega) = C_8^3 = \\frac{8 \\times 7 \\times 6}{3 \\times 2 \\times 1} = 56$.",
+            solutionFr: isSpace
+              ? "$d(\\Omega, (P)) = \\frac{|2 + 1 + 4 - 3|}{\\sqrt{4 + 1 + 4}} = \\frac{4}{3}$."
+              : "$\\text{Card}(\\Omega) = \\binom{8}{3} = 56$.",
+            hintAr: isSpace ? "طبق صيغة مسافة نقطة عن مستوى $d(\\Omega,(P)) = \\frac{|ax_\\Omega+by_\\Omega+cz_\\Omega+d|}{\\sqrt{a^2+b^2+c^2}}$." : "السحب في آن واحد يستعمل التأليفات $C_n^p$.",
+            hintFr: isSpace ? "Utiliser la formule de la distance d'un point à un plan." : "Le tirage simultané utilise les combinaisons.",
+          },
+          {
+            num: "2",
+            level: "N2" as const,
+            points: 3.0,
+            statementAr: isSpace
+              ? "بين أن المستوى $(P)$ يقطع الفلكة $(S)$ وفق دائرة $(\\mathcal{C})$ محدداً شعاعها $r$ ومثلث إحداثيات مركزها $H$."
+              : "أحسب احتمال الحدث $A$: «الحصول على ثلاث كرات من نفس اللون» والحدث $B$: «الحصول على كرة بيضاء على الأقل».",
+            statementFr: isSpace
+              ? "Montrer que le plan $(P)$ coupe la sphère $(S)$ suivant un cercle $(\\mathcal{C})$ dont on déterminera le rayon $r$ et les coordonnées du centre $H$."
+              : "Calculer la probabilité de $A$ : « obtenir 3 boules de même couleur » et de $B$ : « obtenir au moins une boule blanche ».",
+            solutionAr: isSpace
+              ? "بما أن $d = \\frac{4}{3} < R = 3$ فإن $(P)$ يقطع $(S)$ وفق دائرة شعاعها $r = \\sqrt{R^2 - d^2} = \\sqrt{9 - \\frac{16}{9}} = \\frac{\\sqrt{65}}{3}$. التمثيل البارامتري لـ $(\\Delta)$ المار من $\\Omega$ والعمودي على $(P)$ يعطي $H(\\frac{1}{9}, -\\frac{5}{9}, \\frac{10}{9})$."
+              : "$P(A) = \\frac{C_5^3 + C_3^3}{56} = \\frac{10 + 1}{56} = \\frac{11}{56}$. و $P(B) = 1 - \\frac{C_3^3}{56} = 1 - \\frac{1}{56} = \\frac{55}{56}$.",
+            solutionFr: isSpace
+              ? "$d = \\frac{4}{3} < 3$, donc intersection suivant un cercle de rayon $r = \\frac{\\sqrt{65}}{3}$ et de centre $H(\\frac{1}{9}, -\\frac{5}{9}, \\frac{10}{9})$."
+              : "$P(A) = \\frac{11}{56}$ et $P(B) = 1 - P(\\bar{B}) = \\frac{55}{56}$.",
+            hintAr: isSpace ? "قارن $d(\\Omega,(P))$ مع الشعاع $R$ ثم استعمل مبرهنة فيتاغورس." : "استعمل الحدث المضاد لحساب $P(B)$.",
+            hintFr: isSpace ? "Comparer $d$ et $R$, puis utiliser $r = \\sqrt{R^2 - d^2}$." : "Passer par l'événement contraire pour $B$.",
+          },
+        ],
+        fullLatexSnippet: `% تمرين مولد من المقطع المظلل في PDF (${trackLabel})\n\\textbf{التمرين (4.5 نقط)}\n% تم التوليد آلياً من القسم المظلل`,
+      };
+    }
+
+    // Default: Analysis / Functions & Integrals
+    return {
+      titleAr: `دراسة دالة عددية وحساب التكامل — ${modeBadgeAr} (ص. ${pageNumber})`,
+      titleFr: `Étude de fonction et calcul intégral — ${modeBadgeFr} (p. ${pageNumber})`,
+      detectedTopicAr: isIntegral
+        ? "الحساب التكاملي والدوال الأصلية والمساحات"
+        : "التحليل الرياضي: النهايات والاشتقاق ودراسة الدوال",
+      detectedTopicFr: isIntegral
+        ? "Calcul intégral, primitives et calcul d'aires"
+        : "Analyse : limites, dérivation et étude de fonctions",
+      extractedMathSummaryAr:
+        text.length > 5
+          ? `المقطع المظلل المستخرج: « ${text.slice(0, 180)} »`
+          : "مقطع رياضي يتضمن دراسة دالة عددية، الفروع اللانهائية، وحساب التكامل.",
+      extractedMathSummaryFr:
+        text.length > 5
+          ? `Extrait sélectionné : « ${text.slice(0, 180)} »`
+          : "Section portant sur l'étude d'une fonction numérique et le calcul intégral.",
+      targetLevel: "N2" as const,
+      suggestedPoints: 6.0,
+      questions: [
+        {
+          num: "1",
+          level: "N1" as const,
+          points: 1.5,
+          statementAr:
+            "نعتبر الدالة العددية $f$ المعرفة على المجال $]0, +\\infty[$ بـ: $f(x) = x - 1 + \\frac{2\\ln(x)}{x}$. أحسب $\\lim_{x \\to 0^+} f(x)$ و $\\lim_{x \\to +\\infty} f(x)$ ثم أول النتيجة الأولى هندسياً.",
+          statementFr:
+            "Soit $f$ la fonction définie sur $]0, +\\infty[$ par : $f(x) = x - 1 + \\frac{2\\ln(x)}{x}$. Calculer $\\lim_{x \\to 0^+} f(x)$ et $\\lim_{x \\to +\\infty} f(x)$, puis interpréter géométriquement le premier résultat.",
+          solutionAr:
+            "بما أن $\\lim_{x \\to 0^+} \\frac{\\ln(x)}{x} = -\\infty$ فإن $\\lim_{x \\to 0^+} f(x) = -\\infty$، ومنه محور الأراتيب $(x=0)$ مقارب عمودي للمنحنى $(\\mathcal{C}_f)$. وعند $+\\infty$: $\\lim_{x \\to +\\infty} \\frac{\\ln(x)}{x} = 0$ إذن $\\lim_{x \\to +\\infty} f(x) = +\\infty$.",
+          solutionFr:
+            "$\\lim_{x \\to 0^+} f(x) = -\\infty$ (asymptote verticale d'équation $x = 0$) et $\\lim_{x \\to +\\infty} f(x) = +\\infty$ car $\\lim_{x \\to +\\infty} \\frac{\\ln(x)}{x} = 0$.",
+          hintAr: "استعمل النهاية الاعتيادية $\\lim_{x \\to +\\infty} \\frac{\\ln(x)}{x} = 0$.",
+          hintFr: "Utiliser la limite usuelle $\\lim_{x \\to +\\infty} \\frac{\\ln(x)}{x} = 0$.",
+        },
+        {
+          num: "2",
+          level: "N2" as const,
+          points: 2.25,
+          statementAr:
+            "بين أن المستقيم $(\\Delta): y = x - 1$ مقارب مائل للمنحنى $(\\mathcal{C}_f)$ بجوار $+\\infty$، ثم أدرس الوضع النسبي للمنحنى $(\\mathcal{C}_f)$ والمستقيم $(\\Delta)$ على $]0, +\\infty[$.",
+          statementFr:
+            "Montrer que la droite $(\\Delta): y = x - 1$ est asymptote oblique à $(\\mathcal{C}_f)$ au voisinage de $+\\infty$, puis étudier la position relative de $(\\mathcal{C}_f)$ et $(\\Delta)$ sur $]0, +\\infty[$.",
+          solutionAr:
+            "لدينا $\\lim_{x \\to +\\infty} [f(x) - (x - 1)] = \\lim_{x \\to +\\infty} \\frac{2\\ln(x)}{x} = 0$، إذن $(\\Delta)$ مقارب مائل. إشارة الفرق هي إشارة $\\ln(x)$: $(\\mathcal{C}_f)$ تحت $(\\Delta)$ على $]0,1[$ وفوق $(\\Delta)$ على $]1,+\\infty[$ ويتقاطعان في $I(1,0)$.",
+          solutionFr:
+            "$\\lim_{x \\to +\\infty} (f(x) - (x - 1)) = 0$. Le signe de $f(x) - (x-1) = \\frac{2\\ln(x)}{x}$ est celui de $\\ln(x)$ : $(\\mathcal{C}_f)$ est au-dessous de $(\\Delta)$ sur $]0,1[$ et au-dessus sur $]1,+\\infty[$.",
+          hintAr: "أدرس إشارة الفرق $f(x) - (x - 1) = \\frac{2\\ln(x)}{x}$ على $]0,+\\infty[$.",
+          hintFr: "Étudier le signe de $f(x) - (x - 1)$ sur $]0,+\\infty[$.",
+        },
+        {
+          num: "3",
+          level: "N3" as const,
+          points: 2.25,
+          statementAr:
+            "أحسب التكامل $I = \\int_1^e \\frac{2\\ln(x)}{x}\\,dx$ ثم استنتج بـ $\\text{cm}^2$ مساحة الحيز المستوي المحصور بين المنحنى $(\\mathcal{C}_f)$ والمستقيم $(\\Delta)$ والمستقيمين اللذين معادلتاهما $x = 1$ و $x = e$ (علماً أن المنظم $\\|\\vec{i}\\| = \\|\\vec{j}\\| = 2\\text{ cm}$).",
+          statementFr:
+            "Calculer l'intégrale $I = \\int_1^e \\frac{2\\ln(x)}{x}\\,dx$, puis en déduire en $\\text{cm}^2$ l'aire du domaine plan délimité par $(\\mathcal{C}_f)$, la droite $(\\Delta)$ et les droites $x = 1$ et $x = e$ (unité graphique : $2\\text{ cm}$).",
+          solutionAr:
+            "نلاحظ أن $\\frac{2\\ln(x)}{x} = 2 \\cdot \\frac{1}{x}\\ln(x) = [(\\ln x)^2]'$. إذن $I = [(\\ln x)^2]_1^e = 1 - 0 = 1$. وبما أن وحدة المساحة هي $u.a = 2 \\times 2 = 4\\text{ cm}^2$، فإن $\\mathcal{A} = 1 \\times 4 = 4\\text{ cm}^2$.",
+          solutionFr:
+            "Une primitive de $x \\mapsto \\frac{2\\ln(x)}{x}$ est $x \\mapsto (\\ln x)^2$. Donc $I = [(\\ln x)^2]_1^e = 1$. Comme $1\\;u.a = 4\\text{ cm}^2$, l'aire vaut $\\mathcal{A} = 4\\text{ cm}^2$.",
+          hintAr: "لاحظ أن $\\frac{2\\ln(x)}{x}$ تكتب على شكل $2 u'(x) u(x)$ حيث $u(x) = \\ln(x)$.",
+          hintFr: "Reconnaître la forme $2 u'(x) u(x)$ avec $u(x) = \\ln(x)$.",
+        },
+      ],
+      fullLatexSnippet: `% تمرين مولد من المقطع المظلل في PDF (${trackLabel})\n\\textbf{التمرين (6 نقط): دراسة دالة عددية وحساب التكامل}\n\\begin{enumerate}\n  \\item نعتبر الدالة $f(x) = x - 1 + \\frac{2\\ln(x)}{x}$ على $]0,+\\infty[$. أحسب النهايتين عند $0^+$ وعند $+\\infty$.\n  \\item بين أن $(\\Delta): y = x - 1$ مقارب مائل بجوار $+\\infty$ وأدرس الوضع النسبي.\n  \\item أحسب التكامل $I = \\int_1^e \\frac{2\\ln(x)}{x}\\,dx$ واستنتج مساحة الحيز المحصور.\n\\end{enumerate}`,
+    };
+  }
+
+  app.post("/api/generate-exercise-from-highlight", async (req, res) => {
+    try {
+      const {
+        highlightedText = "",
+        croppedImageBase64,
+        generationMode = "ISOMORPHIC_EXERCISE",
+        trackLabel = "2BAC Sciences Mathématiques / Physique",
+        educationSystem = "MAROC_NATIONAL",
+        pageNumber = 1,
+        documentName = "Document_Math.pdf",
+        modelChoice = "gemini-3.8-flash",
+      } = req.body || {};
+
+      const { sdkModel: targetModel, displayLabel: modelLabel } =
+        resolveGeminiModel(modelChoice);
+
+      if (hasValidGeminiKey()) {
+        try {
+          const modeDirective =
+            generationMode === "GRADUATED_QUESTIONS"
+              ? "فكك المقطع الرياضي المظلل إلى تمرين متدرج الصعوبة يضم 3 أسئلة (N1 تطبيق مباشر، N2 تعبئة وتوليف، N3 استنتاج أو مبادرة) مع الحل المفصل لكل سؤال."
+              : generationMode === "REMEDIATION_DRILL"
+              ? "صمم تمرين دعم ومعالجة مركزة (Fiche de Remédiation) يعالج المفهوم الرياضي الوارد في المقطع المظلل خطوة بخطوة لتثبيت التعلمات الأساسية."
+              : generationMode === "SYNTHESIS_EXTENSION"
+              ? "وسع المقطع المظلل إلى تمرين توليفي شامل على نمط الامتحان الوطني للبكالوريا (Type Bac) يربط المفهوم المظلل بأسئلة استنتاجية متقدمة."
+              : "ولد تمريناً رياضياً موازياً ومتكافئاً (Isomorphic Twin Exercise) للمقطع المظلل، يحتفظ بنفس الكفايات والمهارات الرياضية مع تغيير الدوال أو الأعداد أو المتتاليات وحساب الحل الكامل بدقة.";
+
+          const promptText = `أنت مفتش تربوي وأستاذ مبرز في مادة الرياضيات بالسلك الثانوي التأهيلي (${trackLabel} — ${educationSystem}).
+قام الأستاذ بتظليل مقطع محدد من الصفحة رقم ${pageNumber} في الوثيقة "${documentName}".
+${
+  highlightedText.trim()
+    ? `النص الرياضي المستخرج من منطقة التظليل:\n"""\n${highlightedText.trim()}\n"""`
+    : "اعتمد على صورة المقطع المظلل المرفقة لاستخراج الصيغ الرياضية والأسئلة أو المنحنى."
+}
+
+المطلوب الديداكتيكي (${generationMode}):
+${modeDirective}
+- احرص على صرامة الصياغة الرياضية المزدوجة (بالعربية والفرنسية) وكتابة الصيغ بترميز LaTeX سليم داخل علامات $...$.
+- وزع النقط بدقة مضاعفات 0.25 نقطة مع تحديد المستوى المهاري (N1 أو N2 أو N3) لكل سؤال.`;
+
+          const highlightResponseSchema = {
+            type: Type.OBJECT,
+            properties: {
+              titleAr: { type: Type.STRING },
+              titleFr: { type: Type.STRING },
+              detectedTopicAr: { type: Type.STRING },
+              detectedTopicFr: { type: Type.STRING },
+              extractedMathSummaryAr: { type: Type.STRING },
+              extractedMathSummaryFr: { type: Type.STRING },
+              targetLevel: { type: Type.STRING },
+              suggestedPoints: { type: Type.NUMBER },
+              questions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    num: { type: Type.STRING },
+                    level: { type: Type.STRING },
+                    points: { type: Type.NUMBER },
+                    statementAr: { type: Type.STRING },
+                    statementFr: { type: Type.STRING },
+                    solutionAr: { type: Type.STRING },
+                    solutionFr: { type: Type.STRING },
+                    hintAr: { type: Type.STRING },
+                    hintFr: { type: Type.STRING },
+                  },
+                  required: [
+                    "num",
+                    "level",
+                    "points",
+                    "statementAr",
+                    "statementFr",
+                    "solutionAr",
+                    "solutionFr",
+                  ],
+                },
+              },
+              fullLatexSnippet: { type: Type.STRING },
+            },
+            required: [
+              "titleAr",
+              "titleFr",
+              "detectedTopicAr",
+              "detectedTopicFr",
+              "extractedMathSummaryAr",
+              "extractedMathSummaryFr",
+              "targetLevel",
+              "suggestedPoints",
+              "questions",
+              "fullLatexSnippet",
+            ],
+          };
+
+          const parts: Array<Record<string, unknown>> = [{ text: promptText }];
+          if (
+            typeof croppedImageBase64 === "string" &&
+            croppedImageBase64.startsWith("data:image/")
+          ) {
+            const commaIdx = croppedImageBase64.indexOf(",");
+            if (commaIdx !== -1) {
+              const meta = croppedImageBase64.slice(5, commaIdx);
+              const mimeType = meta.split(";")[0] || "image/png";
+              const rawBase64 = croppedImageBase64.slice(commaIdx + 1);
+              if (rawBase64.length > 32) {
+                parts.push({
+                  inlineData: {
+                    mimeType,
+                    data: rawBase64,
+                  },
+                });
+              }
+            }
+          }
+
+          const response = await generateGeminiContentWithFallback(
+            targetModel,
+            [{ role: "user", parts }],
+            {
+              responseMimeType: "application/json",
+              responseSchema: highlightResponseSchema,
+            },
+            "HIGH"
+          );
+
+          const parsed = safeParseJsonWithLatex(response.text || "");
+          if (
+            parsed &&
+            Array.isArray(parsed.questions) &&
+            parsed.questions.length > 0
+          ) {
+            return res.json({
+              success: true,
+              modelUsed: modelLabel,
+              sourceMode: "GEMINI_MULTIMODAL_HIGHLIGHT",
+              exercise: parsed,
+            });
+          }
+        } catch {
+          // الانتقال السلس للمحرك الرياضي الهجين المدمج
+        }
+      }
+
+      const fallbackExercise = buildFallbackExerciseFromHighlight({
+        highlightedText,
+        generationMode,
+        trackLabel,
+        educationSystem,
+        pageNumber,
+      });
+
+      return res.json({
+        success: true,
+        modelUsed: `${modelLabel} · (محرك التظليل الرياضي الهجين)`,
+        sourceMode: "HYBRID_SYMBOLIC_HIGHLIGHT",
+        exercise: fallbackExercise,
+      });
+    } catch (err: unknown) {
+      const fallbackExercise = buildFallbackExerciseFromHighlight({
+        highlightedText: req.body?.highlightedText || "",
+        generationMode: req.body?.generationMode || "ISOMORPHIC_EXERCISE",
+        trackLabel: req.body?.trackLabel || "2BAC",
+        educationSystem: req.body?.educationSystem || "MAROC_NATIONAL",
+        pageNumber: req.body?.pageNumber || 1,
+      });
+      return res.json({
+        success: true,
+        modelUsed: "محرك التظليل الرياضي الهجين",
+        sourceMode: "HYBRID_SYMBOLIC_HIGHLIGHT",
+        exercise: fallbackExercise,
         warning: err instanceof Error ? err.message : undefined,
       });
     }

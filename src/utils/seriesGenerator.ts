@@ -119,11 +119,11 @@ export function getMoroccanLessonMemo(lesson: LessonItem): MoroccanLessonMemo {
     return {
       lessonTitleAr: lAr,
       lessonTitleFr: lFr,
-      coreDefinitionAr: "تكون الدالة f متصلة في النقطة x₀ إذا وفقط إذا كانت lim_{x→x₀} f(x) = f(x₀). مبرهنة القيم الوسطية (TVI) تؤكد وجود الحلول للمعادلات المستعصية.",
+      coreDefinitionAr: "تكون الدالة f متصلة في النقطة x₀ إذا وفقط إذا كانت lim_{x→x₀} f(x) = f(x₀). مبرهنة القيم الوسيطية (TVI) تؤكد وجود الحلول للمعادلات المستعصية.",
       coreDefinitionFr: "f est continue en x₀ ssi lim_{x→x₀} f(x) = f(x₀). Le TVI assure l'existence de racines pour f(x) = 0 sur [a, b].",
       essentialFormulasAr: [
         "شرط الاتصال على اليمين واليسار: lim_{x→x₀⁺} f(x) = lim_{x→x₀⁻} f(x) = f(x₀)",
-        "مبرهنة القيم الوسطية: إذا كانت f متصلة على [a, b] وكان f(a)·f(b) < 0، فإنه يوجد على الأقل c ∈ ]a, b[ بحيث f(c) = 0",
+        "مبرهنة القيم الوسيطية: إذا كانت f متصلة على [a, b] وكان f(a)·f(b) < 0، فإنه يوجد على الأقل c ∈ ]a, b[ بحيث f(c) = 0",
         "مبرهنة الدالة العكسية: كل دالة متصلة ورتيبة قطعا على مجال I تقبل دالة عكسية f⁻¹ معرفة على f(I)",
         "نهايات الدوال المثلثية: lim_{x→0} sin(x)/x = 1 و lim_{x→0} (1 - cos(x))/x² = 1/2",
       ],
@@ -134,7 +134,7 @@ export function getMoroccanLessonMemo(lesson: LessonItem): MoroccanLessonMemo {
         "Limites trigonométriques clés : lim_{x→0} sin(x)/x = 1 et lim_{x→0} (1 - cos(x))/x² = 1/2",
       ],
       commonPitfallsAr: [
-        "تطبيق مبرهنة القيم الوسطية دون التحقق من شرط الاتصال على مجال مغلق [a, b].",
+        "تطبيق مبرهنة القيم الوسيطية دون التحقق من شرط الاتصال على مجال مغلق [a, b].",
         "الادعاء بوحدانية الحل دون التحقق الصارم من الرتابة قطعا للدالة.",
         "الخلط بين الأشكال غير المحددة الأربعة: (0/0، ∞/∞، 0×∞، +∞ - ∞).",
       ],
@@ -143,7 +143,7 @@ export function getMoroccanLessonMemo(lesson: LessonItem): MoroccanLessonMemo {
         "Conclure à l'unicité de la solution sans prouver la stricte monotonie.",
         "Confusion entre formes indéterminées réelles et limites directes usuelles.",
       ],
-      inspectorAdviceAr: "توجيه المفتش: صغ شروط مبرهنة القيم الوسطية بدقة: الاتصال، الرتابة قطعا، وإشارة الجداء f(a)·f(b) لضمان النقطة الكاملة في الامتحان الوطني.",
+      inspectorAdviceAr: "توجيه المفتش: صغ شروط مبرهنة القيم الوسيطية بدقة: الاتصال، الرتابة قطعا، وإشارة الجداء f(a)·f(b) لضمان النقطة الكاملة في الامتحان الوطني.",
       inspectorAdviceFr: "Conseil de l'Inspecteur : Rédiger rigoureusement les trois hypothèses du TVI : continuité, stricte monotonie et f(a)·f(b) < 0.",
     };
   }
@@ -388,7 +388,7 @@ export function generateCustomCountSerieExercises(
       badgeFr = `Exercice ${exNum} (★★) [Synthèse & Type Examen National N3] — ${lessonForEx.lessonFr}`;
       qAr = [
         questionsAr[2] || `1. بين أن الدالة أو المتتالية المدروسة متصلة ورتيبة على المجال المحدد.`,
-        `2. طبق المبرهنات الأساسية (مبرهنة القيم الوسطية TVI / مبرهنة التزايدات المنتهية TAF / مبرهنات الهندسة والفلكة).`,
+        `2. طبق المبرهنات الأساسية (مبرهنة القيم الوسيطية TVI / مبرهنة التزايدات المنتهية TAF / مبرهنات الهندسة والفلكة).`,
         `3. استنتج حلاً وحيداً للمعادلة وأعط تأطيراً دقيقاً سعته 10⁻¹ للحل.`,
       ];
       qFr = [
@@ -396,7 +396,7 @@ export function generateCustomCountSerieExercises(
         `2. Appliquer les théorèmes fondamentaux (TVI / TAF / orthogonalité / produit scalaire).`,
         `3. En déduire l'existence et l'unicité d'une solution α et donner un encadrement à 10⁻¹ près.`,
       ];
-      hintAr = `منهجية الامتحان: تأكد من صياغة الشروط الثلاثة لمبرهنة القيم الوسطية (الاتصال، الرتابة، وإشارة الجداء f(a)·f(b) < 0).`;
+      hintAr = `منهجية الامتحان: تأكد من صياغة الشروط الثلاثة لمبرهنة القيم الوسيطية (الاتصال، الرتابة، وإشارة الجداء f(a)·f(b) < 0).`;
       hintFr = `Conseil examen : Rédiger rigoureusement les hypothèses du théorème des valeurs intermédiaires.`;
     } else if (relativePos < 0.90 || i === safeCount - 2) {
       // المرحلة الرابعة: مسألة النمذجة والاستمثال والمسائل الهندسية / الفيزيائية المفتوحة
@@ -480,7 +480,7 @@ export function generateCustomCountSerieExercises(
           `2. Question ouverte : Étudier le comportement asymptotique de la suite (c_n) quand n → +∞.`,
         ];
       }
-      hintAr = `تحدي أولمبياد: استعمل الدالة المساعدة g(x) = f(x + 1/n) - f(x) - 1/n والمجموع التلسكوبي ∑ g(k/n) وطبق مبرهنة القيم الوسطية.`;
+      hintAr = `تحدي أولمبياد: استعمل الدالة المساعدة g(x) = f(x + 1/n) - f(x) - 1/n والمجموع التلسكوبي ∑ g(k/n) وطبق مبرهنة القيم الوسيطية.`;
       hintFr = `Piste Olympiades : Considérer la fonction auxiliaire g(x) = f(x + 1/n) - f(x) - 1/n et exploiter une somme télescopique.`;
     }
 

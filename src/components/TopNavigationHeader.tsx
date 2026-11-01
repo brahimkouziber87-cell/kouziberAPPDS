@@ -269,11 +269,11 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
   return (
     <>
       {/* =====================================================================
-          المستوى الأول: الشريط العلوي المؤسسي الرصين (3-Zone Executive Top Bar)
+          المستوى الأول: الشريط العلوي المؤسسي الرصين (1-Row, 3-Zone Executive Top Bar)
          ===================================================================== */}
       <header
         ref={menuContainerRef}
-        className="top-navigation-header cool-header-gradient sticky top-0 z-30 no-print text-white border-b border-cyan-500/30 px-3 xl:px-5 py-2 min-h-[58px] flex items-center justify-between gap-2.5 xl:gap-4"
+        className="top-navigation-header cool-header-gradient sticky top-0 z-30 no-print text-white border-b border-cyan-500/30 px-3 xl:px-5 py-2 min-h-[54px] flex items-center justify-between gap-2.5 xl:gap-4"
       >
         {/* Zone 1: الهوية المؤسسية وزر القائمة الجانبية مع محاذاة مثالية للشعار والعنوان الرئيسي */}
         <div className="flex items-center gap-2.5 xl:gap-3 shrink-0 min-w-0">
@@ -286,7 +286,7 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
                 onToggleSidebar();
               }
             }}
-            className="w-9 h-9 xl:w-9.5 xl:h-9.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 text-cyan-300 hover:text-white border border-cyan-500/30 flex items-center justify-center shrink-0 self-center cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-slate-900/95 hover:bg-slate-800 text-cyan-300 hover:text-white border border-cyan-500/30 flex items-center justify-center shrink-0 self-center cursor-pointer transition-colors"
             title="فتح أو طي شريط التنقل الجانبي"
           >
             <Menu className="w-4 h-4" />
@@ -296,7 +296,7 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenLogoStudio}
-              className={`cursor-pointer w-9 h-9 xl:w-9.5 xl:h-9.5 ${
+              className={`cursor-pointer w-9 h-9 ${
                 logoVariant === "DOC2APP_MONO" ? "rounded-xl" : "rounded-full"
               } p-0.5 ${
                 logoVariant === "DOC2APP_MONO"
@@ -312,7 +312,7 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
               />
             </button>
 
-            <div className="min-w-0 flex flex-col justify-center self-center gap-0.5">
+            <div className="min-w-0 flex flex-col justify-center self-center gap-1">
               <a
                 href="#top"
                 onClick={(e) => {
@@ -323,33 +323,30 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
               >
                 <span
                   dir="ltr"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-950/90 border border-slate-400/50 text-[10.5px] font-mono font-black tracking-wider text-white shadow-2xs"
+                  className="font-mono text-[11px] font-black tracking-wider text-cyan-300"
                   title="Doc2App — Minimalist Monochromatic Vector Math Identity"
                 >
-                  <span className="font-serif text-slate-300 text-[11px] leading-none">∫</span>
-                  <span>
-                    DOC<span className="text-slate-400">2</span>APP
-                  </span>
+                  ∫DOC2APP
                 </span>
+                <span aria-hidden="true" className="text-slate-500">·</span>
                 <span>منصة الهندسة البيداغوجية للرياضيات</span>
               </a>
               <div className="text-[10.5px] text-slate-300 flex items-center gap-1.5 whitespace-nowrap leading-none">
-                <span className="font-bold text-white truncate max-w-[110px]">{prof}</span>
+                <span className="font-bold text-white truncate max-w-[115px]">{prof}</span>
                 <span aria-hidden="true" className="text-cyan-400/70">·</span>
-                <span className="truncate max-w-[95px] xl:max-w-[140px] text-slate-300">{school}</span>
-                <span aria-hidden="true" className="text-cyan-400/70">·</span>
+                <span className="truncate max-w-[100px] xl:max-w-[150px] text-slate-300">{school}</span>
                 <span aria-hidden="true" className="text-cyan-400/70">·</span>
                 {saveStatus === "saving" ? (
                   <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-400/50 text-[10px] font-black text-cyan-200 shadow-2xs transition-all duration-200"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-300 transition-all duration-200"
                     title="جاري حفظ التعديلات تلقائياً في التخزين المحلي الآمن (LocalStorage)..."
                   >
                     <RefreshCw className="w-2.5 h-2.5 text-cyan-300 animate-spin shrink-0" />
-                    <span className="animate-pulse">جاري الحفظ...</span>
+                    <span>جاري الحفظ...</span>
                   </span>
                 ) : saveStatus === "error" ? (
                   <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/50 text-[10px] font-black text-rose-300 shadow-2xs"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-300"
                     title="تنبيه: تعذر حفظ التعديلات في التخزين المحلي للمتصفح (سعة التخزين ممتلئة)"
                   >
                     <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
@@ -357,7 +354,7 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
                   </span>
                 ) : (
                   <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-[10px] font-black text-emerald-300 shadow-2xs transition-all duration-300"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300/95 transition-all duration-300"
                     title={
                       lastSavedTime
                         ? `مساحة العمل آمنة ومحفوظة تلقائياً في المتصفح (${lastSavedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })})`
@@ -374,497 +371,397 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
           </div>
         </div>
 
-        {/* الحاوية المنظمة وفق سطرين اثنين بجانب منصة الهندسة البيداغوجية للرياضيات */}
-        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-
-          {/* ===================================================================
-              السطر الأول (Row 1): المسارات البيداغوجية الخمسة + جناح التصدير والطباعة
-             =================================================================== */}
-          <div className="flex items-center justify-between gap-2 xl:gap-3 min-w-0">
-            {/* المسارات البيداغوجية الخمسة الموحدة */}
-            <nav
-              aria-label="الوحدات البيداغوجية الخمس"
-              className="flex items-center gap-0.5 sm:gap-1 bg-slate-950/70 p-0.5 rounded-xl border border-cyan-500/20 shrink-0 shadow-inner overflow-x-auto no-scrollbar"
-            >
-              {modules.map((mod) => {
-                const IconComp = mod.icon;
-                const isActive = activeModule === mod.id;
-                return (
-                  <button
-                    key={mod.id}
-                    type="button"
-                    onClick={() => onSelectModule(mod.id)}
-                    className={`relative h-7 px-2 xl:px-2.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1 xl:gap-1.5 transition-colors cursor-pointer ${
-                      isActive
-                        ? "text-slate-950 font-black"
-                        : "text-slate-200 hover:text-white hover:bg-slate-800/80"
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="topHeaderActiveModuleBg"
-                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                        className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 rounded-lg shadow-sm shadow-cyan-400/30 z-0"
-                      />
-                    )}
-                    <IconComp
-                      className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                        isActive ? "text-slate-950" : "text-cyan-300"
-                      }`}
-                    />
-                    <span
-                      className={`relative z-10 font-serif text-xs ${
-                        isActive ? "text-slate-950 font-black" : "text-cyan-300 font-bold"
-                      }`}
-                    >
-                      {mod.math}
-                    </span>
-                    <span className="relative z-10 hidden xl:inline">{mod.label}</span>
-                    <span className="relative z-10 xl:hidden">{mod.shortLabel}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* جناح التصدير والطباعة في السطر الأول */}
-            <div className="flex items-center gap-1 shrink-0">
-              {/* مركز التصدير و Overleaf */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenMenu((prev) => (prev === "EXPORT_HUB" ? null : "EXPORT_HUB"))
-                  }
-                  className={`h-7 px-2 xl:px-2.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1 xl:gap-1.5 cursor-pointer border ${
-                    openMenu === "EXPORT_HUB"
-                      ? "bg-slate-800 text-amber-300 border-amber-500/70"
-                      : "bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80"
-                  }`}
-                  title="مركز الاستخراج المتقدم، سجل الملفات المصدّرة، حزم Overleaf، والطباعة المجمعة"
-                >
-                  <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="hidden sm:inline">Overleaf والتصدير</span>
-                  <span className="sm:hidden">Overleaf</span>
-                  <span className="font-mono tabular-nums text-[10px] text-amber-300">
-                    ({exportHistoryCount})
-                  </span>
-                  <ChevronDown
-                    className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${
-                      openMenu === "EXPORT_HUB" ? "rotate-180 text-amber-300" : ""
-                    }`}
+        {/* Zone 2: المسارات البيداغوجية الخمسة الموحدة (Central Segmented Navigation) */}
+        <nav
+          aria-label="الوحدات البيداغوجية الخمس"
+          className="flex items-center gap-0.5 sm:gap-1 bg-slate-950/75 p-1 rounded-xl border border-cyan-500/25 shrink-0 shadow-inner overflow-x-auto no-scrollbar"
+        >
+          {modules.map((mod) => {
+            const IconComp = mod.icon;
+            const isActive = activeModule === mod.id;
+            return (
+              <button
+                key={mod.id}
+                type="button"
+                onClick={() => onSelectModule(mod.id)}
+                className={`relative h-7.5 px-2.5 xl:px-3 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isActive
+                    ? "text-slate-950 font-black"
+                    : "text-slate-200 hover:text-white hover:bg-slate-800/80"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="topHeaderActiveModuleBg"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 rounded-lg shadow-sm shadow-cyan-400/30 z-0"
                   />
-                </button>
+                )}
+                <IconComp
+                  className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                    isActive ? "text-slate-950" : "text-cyan-300"
+                  }`}
+                />
+                <span
+                  className={`relative z-10 font-serif text-xs ${
+                    isActive ? "text-slate-950 font-black" : "text-cyan-300 font-bold"
+                  }`}
+                >
+                  {mod.math}
+                </span>
+                <span className="relative z-10 hidden xl:inline">{mod.label}</span>
+                <span className="relative z-10 xl:hidden">{mod.shortLabel}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-                <AnimatePresence>
-                  {openMenu === "EXPORT_HUB" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                      transition={{ duration: 0.14 }}
-                      className="absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700/90 shadow-2xl p-2 z-50 text-right space-y-1"
+        {/* Zone 3: الاستوديوهات + مركز Overleaf + زر التصدير والطباعة الرئيسي */}
+        <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
+          {/* قائمة استوديوهات الرياضيات والمختبرات */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenMenu((prev) => (prev === "STUDIOS" ? null : "STUDIOS"))
+              }
+              className={`h-8 px-2.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer border ${
+                openMenu === "STUDIOS"
+                  ? "bg-slate-800 text-cyan-300 border-cyan-500/70"
+                  : "bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80"
+              }`}
+              title="استوديوهات المنحنيات C_f، بايثون TICE، واستوديو الشعار"
+            >
+              <Layers className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden md:inline">المختبرات</span>
+              <ChevronDown
+                className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${
+                  openMenu === "STUDIOS" ? "rotate-180 text-cyan-300" : ""
+                }`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {openMenu === "STUDIOS" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.14 }}
+                  className="absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700/90 shadow-2xl p-2 z-50 text-right space-y-1"
+                >
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                    <span>الاستوديوهات والمختبرات المتخصصة</span>
+                    <span className="font-mono text-cyan-400">MATH · TICE</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenAdvancedPedagogyStudio();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>مختبر المنحنيات C_f و 2D و OMR</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-300">tkz-tab</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenPythonLab();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Code2 className="w-4 h-4 text-teal-400 shrink-0" />
+                      <span>مختبر خوارزميات Python</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-teal-300">TICE</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenWolframVerifier();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calculator className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>الحساب الرمزي ورسم الدوال (Wolfram)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-300">CAS</span>
+                  </button>
+
+                  <div className="border-t border-slate-800 my-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        onOpenLogoStudio();
+                      }}
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
                     >
-                      <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
-                        <span>مركز النشر الأكاديمي والأرشفة</span>
-                        <span className="font-mono text-amber-400 tabular-nums">
-                          {exportHistoryCount} ملفات
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>استوديو الهوية والشعار الرسمي</span>
                       </div>
+                      <span className="text-[10px] font-mono text-slate-400">SVG</span>
+                    </button>
 
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        onOpenJsonConfigModal();
+                      }}
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileJson className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>حفظ أو استيراد إعدادات JSON</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">.json</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        onOpenAPKModal();
+                      }}
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-teal-400 shrink-0" />
+                        <span>تثبيت التطبيق على الهاتف (APK)</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-teal-300">PWA</span>
+                    </button>
+
+                    {onOpenSmartQcmScanner && (
                       <button
                         type="button"
                         onClick={() => {
                           setOpenMenu(null);
-                          onOpenExportDashboard();
+                          onOpenSmartQcmScanner();
                         }}
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 text-amber-200 flex items-center justify-between gap-2 text-xs font-black transition-colors cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-emerald-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-2">
-                          <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>سجل التنزيلات وحزم Overleaf</span>
+                          <Scan className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>المصحح الآلي الذكي (OMR Scanner)</span>
                         </div>
-                        <span className="text-[10px] font-mono text-amber-300 tabular-nums">
-                          ZIP / PDF
-                        </span>
+                        <span className="text-[10px] font-mono text-emerald-300">كاميرا</span>
                       </button>
+                    )}
 
+                    {onOpenIndividualRemediation && (
                       <button
                         type="button"
                         onClick={() => {
                           setOpenMenu(null);
-                          onOpenExportCenter();
+                          onOpenIndividualRemediation();
                         }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-indigo-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
-                          <span>مركز الاستخراج المتعدد الصيغ</span>
+                          <HeartHandshake className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <span>بطاقات المعالجة الفردية الفارقية</span>
                         </div>
-                        <span className="text-[10px] font-mono text-cyan-300">LaTeX/Typst</span>
+                        <span className="text-[10px] font-mono text-indigo-300">A4 + QR</span>
                       </button>
+                    )}
 
+                    {onOpenCrossPlatformSync && (
                       <button
                         type="button"
                         onClick={() => {
                           setOpenMenu(null);
-                          onOpenBatchPrint();
+                          onOpenCrossPlatformSync();
                         }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-cyan-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-2">
-                          <Printer className="w-4 h-4 text-sky-400 shrink-0" />
-                          <span>الطباعة المجمعة للفروض (Batch)</span>
+                          <Share2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <span>تزامن الحاسوب واللوحة والهاتف (QR Sync)</span>
                         </div>
-                        <span className="text-[10px] font-mono text-sky-300">A4 Queue</span>
+                        <span className="text-[10px] font-mono text-cyan-300">فوري</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onOpenJsonConfigModal();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-amber-200 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileJson className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>حفظ/استيراد مساحة العمل (.json)</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-amber-300">v3.0</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onPrintA4();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Printer className="w-4 h-4 text-slate-300 shrink-0" />
-                          <span>طباعة فورية للورقة الحالية</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-400">Ctrl+P</span>
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* ===================================================================
-              السطر الثاني (Row 2): أدوات الصياغة الرياضية + المختبرات + التصدير المدمج والطباعة + جيميني + سلم النقط
-             =================================================================== */}
-          <div className="flex items-center justify-between gap-1.5 xl:gap-2.5 min-w-0 pt-1 border-t border-cyan-500/15">
-            {/* الجانب الأيمن: أدوات الرياضيات والحساب الرمزي والمختبرات */}
-            <div className="flex items-center gap-1 xl:gap-1.5 shrink-0">
-              {/* لوحة الرموز الرياضية السريعة */}
-              <button
-                type="button"
-                onClick={onToggleMathPalette}
-                className={`h-7 px-2 xl:px-2.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1 xl:gap-1.5 cursor-pointer border ${
-                  showMathPalette
-                    ? "bg-cyan-950 text-cyan-200 border-cyan-400/80 shadow-xs"
-                    : "bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80"
+          {/* مركز التصدير و Overleaf */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenMenu((prev) => (prev === "EXPORT_HUB" ? null : "EXPORT_HUB"))
+              }
+              className={`h-8 px-2.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer border ${
+                openMenu === "EXPORT_HUB"
+                  ? "bg-slate-800 text-amber-300 border-amber-500/70"
+                  : "bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80"
+              }`}
+              title="مركز الاستخراج المتقدم، سجل الملفات المصدّرة، حزم Overleaf، والطباعة المجمعة"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">Overleaf</span>
+              <span className="font-mono tabular-nums text-[10px] text-amber-300">
+                ({exportHistoryCount})
+              </span>
+              <ChevronDown
+                className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${
+                  openMenu === "EXPORT_HUB" ? "rotate-180 text-amber-300" : ""
                 }`}
-                title="لوحة الرموز والعمليات الرياضية السريعة (∫, ∑, ℝ, u⃗, lim)"
-              >
-                <span className="font-serif text-xs font-black text-cyan-300">∫∑</span>
-                <span className="hidden sm:inline">الرموز</span>
-                <span className="hidden 2xl:inline">الرياضية</span>
-              </button>
+              />
+            </button>
 
-              {/* التحقق الرمزي ورسم الدوال عبر WolframAlpha */}
-              <button
-                type="button"
-                onClick={onOpenWolframVerifier}
-                className="h-7 px-2 xl:px-2.5 text-xs font-bold rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-slate-700/80 transition-all whitespace-nowrap shrink-0 flex items-center gap-1 xl:gap-1.5 cursor-pointer"
-                title="مختبر WolframAlpha للحساب الرمزي ورسم المنحنيات البيانية (CAS & Plots)"
-              >
-                <Calculator className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Wolfram CAS</span>
-                <span className="hidden 2xl:inline">ورسم الدوال</span>
-              </button>
-
-              {/* قائمة استوديوهات الرياضيات والمختبرات */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenMenu((prev) => (prev === "STUDIOS" ? null : "STUDIOS"))
-                  }
-                  className={`h-7 px-2 xl:px-2.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer border ${
-                    openMenu === "STUDIOS"
-                      ? "bg-slate-800 text-cyan-300 border-cyan-500/70"
-                      : "bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80"
-                  }`}
-                  title="استوديوهات المنحنيات C_f، بايثون TICE، واستوديو الشعار"
+            <AnimatePresence>
+              {openMenu === "EXPORT_HUB" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.14 }}
+                  className="absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700/90 shadow-2xl p-2 z-50 text-right space-y-1"
                 >
-                  <Layers className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span>المختبرات</span>
-                  <span className="hidden 2xl:inline">والاستوديوهات</span>
-                  <ChevronDown
-                    className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${
-                      openMenu === "STUDIOS" ? "rotate-180 text-cyan-300" : ""
-                    }`}
-                  />
-                </button>
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                    <span>مركز النشر الأكاديمي والأرشفة</span>
+                    <span className="font-mono text-amber-400 tabular-nums">
+                      {exportHistoryCount} ملفات
+                    </span>
+                  </div>
 
-                <AnimatePresence>
-                  {openMenu === "STUDIOS" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                      transition={{ duration: 0.14 }}
-                      className="absolute right-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700/90 shadow-2xl p-2 z-50 text-right space-y-1"
-                    >
-                      <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
-                        <span>الاستوديوهات والمختبرات المتخصصة</span>
-                        <span className="font-mono text-cyan-400">MATH · TICE</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onOpenAdvancedPedagogyStudio();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span>مختبر المنحنيات C_f و 2D و OMR</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-emerald-300">tkz-tab</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onOpenPythonLab();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Code2 className="w-4 h-4 text-teal-400 shrink-0" />
-                          <span>مختبر خوارزميات Python</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-teal-300">TICE</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onOpenWolframVerifier();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Calculator className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>الحساب الرمزي ورسم الدوال (Wolfram)</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-amber-300">CAS</span>
-                      </button>
-
-                      <div className="border-t border-slate-800 my-1 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenu(null);
-                            onOpenLogoStudio();
-                          }}
-                          className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Award className="w-4 h-4 text-cyan-400 shrink-0" />
-                            <span>استوديو الهوية والشعار الرسمي</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-slate-400">SVG</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenu(null);
-                            onOpenJsonConfigModal();
-                          }}
-                          className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileJson className="w-4 h-4 text-amber-400 shrink-0" />
-                            <span>حفظ أو استيراد إعدادات JSON</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-slate-400">.json</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenu(null);
-                            onOpenAPKModal();
-                          }}
-                          className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Smartphone className="w-4 h-4 text-teal-400 shrink-0" />
-                            <span>تثبيت التطبيق على الهاتف (APK)</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-teal-300">PWA</span>
-                        </button>
-
-                        {onOpenSmartQcmScanner && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenu(null);
-                              onOpenSmartQcmScanner();
-                            }}
-                            className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-emerald-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Scan className="w-4 h-4 text-emerald-400 shrink-0" />
-                              <span>المصحح الآلي الذكي (OMR Scanner)</span>
-                            </div>
-                            <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded">كاميرا</span>
-                          </button>
-                        )}
-
-                        {onOpenIndividualRemediation && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenu(null);
-                              onOpenIndividualRemediation();
-                            }}
-                            className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-indigo-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <HeartHandshake className="w-4 h-4 text-indigo-400 shrink-0" />
-                              <span>بطاقات المعالجة الفردية الفارقية</span>
-                            </div>
-                            <span className="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">A4 + QR</span>
-                          </button>
-                        )}
-
-                        {onOpenCrossPlatformSync && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenu(null);
-                              onOpenCrossPlatformSync();
-                            }}
-                            className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-cyan-300 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Share2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                              <span>تزامن الحاسوب واللوحة والهاتف (QR Sync)</span>
-                            </div>
-                            <span className="text-[10px] font-mono bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded">فوري</span>
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            {/* الجانب الأيسر: الكتلة المدمجة لتصدير PDF والطباعة + محرك الذكاء الاصطناعي وسلم النقط */}
-            <div className="flex items-center gap-1 xl:gap-1.5 shrink-0">
-              {/* الكتلة المدمجة لتصدير PDF والطباعة الفورية A4 (بين المختبرات وجيميني) */}
-              <div className="h-7 flex items-center rounded-lg bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 p-0.5 shadow-md shadow-cyan-500/20 shrink-0">
-                {/* زر تصدير PDF */}
-                <button
-                  type="button"
-                  onClick={onExportPDF}
-                  disabled={isExportingPDF}
-                  className="h-full px-2 xl:px-2.5 text-xs font-black text-slate-950 hover:bg-black/10 rounded-md transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer disabled:opacity-60 active:scale-95"
-                  title="تصدير الوثيقة الحالية بصيغة PDF عالي الدقة"
-                >
-                  <FileDown className="w-3.5 h-3.5 shrink-0" />
-                  <span>{isExportingPDF ? "جاري..." : "تصدير PDF"}</span>
-                </button>
-
-                {/* فاصل دقيق مدمج */}
-                <div className="h-3.5 w-px bg-slate-950/25 mx-0.5 shrink-0" />
-
-                {/* زر طباعة A4 المدمج */}
-                <button
-                  type="button"
-                  onClick={onPrintA4}
-                  className="h-full px-1.5 xl:px-2 text-xs font-black text-slate-950 hover:bg-black/10 rounded-md transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer active:scale-95"
-                  title="طباعة فورية للورقة الحالية على مقاس A4 (Ctrl+P)"
-                  aria-label="طباعة فورية A4"
-                >
-                  <Printer className="w-3.5 h-3.5 shrink-0" />
-                  <span>طباعة A4</span>
-                </button>
-              </div>
-
-              {/* شريحة محرك الذكاء الاصطناعي Gemini AI */}
-              <div className="h-7 flex items-center rounded-lg bg-slate-900 border border-slate-700/80 p-0.5 shadow-xs shrink-0">
-                <button
-                  type="button"
-                  onClick={onOpenAiAssistant}
-                  className="h-full px-2 text-xs font-bold text-slate-100 hover:text-cyan-300 hover:bg-slate-800 rounded-md transition-all flex items-center gap-1.5 cursor-pointer group"
-                  title="فتح المساعد الديداكتيكي والرياضياتي الذكي (Gemini AI Engine)"
-                >
-                  <BrainCircuit className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform shrink-0" />
-                  <span className="font-mono font-bold tracking-tight text-cyan-200">
-                    {selectedAiModel === "gemini-4-argon" ? "Argon 4" : "Flash 3.8"}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onOpenAiSettings}
-                  className="h-full w-5.5 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 rounded-md transition-all flex items-center justify-center shrink-0 cursor-pointer border-r border-slate-800"
-                  title="تفضيلات محرك الذكاء الاصطناعي وفحص الاتصال الحي"
-                  aria-label="تفضيلات محرك الذكاء الاصطناعي"
-                >
-                  <Settings className="w-3 h-3 hover:rotate-45 transition-transform" />
-                </button>
-              </div>
-
-              {/* سلم التنقيط (تظهر في وضع الفروض DS) */}
-              {activeModule === "DS_142_08" && (
-                <button
-                  type="button"
-                  onClick={onOpenBaremeModal}
-                  className="h-7 px-2 text-xs font-bold text-slate-100 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer shadow-xs"
-                  title="تجزئة النقط وسلم التنقيط الدقيق وفق المذكرة 142-08"
-                >
-                  <Scale className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="hidden xl:inline">سلم النقط</span>
-                  <span
-                    className={`font-mono tabular-nums text-[10.5px] font-black px-1.5 py-0.2 rounded ${
-                      isScore20
-                        ? "bg-teal-950 text-teal-300 border border-teal-500/40"
-                        : "bg-amber-950 text-amber-300 border border-amber-500/40"
-                    }`}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenExportDashboard();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 text-amber-200 flex items-center justify-between gap-2 text-xs font-black transition-colors cursor-pointer"
                   >
-                    {totalPoints.toFixed(2)}/20
-                  </span>
-                </button>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>سجل التنزيلات وحزم Overleaf</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-300 tabular-nums">
+                      ZIP / PDF
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenExportCenter();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>مركز الاستخراج المتعدد الصيغ</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-cyan-300">LaTeX/Typst</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenBatchPrint();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-100 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Printer className="w-4 h-4 text-sky-400 shrink-0" />
+                      <span>الطباعة المجمعة للفروض (Batch)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-sky-300">A4 Queue</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onOpenJsonConfigModal();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-amber-200 flex items-center justify-between gap-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileJson className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>حفظ/استيراد مساحة العمل (.json)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-300">v3.0</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onPrintA4();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Printer className="w-4 h-4 text-slate-300 shrink-0" />
+                      <span>طباعة فورية للورقة الحالية</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">Ctrl+P</span>
+                  </button>
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
+          </div>
+
+          {/* الكتلة المدمجة لتصدير PDF والطباعة الفورية A4 (Primary Action CTA) */}
+          <div className="h-8 flex items-center rounded-lg bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 p-0.5 shadow-md shadow-cyan-500/20 shrink-0">
+            <button
+              type="button"
+              onClick={onExportPDF}
+              disabled={isExportingPDF}
+              className="h-full px-2.5 text-xs font-black text-slate-950 hover:bg-black/10 rounded-md transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer disabled:opacity-60 active:scale-95"
+              title="تصدير الوثيقة الحالية بصيغة PDF عالي الدقة"
+            >
+              <FileDown className="w-3.5 h-3.5 shrink-0" />
+              <span>{isExportingPDF ? "جاري..." : "تصدير PDF"}</span>
+            </button>
+
+            <div className="h-4 w-px bg-slate-950/25 mx-0.5 shrink-0" />
+
+            <button
+              type="button"
+              onClick={onPrintA4}
+              className="h-full px-2 text-xs font-black text-slate-950 hover:bg-black/10 rounded-md transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer active:scale-95"
+              title="طباعة فورية للورقة الحالية على مقاس A4 (Ctrl+P)"
+              aria-label="طباعة فورية A4"
+            >
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">طباعة A4</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* =====================================================================
           المستوى الثاني: شريط ضوابط مساحة العمل المتناسق (Ergonomic Workspace Ribbon)
-          مقسم ومبوب في 4 أجنحة وظيفية واضحة تمنح راحة بصرية فائقة وتركيزاً تاماً
+          يضم مواصفات الوثيقة، أدوات الصياغة الرياضية (∫∑ · CAS · AI)، والضوابط البيداغوجية
          ===================================================================== */}
       <div className="bg-white/95 backdrop-blur-xs border-b border-slate-200/90 px-3 xl:px-5 py-1.5 shadow-2xs no-print">
-        <div className="w-full flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+        <div className="w-full flex items-center justify-between gap-2.5 overflow-x-auto no-scrollbar">
 
-          {/* الجناح الأيمن: [الجناح 1: مواصفات الوثيقة واللغة] + [الجناح 2: الهندسة الورقية والطباعة] */}
+          {/* الجناح الأيمن: [1: مواصفات الوثيقة] + [2: الصياغة الرياضية والحساب الرمزي] + [3: الهندسة الورقية] */}
           <div className="flex items-center gap-2 shrink-0">
 
             {/* الجناح 1: مواصفات الوثيقة واللغة (Spécifications de base) */}
@@ -995,7 +892,83 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
             {/* فاصل عمودي أنيق */}
             <div className="w-px h-6 bg-slate-200 shrink-0" aria-hidden="true" />
 
-            {/* الجناح 2: الهندسة الورقية والطباعة (Mise en page & Sortie A4) */}
+            {/* الجناح 2: أدوات الصياغة الرياضية والحساب الرمزي والذكاء الاصطناعي */}
+            <div className="flex items-center gap-1 p-1 bg-slate-50/80 rounded-xl border border-slate-200/70 text-xs shrink-0">
+              {/* لوحة الرموز الرياضية السريعة */}
+              <button
+                type="button"
+                onClick={onToggleMathPalette}
+                className={`h-7 px-2 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer border ${
+                  showMathPalette
+                    ? "bg-slate-900 text-cyan-300 border-slate-900 shadow-2xs"
+                    : "bg-white hover:bg-slate-100 text-slate-800 border-slate-200"
+                }`}
+                title="لوحة الرموز والعمليات الرياضية السريعة (∫, ∑, ℝ, u⃗, lim)"
+              >
+                <span className="font-serif text-xs font-black text-cyan-700">∫∑</span>
+                <span>الرموز</span>
+              </button>
+
+              {/* التحقق الرمزي ورسم الدوال عبر WolframAlpha */}
+              <button
+                type="button"
+                onClick={onOpenWolframVerifier}
+                className="h-7 px-2 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 transition whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer"
+                title="مختبر WolframAlpha للحساب الرمزي ورسم المنحنيات البيانية (CAS & Plots)"
+              >
+                <Calculator className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Wolfram CAS</span>
+              </button>
+
+              {/* شريحة محرك الذكاء الاصطناعي Gemini AI */}
+              <div className="h-7 flex items-center rounded-lg bg-white border border-slate-200 p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={onOpenAiAssistant}
+                  className="h-full px-2 text-xs font-bold text-slate-800 hover:text-cyan-900 hover:bg-slate-100 rounded-md transition flex items-center gap-1 cursor-pointer"
+                  title="فتح المساعد الديداكتيكي والرياضياتي الذكي (Gemini AI Engine)"
+                >
+                  <BrainCircuit className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
+                  <span className="font-mono font-bold tracking-tight">
+                    {selectedAiModel === "gemini-4-argon" ? "Argon 4" : "Flash 3.8"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenAiSettings}
+                  className="h-full w-5.5 hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-md transition flex items-center justify-center shrink-0 cursor-pointer border-r border-slate-200"
+                  title="تفضيلات محرك الذكاء الاصطناعي وفحص الاتصال الحي"
+                  aria-label="تفضيلات محرك الذكاء الاصطناعي"
+                >
+                  <Settings className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* سلم التنقيط (تظهر في وضع الفروض DS) */}
+              {activeModule === "DS_142_08" && (
+                <button
+                  type="button"
+                  onClick={onOpenBaremeModal}
+                  className="h-7 px-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  title="تجزئة النقط وسلم التنقيط الدقيق وفق المذكرة 142-08"
+                >
+                  <Scale className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                  <span className="hidden xl:inline">سلم النقط</span>
+                  <span
+                    className={`font-mono tabular-nums text-[10.5px] font-black ${
+                      isScore20 ? "text-teal-700" : "text-amber-700"
+                    }`}
+                  >
+                    {totalPoints.toFixed(2)}/20
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* فاصل عمودي أنيق */}
+            <div className="w-px h-6 bg-slate-200 shrink-0" aria-hidden="true" />
+
+            {/* الجناح 3: الهندسة الورقية والطباعة (Mise en page & Sortie A4) */}
             <div className="flex items-center gap-1 p-1 bg-slate-50/80 rounded-xl border border-slate-200/70 text-xs shrink-0">
               {/* توجيه الورقة */}
               <button

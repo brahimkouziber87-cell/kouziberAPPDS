@@ -55,10 +55,10 @@ export const CrossPlatformSyncModal: React.FC<CrossPlatformSyncModalProps> = ({
       const minified = {
         meta: currentBlueprint.meta,
         curriculum: {
-          trackCode: currentBlueprint.curriculum.trackCode,
-          semester: currentBlueprint.curriculum.semester,
-          dsKey: currentBlueprint.curriculum.dsKey,
-          selectedLessonsCount: currentBlueprint.curriculum.selectedLessons.length,
+          trackCode: currentBlueprint.examStructure?.selectedTrackCode || "",
+          semester: currentBlueprint.examStructure?.semester || "",
+          dsKey: currentBlueprint.examStructure?.dsKey || "",
+          selectedLessonsCount: currentBlueprint.gradingAndLessons?.selectedLessonIndices?.length || 0,
         },
         ts: Date.now(),
       };

@@ -22,20 +22,26 @@ import {
   getSerieAndDMExercises,
   getVariantQuestions,
   HeaderStyle,
+  LessonHeaderIconId,
   LessonItem,
   ModuleType,
   MoroccanDSStructureMode,
   QCMGeneratorConfig,
   resolveBranchColorTheme,
+  resolveLessonHeaderIcon,
   resolveMultiLessonRibbonGradient,
   SemesterType,
   SolutionDisplayMode,
   TRADITIONAL_TITLE_FONT_OPTIONS,
   formatTitleWithCalligraphyOrnaments,
+  getExamenBlanc2BacConfig,
   TrackData,
 } from "../data/curriculum";
 import { AdvancedPedagogyTabId } from "./AdvancedMathPedagogyModal";
-import { AppliedTitleCalligraphyConfig } from "./ArabicCalligraphySimulator";
+import {
+  AppliedTitleCalligraphyConfig,
+  MoroccanHeaderSvgBanner,
+} from "./ArabicCalligraphySimulator";
 import { TeacherLogo, TeacherLogoVariant } from "./TeacherLogo";
 import { GeoGebraFigureCard } from "./GeoGebraFigureCard";
 import { RichTextMathToolbar } from "./RichTextMathToolbar";
@@ -46,6 +52,7 @@ import { InsertedFigure } from "../data/curriculum";
 import {
   Calculator,
   Code2,
+  Compass,
   Image as ImageIcon,
   Layers,
   Ruler,
@@ -72,6 +79,7 @@ import {
   LatexPackageTheme,
   PAPER_SURFACE_OPTIONS,
   PaperSurfaceTexture,
+  StudentGridStyle,
   TCOLORBOX_FRAME_OPTIONS,
   TCOLORBOX_PALETTE_OPTIONS,
   TCOLORBOX_SHADING_OPTIONS,
@@ -106,6 +114,10 @@ import {
   MOROCCAN_DM_PRESETS,
 } from "../utils/seriesGenerator";
 import { generateFullMoroccanPedagogicalFiche } from "../utils/ficheGenerator";
+import type {
+  DifferentiatedPathConfig,
+  LongitudinalCohortTrackerConfig,
+} from "../utils/mathjsValidator";
 
 interface PrintablePreviewProps {
   track: TrackData;
@@ -159,7 +171,7 @@ interface PrintablePreviewProps {
   isInlineEditable?: boolean;
   showQuestionBareme?: boolean;
   includeAnswerWorkspace?: boolean;
-  studentGridStyle?: "SEYES_FRENCH" | "LINED_RULED" | "MILLIMETER_GRID" | "DOTTED_BOX" | "PLAIN_BOX";
+  studentGridStyle?: StudentGridStyle;
   workspaceHeightMode?: "ADAPTIVE" | "COMPACT" | "GENEROUS";
   includeGradingScaleTable?: boolean;
   includeSelfEvalGrid?: boolean;
@@ -217,7 +229,7 @@ interface PrintablePreviewProps {
   onOpenAiAssistant?: () => void;
   onExportOverleafZipDirect?: () => void;
   onRemovePythonAlgorithm?: (id: string) => void;
-  onChangeStudentGridStyle?: (style: "SEYES_FRENCH" | "LINED_RULED" | "MILLIMETER_GRID" | "DOTTED_BOX" | "PLAIN_BOX") => void;
+  onChangeStudentGridStyle?: (style: StudentGridStyle) => void;
   includeIndividualGradingStrip?: boolean;
   includeRescueHintsAndContinuity?: boolean;
   onOpenBatchPrint?: () => void;
@@ -231,7 +243,370 @@ interface PrintablePreviewProps {
   onToggleInteractiveQrFooter?: () => void;
   interactiveExamUrl?: string;
   onOpenInteractiveQuiz?: () => void;
+  differentiatedPathConfig?: DifferentiatedPathConfig;
+  longitudinalCohortConfig?: LongitudinalCohortTrackerConfig;
+  onOpenMathInspectorStudio?: () => void;
+  onSwitchDocumentViewModel?: (module: ModuleType, dmSubType?: DMSubType) => void;
+  customPageMarginsMm?: {
+    topMm: number;
+    bottomMm: number;
+    xMm: number;
+    modelId: DocumentViewMarginModelId;
+  } | null;
+  onChangePageMarginsMm?: (
+    margins: {
+      topMm: number;
+      bottomMm: number;
+      xMm: number;
+      modelId: DocumentViewMarginModelId;
+    } | null
+  ) => void;
 }
+
+export type DocumentViewMarginModelId =
+  | "DS_EXAM_OFFICIAL"
+  | "SERIE_TD_COMPACT"
+  | "DEVOIR_MAISON_BALANCED"
+  | "DIAGNOSTIC_TEST"
+  | "FICHE_PEDAGOGIQUE_WIDE";
+
+export interface DocumentViewMarginModelSpec {
+  id: DocumentViewMarginModelId;
+  labelAr: string;
+  labelFr: string;
+  shortBadgeAr: string;
+  shortBadgeFr: string;
+  targetModule: ModuleType;
+  targetDmSubType?: DMSubType;
+  topMm: number;
+  bottomMm: number;
+  xMm: number;
+  previewPadTopPx: number;
+  previewPadBottomPx: number;
+  previewPadXPx: number;
+  verticalSpaceClass: string;
+  descriptionAr: string;
+  descriptionFr: string;
+  accentColor: string;
+}
+
+export const DOC_VIEW_MARGIN_MODELS: DocumentViewMarginModelSpec[] = [
+  {
+    id: "DS_EXAM_OFFICIAL",
+    labelAr: "نموذج الفرض المحروس",
+    labelFr: "Modèle Devoir Surveillé (DS)",
+    shortBadgeAr: "فرض محروس · هوامش رسمية (16×15mm)",
+    shortBadgeFr: "DS Officiel (16×15mm)",
+    targetModule: "DS_142_08",
+    topMm: 16,
+    bottomMm: 16,
+    xMm: 15,
+    previewPadTopPx: 32,
+    previewPadBottomPx: 32,
+    previewPadXPx: 36,
+    verticalSpaceClass: "space-y-8",
+    descriptionAr:
+      "هوامش رسمية مريحة (1.6cm أعلى/أسفل · 1.5cm جانبياً) تمنح المتعلم مساحة بصرية واضحة لقراءة الأسئلة وسلم التنقيط والترويسة الوزارية.",
+    descriptionFr:
+      "Marges officielles aérées (1.6cm haut/bas · 1.5cm côtés) conformes à la note 142-08 pour le confort visuel en examen.",
+    accentColor: "indigo",
+  },
+  {
+    id: "SERIE_TD_COMPACT",
+    labelAr: "نموذج سلسلة التمارين",
+    labelFr: "Modèle Série d'Exercices (TD)",
+    shortBadgeAr: "سلسلة تمارين · هوامش مدمجة (8×8mm)",
+    shortBadgeFr: "Série TD Compacte (8×8mm)",
+    targetModule: "DM_SERIE",
+    targetDmSubType: "SERIE_TD",
+    topMm: 8,
+    bottomMm: 8,
+    xMm: 8,
+    previewPadTopPx: 14,
+    previewPadBottomPx: 14,
+    previewPadXPx: 16,
+    verticalSpaceClass: "space-y-4",
+    descriptionAr:
+      "هوامش اقتصادية عالية الكثافة (0.8cm من جميع الجهات) تستثمر 87.4% من مساحة ورقة A4 لاستيعاب أكبر عدد من التمارين وتوفير حتى 35% من الورق.",
+    descriptionFr:
+      "Marges compactes haute densité (0.8cm partout) optimisant 87.4% de la feuille A4 pour regrouper un maximum d'exercices.",
+    accentColor: "emerald",
+  },
+  {
+    id: "DEVOIR_MAISON_BALANCED",
+    labelAr: "نموذج الفرض المنزلي",
+    labelFr: "Modèle Devoir Maison (DM)",
+    shortBadgeAr: "فرض منزلي · هوامش متوازنة (12×12mm)",
+    shortBadgeFr: "Devoir Maison (12×12mm)",
+    targetModule: "DM_SERIE",
+    targetDmSubType: "DEVOIR_MAISON",
+    topMm: 12,
+    bottomMm: 12,
+    xMm: 12,
+    previewPadTopPx: 22,
+    previewPadBottomPx: 22,
+    previewPadXPx: 24,
+    verticalSpaceClass: "space-y-6",
+    descriptionAr:
+      "هوامش متوازنة (1.2cm من جميع الجهات) ملائمة للبحوث المنزلية، إرشادات التوجيه، وشبكة التقييم الذاتي للمتعلم.",
+    descriptionFr:
+      "Marges équilibrées (1.2cm) adaptées aux devoirs à la maison avec contrat didactique et auto-évaluation.",
+    accentColor: "amber",
+  },
+  {
+    id: "DIAGNOSTIC_TEST",
+    labelAr: "نموذج الرائز التشخيصي",
+    labelFr: "Modèle Test Diagnostique",
+    shortBadgeAr: "رائز تشخيصي · هوامش قياسية (11×10mm)",
+    shortBadgeFr: "Test Diagnostique (11×10mm)",
+    targetModule: "DIAGNOSTIC",
+    topMm: 11,
+    bottomMm: 11,
+    xMm: 10,
+    previewPadTopPx: 18,
+    previewPadBottomPx: 18,
+    previewPadXPx: 20,
+    verticalSpaceClass: "space-y-5",
+    descriptionAr:
+      "هوامش عملية (1.1cm أعلى/أسفل · 1.0cm جانبياً) مصممة لاحتواء أسئلة الروائز التشخيصية وخانات الإجابة السريعة في مطلع الموسم.",
+    descriptionFr:
+      "Marges fonctionnelles (1.1cm haut/bas · 1.0cm côtés) pour les tests diagnostiques de début d'année.",
+    accentColor: "cyan",
+  },
+  {
+    id: "FICHE_PEDAGOGIQUE_WIDE",
+    labelAr: "نموذج الجذاذة التربوية",
+    labelFr: "Modèle Fiche Pédagogique",
+    shortBadgeAr: "جذاذة تربوية · هوامش عريضة (10×9mm)",
+    shortBadgeFr: "Fiche OP 2007 (10×9mm)",
+    targetModule: "FICHE_OP2007",
+    topMm: 10,
+    bottomMm: 10,
+    xMm: 9,
+    previewPadTopPx: 16,
+    previewPadBottomPx: 16,
+    previewPadXPx: 18,
+    verticalSpaceClass: "space-y-4",
+    descriptionAr:
+      "هوامش عريضة للجداول الديداكتيكية (1.0cm أعلى/أسفل · 0.9cm جانبياً) لتوسيع أعمدة سيناريو الحصة وأنشطة الأستاذ والمتعلم.",
+    descriptionFr:
+      "Marges élargies (1.0cm haut/bas · 0.9cm côtés) pour maximiser la largeur des tableaux de scénario pédagogique.",
+    accentColor: "violet",
+  },
+];
+
+export function resolveAutoDocViewMarginModel(
+  activeModule: ModuleType,
+  dmSubType?: DMSubType
+): DocumentViewMarginModelSpec {
+  if (activeModule === "DS_142_08") {
+    return DOC_VIEW_MARGIN_MODELS[0];
+  }
+  if (activeModule === "DM_SERIE") {
+    return dmSubType === "SERIE_TD"
+      ? DOC_VIEW_MARGIN_MODELS[1]
+      : DOC_VIEW_MARGIN_MODELS[2];
+  }
+  if (activeModule === "DIAGNOSTIC") {
+    return DOC_VIEW_MARGIN_MODELS[3];
+  }
+  return DOC_VIEW_MARGIN_MODELS[4];
+}
+
+export const LessonHeaderIconSvg: React.FC<{
+  iconId: Exclude<LessonHeaderIconId, "AUTO" | "NONE">;
+  className?: string;
+}> = ({ iconId, className = "w-3.5 h-3.5 shrink-0" }) => {
+  switch (iconId) {
+    case "FUNCTION":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <path d="M3 12h18" strokeOpacity="0.45" strokeWidth="1.4" />
+          <path d="M12 3v18" strokeOpacity="0.45" strokeWidth="1.4" />
+          <path d="M3 18C6.5 18 8.5 6 12 12C15.5 18 17.5 6 21 6" />
+        </svg>
+      );
+    case "SEQUENCE":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <path d="M3 19h18" strokeOpacity="0.5" strokeWidth="1.5" />
+          <path d="M4 19V5" strokeOpacity="0.5" strokeWidth="1.5" />
+          <circle cx="7" cy="15" r="1.8" fill="currentColor" />
+          <circle cx="11.5" cy="11" r="1.8" fill="currentColor" />
+          <circle cx="16" cy="8.5" r="1.8" fill="currentColor" />
+          <circle cx="20" cy="7" r="1.8" fill="currentColor" />
+          <path d="M7 15l4.5-4 4.5-2.5 4-1.5" strokeDasharray="2 2" strokeWidth="1.4" />
+        </svg>
+      );
+    case "GEOMETRY":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <polygon points="12 3 21 19 3 19" />
+          <path d="M12 3v16" strokeDasharray="2 2" strokeWidth="1.4" />
+          <rect x="12" y="15.5" width="3.5" height="3.5" strokeWidth="1.3" />
+        </svg>
+      );
+    case "COMPLEX":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="8" strokeOpacity="0.55" strokeWidth="1.5" />
+          <path d="M12 12L17.5 6.5" strokeWidth="2.2" />
+          <circle cx="17.5" cy="6.5" r="1.7" fill="currentColor" />
+          <path d="M4 12h16M12 4v16" strokeOpacity="0.35" strokeWidth="1.2" />
+        </svg>
+      );
+    case "PROBABILITY":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+          <circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" />
+          <circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+          <circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" />
+          <circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" />
+        </svg>
+      );
+    case "INTEGRAL":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <path d="M15 4c-2.2 0-3 1.5-3 4v8c0 2.5-.8 4-3 4" />
+          <path d="M5 18h14" strokeOpacity="0.4" strokeWidth="1.3" />
+          <path d="M14 9c2-1.5 4-1 5 1v8H14V9z" fill="currentColor" fillOpacity="0.18" stroke="none" />
+        </svg>
+      );
+    case "ALGEBRA":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <path d="M18 4H6l6 8-6 8h12" />
+        </svg>
+      );
+    case "LOGIC":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          aria-hidden="true"
+        >
+          <circle cx="9.5" cy="12" r="5.5" />
+          <circle cx="14.5" cy="12" r="5.5" />
+        </svg>
+      );
+  }
+};
+
+export const LessonHeaderIconBadge: React.FC<{
+  lesson?: LessonItem;
+  overrideIconId?: LessonHeaderIconId;
+  isDarkHeader?: boolean;
+  isFr?: boolean;
+  accentHex?: string;
+  bgHex?: string;
+  borderHex?: string;
+}> = ({
+  lesson,
+  overrideIconId,
+  isDarkHeader = false,
+  isFr = false,
+  accentHex,
+  bgHex,
+  borderHex,
+}) => {
+  const resolved = resolveLessonHeaderIcon(lesson, overrideIconId);
+  if (!resolved || resolved.id === "NONE" || resolved.id === "AUTO") return null;
+
+  return (
+    <span
+      title={isFr ? resolved.labelFr : resolved.labelAr}
+      style={
+        isDarkHeader
+          ? undefined
+          : {
+              borderColor: borderHex || `${resolved.accentHex}55`,
+              color: accentHex || resolved.accentHex,
+              backgroundColor: bgHex || undefined,
+            }
+      }
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-black shrink-0 print-exact-color ${
+        isDarkHeader
+          ? "bg-white/20 text-amber-200 border-white/35 shadow-2xs"
+          : "bg-white/95 shadow-2xs"
+      }`}
+    >
+      <LessonHeaderIconSvg iconId={resolved.id} className="w-3.5 h-3.5 shrink-0" />
+      <span className="font-mono text-[10.5px] leading-none tracking-tight">
+        {resolved.mathSymbol}
+      </span>
+    </span>
+  );
+};
 
 export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   track,
@@ -356,12 +731,104 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   onToggleInteractiveQrFooter,
   interactiveExamUrl,
   onOpenInteractiveQuiz,
+  differentiatedPathConfig,
+  longitudinalCohortConfig,
+  onOpenMathInspectorStudio,
+  onSwitchDocumentViewModel,
+  customPageMarginsMm = null,
+  onChangePageMarginsMm,
 }) => {
   const [showMarginGuides, setShowMarginGuides] = React.useState<boolean>(false);
   const [internalShowA4PageBreaks, setInternalShowA4PageBreaks] = React.useState<boolean>(false);
   const [internalEconomicTwoUpMode, setInternalEconomicTwoUpMode] = React.useState<boolean>(false);
   const [internalIncludeInteractiveQr, setInternalIncludeInteractiveQr] = React.useState<boolean>(true);
   const [showPositiveMarkingTips, setShowPositiveMarkingTips] = React.useState<boolean>(true);
+  const [syncDocTypeOnModelClick, setSyncDocTypeOnModelClick] = React.useState<boolean>(true);
+  const [showCustomMarginSliders, setShowCustomMarginSliders] = React.useState<boolean>(false);
+  const [internalMarginOverride, setInternalMarginOverride] = React.useState<{
+    topMm: number;
+    bottomMm: number;
+    xMm: number;
+    modelId: DocumentViewMarginModelId;
+  } | null>(null);
+
+  const autoDocMarginModel = React.useMemo(
+    () => resolveAutoDocViewMarginModel(activeModule, dmSubType),
+    [activeModule, dmSubType]
+  );
+
+  const effectiveMarginOverride =
+    customPageMarginsMm !== undefined ? customPageMarginsMm : internalMarginOverride;
+
+  const updateMarginOverride = React.useCallback(
+    (
+      next: {
+        topMm: number;
+        bottomMm: number;
+        xMm: number;
+        modelId: DocumentViewMarginModelId;
+      } | null
+    ) => {
+      if (onChangePageMarginsMm) {
+        onChangePageMarginsMm(next);
+      } else {
+        setInternalMarginOverride(next);
+      }
+    },
+    [onChangePageMarginsMm]
+  );
+
+  const activeMarginModelSpec = React.useMemo(() => {
+    if (effectiveMarginOverride) {
+      const baseSpec =
+        DOC_VIEW_MARGIN_MODELS.find((m) => m.id === effectiveMarginOverride.modelId) ||
+        autoDocMarginModel;
+      return {
+        ...baseSpec,
+        topMm: effectiveMarginOverride.topMm,
+        bottomMm: effectiveMarginOverride.bottomMm,
+        xMm: effectiveMarginOverride.xMm,
+        previewPadTopPx: Math.round(effectiveMarginOverride.topMm * 2),
+        previewPadBottomPx: Math.round(effectiveMarginOverride.bottomMm * 2),
+        previewPadXPx: Math.round(effectiveMarginOverride.xMm * 2.25),
+      };
+    }
+    return autoDocMarginModel;
+  }, [effectiveMarginOverride, autoDocMarginModel]);
+
+  const handleSelectDocumentViewModel = React.useCallback(
+    (model: DocumentViewMarginModelSpec) => {
+      if (syncDocTypeOnModelClick && onSwitchDocumentViewModel) {
+        onSwitchDocumentViewModel(model.targetModule, model.targetDmSubType);
+        updateMarginOverride(null);
+      } else {
+        updateMarginOverride({
+          topMm: model.topMm,
+          bottomMm: model.bottomMm,
+          xMm: model.xMm,
+          modelId: model.id,
+        });
+      }
+    },
+    [syncDocTypeOnModelClick, onSwitchDocumentViewModel, updateMarginOverride]
+  );
+
+  const a4TotalWidthMm = pageOrientation === "LANDSCAPE" ? 297 : 210;
+  const a4TotalHeightMm = pageOrientation === "LANDSCAPE" ? 210 : 297;
+  const safePrintWidthMm = Math.max(
+    100,
+    a4TotalWidthMm - activeMarginModelSpec.xMm * 2
+  );
+  const safePrintHeightMm = Math.max(
+    100,
+    a4TotalHeightMm - activeMarginModelSpec.topMm - activeMarginModelSpec.bottomMm
+  );
+  const printableAreaUtilizationPct =
+    Math.round(
+      ((safePrintWidthMm * safePrintHeightMm) /
+        (a4TotalWidthMm * a4TotalHeightMm)) *
+        1000
+    ) / 10;
 
   const effectiveShowA4Breaks = showA4LivePageBreaks ?? internalShowA4PageBreaks;
   const effectiveEconomicMode = economicTwoUpPrintMode ?? internalEconomicTwoUpMode;
@@ -480,10 +947,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           dsStructureMode === "COMPLETE_EXAM_MAROC",
         hasSynthesisProblem:
           dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-          dsStructureMode === "COMPLETE_EXAM_MAROC",
+          dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+          dsStructureMode === "EXAMEN_BLANC_2BAC",
       }),
     [liveExamGridSummary.allQuestions, diagDuration, dsStructureMode]
   );
+
+  const [showCommonStudentErrorsCard, setShowCommonStudentErrorsCard] =
+    React.useState<boolean>(true);
 
   const isHandwrittenFontActive = Boolean(
     DOC_FONT_OPTIONS.find((f) => f.id === docFontFamily)?.isHandwritten
@@ -491,12 +962,26 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   const solutionHandwritingClass =
     handwrittenSolutionsOnly && !isHandwrittenFontActive ? "doc-font-handwritten" : "";
 
-  const activeCalligraphyCss =
+  const activeCalligraphyOption =
     appliedTitleCalligraphy && appliedTitleCalligraphy.fontId !== "DEFAULT_DOC"
       ? TRADITIONAL_TITLE_FONT_OPTIONS.find(
           (f) => f.id === appliedTitleCalligraphy.fontId
-        )?.cssClass || ""
-      : "";
+        ) || null
+      : null;
+
+  const activeCalligraphyCss = activeCalligraphyOption?.cssClass || "";
+  const isMoroccanHeaderOrnamentEnabled =
+    appliedTitleCalligraphy?.enableMoroccanHeaderOrnament ?? true;
+  const isMoroccanAndalusiHeaderActive = Boolean(
+    !isMission &&
+      isMoroccanHeaderOrnamentEnabled &&
+      (activeCalligraphyOption?.moroccanHeaderFramePreset ||
+        appliedTitleCalligraphy?.ornament === "ANDALUSI_MOROCCAN")
+  );
+  const effectiveHeaderLetterSpacing =
+    appliedTitleCalligraphy?.customLetterSpacingEm !== undefined
+      ? `${appliedTitleCalligraphy.customLetterSpacingEm.toFixed(3)}em`
+      : activeCalligraphyOption?.letterSpacing;
 
   const mainTitleCalligraphyClass = activeCalligraphyCss;
   const headerSubCalligraphyClass =
@@ -556,8 +1041,21 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
   const renderDetailedCorrectionCard = (
     corr: ExerciseCorrection,
-    isInline: boolean = false
+    isInline: boolean = false,
+    explicitLesson?: LessonItem
   ) => {
+    const matchedLesson =
+      explicitLesson ||
+      baseDsLessons.find(
+        (l) =>
+          corr.exerciseTitleAr.includes(l.lessonAr) ||
+          corr.exerciseTitleFr.includes(l.lessonFr)
+      );
+    const didacticErrorCard =
+      showCommonStudentErrorsCard && matchedLesson
+        ? getTypicalErrorsForLessons([matchedLesson])[0]
+        : null;
+
     return (
       <div
         className={`avoid-break rounded-xl overflow-hidden border ${solutionHandwritingClass} ${
@@ -581,6 +1079,28 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCommonStudentErrorsCard((v) => !v)}
+              className={`no-print px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                showCommonStudentErrorsCard
+                  ? "bg-rose-50 text-rose-900 border-rose-300"
+                  : "bg-slate-100 text-slate-600 border-slate-300"
+              }`}
+              title={
+                isFr
+                  ? "Afficher/Masquer la grille des erreurs fréquentes des élèves"
+                  : "إظهار/إخفاء بطاقة تشخيص الأخطاء الشائعة للمتعلمين"
+              }
+            >
+              {showCommonStudentErrorsCard
+                ? isFr
+                  ? "⚠️ Erreurs fréquentes : ON"
+                  : "⚠️ تشخيص الأخطاء الشائعة: مفعل"
+                : isFr
+                ? "Erreurs fréquentes : OFF"
+                : "تشخيص الأخطاء الشائعة: مخفي"}
+            </button>
             <span className="font-mono font-extrabold text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px] tabular-nums">
               {isFr ? `Barème : ${corr.totalPoints} pts` : `سلم التنقيط : ${corr.totalPoints} ن`}
             </span>
@@ -633,6 +1153,48 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           ))}
         </div>
 
+        {/* بطاقة تشخيص الأخطاء الشائعة للمتعلمين واليقظة الديداكتيكية */}
+        {didacticErrorCard && (
+          <div className="avoid-break rounded-lg border border-rose-300 bg-rose-50/70 p-2.5 space-y-1.5 text-[10.5px]">
+            <div className="flex flex-wrap items-center justify-between gap-1 font-black text-rose-950">
+              <span>
+                {isFr
+                  ? "🚨 Grille des Erreurs Fréquentes des Élèves & Vigilance Didactique"
+                  : "🚨 بطاقة تشخيص الأخطاء الشائعة للمتعلمين واليقظة الديداكتيكية"}
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-rose-200/80 text-rose-950 text-[9.5px] font-bold">
+                {isFr ? didacticErrorCard.lessonTitleFr : didacticErrorCard.lessonTitleAr}
+              </span>
+            </div>
+            <div className="text-slate-800 font-semibold">
+              {isFr ? didacticErrorCard.frequentMistakeFr : didacticErrorCard.frequentMistakeAr}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+              <div className="bg-white/90 border border-rose-200 rounded px-2 py-1 text-rose-900">
+                <span className="font-black">
+                  {isFr ? "❌ Formulation erronée : " : "❌ الخطأ الشائع لدى المتعلم : "}
+                </span>
+                <MathText text={didacticErrorCard.wrongExpressionLatex} inline />
+              </div>
+              <div className="bg-white/90 border border-emerald-200 rounded px-2 py-1 text-emerald-950">
+                <span className="font-black">
+                  {isFr ? "✅ Formulation mathématique exacte : " : "✅ الصياغة الرياضية السليمة : "}
+                </span>
+                <MathText text={didacticErrorCard.correctExpressionLatex} inline />
+              </div>
+            </div>
+            <div className="text-[10px] text-indigo-950 bg-indigo-50/80 border border-indigo-200/80 rounded px-2 py-1 font-medium">
+              🎯{" "}
+              <strong>
+                {isFr ? "Piste de remédiation pédagogique : " : "توجيه بيداغوجي للدعم والمعالجة : "}
+              </strong>
+              {isFr
+                ? didacticErrorCard.teacherRemediationTipFr
+                : didacticErrorCard.teacherRemediationTipAr}
+            </div>
+          </div>
+        )}
+
         <div className="pt-1 border-t border-emerald-200/80 text-[10.5px] text-emerald-900 font-semibold">
           💡 {isFr ? corr.generalAdviceFr : corr.generalAdviceAr}
         </div>
@@ -652,7 +1214,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       dsStructureMode === "COMPLETE_EXAM_MAROC";
     const hasProblem =
       dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-      dsStructureMode === "COMPLETE_EXAM_MAROC";
+      dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+      dsStructureMode === "EXAMEN_BLANC_2BAC";
     const qcmBlock = hasQCM
       ? generateMoroccanQCMExercise(orderedLessons, mCode, track.cycle, {
           ...qcmConfig,
@@ -1305,6 +1868,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         className={`avoid-break rounded-xl overflow-hidden shadow-xs print-exact-color ${
           activeHeaderBranchTheme ? "branch-themed-card" : ""
         } ${
+          isMoroccanAndalusiHeaderActive ? "andalusi-maghribi-official-header " : ""
+        }${
           isMission
             ? "border-2 border-indigo-950 bg-white"
             : headerStyle === "CLASSIC_BORDERED"
@@ -1340,16 +1905,40 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
               <>
                 {headerStyle === "OFFICIAL_AREF" && (
                   <>
-                    <div className="font-extrabold text-slate-900">
+                    <div
+                      style={
+                        isMoroccanAndalusiHeaderActive && effectiveHeaderLetterSpacing
+                          ? {
+                              letterSpacing: effectiveHeaderLetterSpacing,
+                              ["--title-letter-spacing" as string]: effectiveHeaderLetterSpacing,
+                            }
+                          : undefined
+                      }
+                      className={`font-extrabold text-slate-900 ${
+                        isMoroccanAndalusiHeaderActive ? headerSubCalligraphyClass : ""
+                      }`}
+                    >
                       {isFr
                         ? "Royaume du Maroc · Ministère de l'Éducation Nationale, du Préscolaire et des Sports"
+                        : isMoroccanAndalusiHeaderActive
+                        ? "❁ المملكة المغربية · وزارة التربية الوطنية والتعليم الأولي والرياضة"
                         : "المملكة المغربية · وزارة التربية الوطنية والتعليم الأولي والرياضة"}
                     </div>
                     <div className="text-[11px] font-semibold text-slate-700">{academy}</div>
                     <div className="text-[11px] text-slate-600">{direction}</div>
                   </>
                 )}
-                <div className={`font-extrabold text-indigo-950 pt-0.5 text-sm ${headerSubCalligraphyClass}`}>
+                <div
+                  style={
+                    headerSubCalligraphyClass && effectiveHeaderLetterSpacing
+                      ? {
+                          letterSpacing: effectiveHeaderLetterSpacing,
+                          ["--title-letter-spacing" as string]: effectiveHeaderLetterSpacing,
+                        }
+                      : undefined
+                  }
+                  className={`font-extrabold text-indigo-950 pt-0.5 text-sm ${headerSubCalligraphyClass}`}
+                >
                   {school}
                 </div>
               </>
@@ -1366,24 +1955,51 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
           {/* العمود الأوسط: عنوان الوثيقة والنموذج والمدة */}
           <div className="text-center space-y-1 border-y md:border-y-0 md:border-x border-slate-200 py-2 md:py-0 px-3">
+            {isMoroccanHeaderOrnamentEnabled &&
+              appliedTitleCalligraphy?.svgHeaderFrame &&
+              appliedTitleCalligraphy.svgHeaderFrame !== "NONE" && (
+                <MoroccanHeaderSvgBanner
+                  frame={appliedTitleCalligraphy.svgHeaderFrame}
+                  position="TOP"
+                />
+              )}
+            {isMoroccanAndalusiHeaderActive && !isFr && (
+              <div className="text-[9.5px] font-bold text-amber-800/85 tracking-widest select-none">
+                ─── ❁ المملكة المغربية · الخط الأندلسي المغربي ❁ ───
+              </div>
+            )}
             <div
-              style={
-                activeHeaderBranchTheme
+              style={{
+                ...(activeCalligraphyOption || effectiveHeaderLetterSpacing
+                  ? {
+                      letterSpacing: effectiveHeaderLetterSpacing,
+                      ["--title-letter-spacing" as string]: effectiveHeaderLetterSpacing,
+                      wordSpacing: activeCalligraphyOption?.wordSpacing,
+                      lineHeight: activeCalligraphyOption?.lineHeight,
+                    }
+                  : {}),
+                ...(activeHeaderBranchTheme
                   ? {
                       backgroundImage: activeHeaderBranchTheme.titleGradientCss,
                       WebkitBackgroundClip: "text",
                       backgroundClip: "text",
                       color: "transparent",
                     }
-                  : undefined
-              }
+                  : {}),
+              }}
               className={`font-black text-indigo-950 ${mainTitleScaleClass} ${mainTitleCalligraphyClass}`}
             >
               {(() => {
                 const rawResolvedTitle = customDocTitle.trim()
                   ? `${customDocTitle.trim()}${modelText}`
                   : activeModule === "DS_142_08"
-                  ? isMission
+                  ? dsStructureMode === "EXAMEN_BLANC_2BAC"
+                    ? isFr
+                      ? `Examen Blanc du Baccalauréat (${track.code})${modelText}`
+                      : isAr
+                      ? `الامتحان التجريبي الموحد للبكالوريا (${track.labelAr})${modelText}`
+                      : `الامتحان التجريبي للبكالوريا / Examen Blanc (${track.code})${modelText}`
+                    : isMission
                     ? `Devoir Surveillé N° ${dsKey.replace("DS", "")} (${sem})${modelText}`
                     : isFr
                     ? `Devoir Surveillé N° ${dsKey.replace("DS", "")} (${sem})${modelText}`
@@ -1421,6 +2037,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   : "التوزيع السنوي للمقرر والأطر المرجعية";
 
                 return appliedTitleCalligraphy &&
+                  isMoroccanHeaderOrnamentEnabled &&
                   appliedTitleCalligraphy.ornament !== "NONE" &&
                   !isFr
                   ? formatTitleWithCalligraphyOrnaments(
@@ -1430,7 +2047,21 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   : rawResolvedTitle;
               })()}
             </div>
-            <div className={`text-xs font-bold text-slate-700 tabular-nums ${headerSubCalligraphyClass}`}>
+            {isMoroccanHeaderOrnamentEnabled &&
+              appliedTitleCalligraphy?.svgHeaderFrame === "ZELLIGE_FEZ" && (
+                <MoroccanHeaderSvgBanner frame="ZELLIGE_FEZ" position="BOTTOM" />
+              )}
+            <div
+              style={
+                headerSubCalligraphyClass && effectiveHeaderLetterSpacing
+                  ? {
+                      letterSpacing: effectiveHeaderLetterSpacing,
+                      ["--title-letter-spacing" as string]: effectiveHeaderLetterSpacing,
+                    }
+                  : undefined
+              }
+              className={`text-xs font-bold text-slate-700 tabular-nums ${headerSubCalligraphyClass}`}
+            >
               {customDocSubtitle.trim()
                 ? customDocSubtitle.trim()
                 : activeModule === "DIAGNOSTIC"
@@ -2108,8 +2739,277 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
   return (
     <div className="w-full space-y-3">
+      {/* حقن ديناميكي لقواعد @page في الطباعة لضبط الهوامش تلقائياً حسب نموذج الوثيقة */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 ${pageOrientation === "LANDSCAPE" ? "landscape" : "portrait"};
+            margin-top: ${activeMarginModelSpec.topMm}mm;
+            margin-bottom: ${activeMarginModelSpec.bottomMm}mm;
+            margin-left: ${activeMarginModelSpec.xMm}mm;
+            margin-right: ${activeMarginModelSpec.xMm}mm;
+          }
+        }
+      `}</style>
+
       {/* شريط تجويد المعاينة الحية وحزم LaTeX الاحترافية + مختبر WolframAlpha */}
       <div className="no-print bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 shadow-xs space-y-2.5">
+        {/* شريط التبديل الفوري بين نماذج عرض الوثيقة والضبط التلقائي للهوامش (نموذج الفرض المحروس مقابل نموذج سلسلة التمارين وغيرها) */}
+        <div className="bg-gradient-to-l from-indigo-50/90 via-slate-50 to-emerald-50/70 border border-indigo-200/80 rounded-xl p-2.5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-950 text-amber-300 shadow-2xs">
+                <Layers className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11.5px] font-black text-slate-900">
+                    نماذج العرض والضبط التلقائي للهوامش (A4 Auto-Margins):
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-950 text-amber-300 font-mono text-[10px] font-bold">
+                    {isFr ? activeMarginModelSpec.shortBadgeFr : activeMarginModelSpec.shortBadgeAr}
+                  </span>
+                  {effectiveMarginOverride ? (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9.5px] font-extrabold">
+                      تخصيص يدوي مفعّل
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9.5px] font-extrabold">
+                      مقترن تلقائياً بالوثيقة
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-600 font-medium mt-0.5">
+                  {isFr ? activeMarginModelSpec.descriptionFr : activeMarginModelSpec.descriptionAr}
+                </p>
+              </div>
+            </div>
+
+            {/* مؤشرات القياس الحي للهوامش والمساحة الصافية للطباعة */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div
+                className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-mono font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs"
+                title="المساحة الصافية للطباعة داخل ورقة A4 ونسبة استغلال الورقة"
+              >
+                <span className="text-indigo-700 font-extrabold">
+                  المساحة الصافية: {safePrintWidthMm}×{safePrintHeightMm}mm
+                </span>
+                <span className="text-slate-300">|</span>
+                <span className="text-emerald-700 font-extrabold">
+                  استغلال A4: {printableAreaUtilizationPct}%
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowMarginGuides((v) => !v)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border transition-all cursor-pointer flex items-center gap-1 ${
+                  showMarginGuides
+                    ? "bg-cyan-900 text-cyan-100 border-cyan-800 shadow-2xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-cyan-50 hover:border-cyan-300"
+                }`}
+                title="إظهار أو إخفاء خطوط حدود الهوامش الحية بالـ mm فوق الورقة"
+              >
+                <Compass className="w-3 h-3 text-cyan-500" />
+                <span>معاينة حدود الهوامش</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCustomMarginSliders((v) => !v)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border transition-all cursor-pointer flex items-center gap-1 ${
+                  showCustomMarginSliders
+                    ? "bg-indigo-900 text-amber-200 border-indigo-800 shadow-2xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300"
+                }`}
+                title="ضبط يدوي دقيق للهوامش بالمليمتر (mm)"
+              >
+                <span>ضبط دقيق (mm)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* أزرار التبديل السريع بين النماذج (نموذج الفرض المحروس مقابل نموذج سلسلة التمارين وبقية النماذج) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-indigo-100/80">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DOC_VIEW_MARGIN_MODELS.map((model) => {
+                const isSelected = activeMarginModelSpec.id === model.id;
+                const isPrimaryPair =
+                  model.id === "DS_EXAM_OFFICIAL" || model.id === "SERIE_TD_COMPACT";
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => handleSelectDocumentViewModel(model)}
+                    title={isFr ? model.descriptionFr : model.descriptionAr}
+                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? model.id === "SERIE_TD_COMPACT"
+                          ? "bg-emerald-900 text-amber-200 border-emerald-800 shadow-xs ring-2 ring-emerald-400/60"
+                          : "bg-indigo-950 text-amber-300 border-indigo-900 shadow-xs ring-2 ring-indigo-400/60"
+                        : isPrimaryPair
+                        ? "bg-white text-slate-800 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/60 shadow-2xs"
+                        : "bg-white/80 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-white"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        isSelected
+                          ? "bg-amber-300"
+                          : model.id === "DS_EXAM_OFFICIAL"
+                          ? "bg-indigo-600"
+                          : model.id === "SERIE_TD_COMPACT"
+                          ? "bg-emerald-600"
+                          : model.id === "DEVOIR_MAISON_BALANCED"
+                          ? "bg-amber-500"
+                          : model.id === "DIAGNOSTIC_TEST"
+                          ? "bg-cyan-600"
+                          : "bg-violet-600"
+                      }`}
+                    />
+                    <span>{isFr ? model.labelFr : model.labelAr}</span>
+                    <span
+                      className={`font-mono text-[9.5px] px-1.5 py-0.2 rounded ${
+                        isSelected
+                          ? "bg-black/25 text-amber-100"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {model.topMm}×{model.xMm}mm
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* خيار ربط التبديل بنوع الوثيقة أو تطبيق الهوامش فقط */}
+            <div className="flex items-center gap-2">
+              {onSwitchDocumentViewModel && (
+                <label
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-700 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 cursor-pointer select-none"
+                  title="عند التفعيل، يؤدي النقر على النموذج إلى تبديل نوع الوثيقة ومحتواها مع ضبط الهوامش تلقائياً. وعند الإلغاء، يتم تطبيق هوامش النموذج فقط على الوثيقة الحالية."
+                >
+                  <input
+                    type="checkbox"
+                    checked={syncDocTypeOnModelClick}
+                    onChange={(e) => setSyncDocTypeOnModelClick(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                  />
+                  <span>تبديل نوع الوثيقة والهوامش معاً</span>
+                </label>
+              )}
+
+              {effectiveMarginOverride && (
+                <button
+                  type="button"
+                  onClick={() => updateMarginOverride(null)}
+                  className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-extrabold cursor-pointer transition-colors"
+                  title="إعادة الضبط إلى الهوامش التلقائية المقترنة بنوع الوثيقة الحالي"
+                >
+                  استعادة الضبط التلقائي
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* لوحة أشرطة التمرير للضبط اليدوي الدقيق للهوامش بالمليمتر (mm) */}
+          {showCustomMarginSliders && (
+            <div className="pt-2 border-t border-indigo-200/70 grid grid-cols-1 md:grid-cols-4 gap-2.5 items-center bg-white/90 rounded-xl p-2.5">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-700">
+                  <span>الهامش العلوي (Top):</span>
+                  <span className="font-mono text-indigo-700">
+                    {activeMarginModelSpec.topMm} mm (
+                    {(activeMarginModelSpec.topMm / 10).toFixed(1)} cm)
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={25}
+                  step={1}
+                  value={activeMarginModelSpec.topMm}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateMarginOverride({
+                      topMm: val,
+                      bottomMm: activeMarginModelSpec.bottomMm,
+                      xMm: activeMarginModelSpec.xMm,
+                      modelId: activeMarginModelSpec.id,
+                    });
+                  }}
+                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-700">
+                  <span>الهامش السفلي (Bottom):</span>
+                  <span className="font-mono text-indigo-700">
+                    {activeMarginModelSpec.bottomMm} mm (
+                    {(activeMarginModelSpec.bottomMm / 10).toFixed(1)} cm)
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={25}
+                  step={1}
+                  value={activeMarginModelSpec.bottomMm}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateMarginOverride({
+                      topMm: activeMarginModelSpec.topMm,
+                      bottomMm: val,
+                      xMm: activeMarginModelSpec.xMm,
+                      modelId: activeMarginModelSpec.id,
+                    });
+                  }}
+                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-700">
+                  <span>الهامش الجانبي (Left/Right):</span>
+                  <span className="font-mono text-emerald-700">
+                    {activeMarginModelSpec.xMm} mm (
+                    {(activeMarginModelSpec.xMm / 10).toFixed(1)} cm)
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={25}
+                  step={1}
+                  value={activeMarginModelSpec.xMm}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateMarginOverride({
+                      topMm: activeMarginModelSpec.topMm,
+                      bottomMm: activeMarginModelSpec.bottomMm,
+                      xMm: val,
+                      modelId: activeMarginModelSpec.id,
+                    });
+                  }}
+                  className="w-full accent-emerald-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="bg-slate-900 text-slate-100 rounded-lg p-2 font-mono text-[9.5px] leading-relaxed">
+                <div className="text-amber-300 font-bold mb-0.5">
+                  LaTeX / Typst Sync:
+                </div>
+                <div className="truncate">
+                  \geometry&#123;top={(activeMarginModelSpec.topMm / 10).toFixed(1)}cm,
+                  bottom={(activeMarginModelSpec.bottomMm / 10).toFixed(1)}cm, x=
+                  {(activeMarginModelSpec.xMm / 10).toFixed(1)}cm&#125;
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* اختيار حزمة تنسيق LaTeX المباشرة */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -2396,7 +3296,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => onChangeStudentGridStyle?.(s.id as "SEYES_FRENCH" | "LINED_RULED" | "MILLIMETER_GRID" | "DOTTED_BOX" | "PLAIN_BOX")}
+                    onClick={() => onChangeStudentGridStyle?.(s.id as StudentGridStyle)}
                     className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
                       studentGridStyle === s.id
                         ? "bg-purple-900 text-white shadow-2xs"
@@ -2663,13 +3563,22 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         dir={isFr ? "ltr" : "rtl"}
         contentEditable={isInlineEditable}
         suppressContentEditableWarning={true}
+        style={{
+          paddingTop: `${activeMarginModelSpec.previewPadTopPx}px`,
+          paddingBottom: `${activeMarginModelSpec.previewPadBottomPx}px`,
+          paddingLeft: `${activeMarginModelSpec.previewPadXPx}px`,
+          paddingRight: `${activeMarginModelSpec.previewPadXPx}px`,
+        }}
+        data-margin-model={activeMarginModelSpec.id}
         className={`print-sheet ${fontClass} ${scaleClass} ${orientationClass} ${
           selectedLatexPkg.sheetSkinClass
         } ${selectedPaperSurf.cssClass} ${
           effectiveEconomicMode ? "mode-two-up-print" : ""
         } ${
           isInlineEditable ? "editable-sheet ring-2 ring-indigo-500/40" : ""
-        } relative overflow-hidden text-slate-900 border border-slate-300 rounded-2xl p-6 md:p-10 shadow-md space-y-8`}
+        } relative overflow-hidden text-slate-900 border border-slate-300 rounded-2xl shadow-md transition-all duration-200 ${
+          activeMarginModelSpec.verticalSpaceClass
+        }`}
       >
       {/* فواصل الصفحات الحية A4 لمعاينة حدود الصفحات وتفادي تشطير المسائل والجداول */}
       {effectiveShowA4Breaks && (
@@ -2697,21 +3606,36 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         </div>
       )}
 
-      {/* مسطرة القياس العلوية والجانبية وهوامش الأمان A4 عند تفعيلها */}
+      {/* مسطرة القياس العلوية والجانبية وهوامش الأمان A4 الديناميكية عند تفعيلها */}
       {showMarginGuides && (
         <div
           aria-hidden="true"
-          className="no-print pointer-events-none absolute inset-3 border border-dashed border-cyan-500/60 rounded-lg z-20 flex flex-col justify-between p-1"
+          style={{
+            top: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadTopPx * 0.45))}px`,
+            bottom: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadBottomPx * 0.45))}px`,
+            left: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadXPx * 0.45))}px`,
+            right: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadXPx * 0.45))}px`,
+          }}
+          className="no-print pointer-events-none absolute border-2 border-dashed border-cyan-500/75 rounded-lg z-20 flex flex-col justify-between p-1.5"
         >
-          <div className="flex justify-between text-[9px] font-mono text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded">
-            <span>A4 Margin Top: 12mm</span>
-            <span>210mm × 297mm (ISO 216)</span>
+          <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] font-mono font-bold text-cyan-800 bg-cyan-50/90 border border-cyan-200 px-2 py-0.5 rounded shadow-2xs">
+            <span>
+              {isFr ? activeMarginModelSpec.labelFr : activeMarginModelSpec.labelAr} · Top:{" "}
+              {activeMarginModelSpec.topMm}mm / Bottom: {activeMarginModelSpec.bottomMm}mm
+            </span>
+            <span>
+              Safe Area: {safePrintWidthMm}mm × {safePrintHeightMm}mm ({printableAreaUtilizationPct}% A4)
+            </span>
             <span>Package: {selectedLatexPkg.badge}</span>
           </div>
-          <div className="flex justify-between text-[9px] font-mono text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded">
-            <span>Margin Left: 12mm</span>
-            <span>Safe Print Zone</span>
-            <span>Margin Right: 12mm</span>
+          <div className="flex justify-between items-center text-[9px] font-mono font-bold text-cyan-800 bg-cyan-50/90 border border-cyan-200 px-2 py-0.5 rounded shadow-2xs">
+            <span>Margin Left: {activeMarginModelSpec.xMm}mm</span>
+            <span>
+              \geometry&#123;top={(activeMarginModelSpec.topMm / 10).toFixed(1)}cm, bottom=
+              {(activeMarginModelSpec.bottomMm / 10).toFixed(1)}cm, x=
+              {(activeMarginModelSpec.xMm / 10).toFixed(1)}cm&#125;
+            </span>
+            <span>Margin Right: {activeMarginModelSpec.xMm}mm</span>
           </div>
         </div>
       )}
@@ -2809,7 +3733,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                             dsStructureMode === "COMPLETE_EXAM_MAROC");
                         const hasProbTable =
                           dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-                          dsStructureMode === "COMPLETE_EXAM_MAROC";
+                          dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+                          dsStructureMode === "EXAMEN_BLANC_2BAC";
                         const qcmPtsTable = hasQcmTable
                           ? Number(((qcmConfig?.questionCount || 4) * 1.0).toFixed(2))
                           : 0;
@@ -2940,6 +3865,41 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </table>
                 </div>
 
+                {/* بطاقة الأطر المرجعية الوطنية الموحدة للامتحان التجريبي للبكالوريا (Examen Blanc 2BAC) */}
+                {dsStructureMode === "EXAMEN_BLANC_2BAC" && (() => {
+                  const bacSpec = getExamenBlanc2BacConfig(track.code);
+                  return (
+                    <div className="border-2 border-amber-600/80 rounded-xl p-3 bg-amber-50/60 space-y-2 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-300/80 pb-1.5">
+                        <span className="font-black text-amber-950">
+                          🎓 {isFr ? bacSpec.cadreReferenceTitleFr : bacSpec.cadreReferenceTitleAr}
+                        </span>
+                        <span className="font-mono font-extrabold bg-amber-900 text-amber-100 px-2 py-0.5 rounded text-[10.5px]">
+                          {isFr
+                            ? `Durée officielle : ${bacSpec.officialDurationFr} · Coeff : ${bacSpec.coefficient}`
+                            : `المدة الرسمية: ${bacSpec.officialDurationAr} · المعامل: ${bacSpec.coefficient}`}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        {bacSpec.domains.map((dom, dIdx) => (
+                          <div
+                            key={dIdx}
+                            className="bg-white/95 border border-amber-200 rounded-lg p-2 space-y-0.5"
+                          >
+                            <div className="flex items-center justify-between gap-1 font-extrabold text-slate-900 text-[11px]">
+                              <span>{isFr ? dom.domainFr : dom.domainAr}</span>
+                              <span className="font-mono text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded shrink-0">
+                                {dom.targetPoints} / 20 ({dom.percentage}%)
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-600">{dom.detailsAr}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* تفصيل المستويات المهارية أو الكفايات */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 text-xs">
                   <div className="border border-slate-300 rounded-lg p-2 bg-slate-50 flex justify-between items-center">
@@ -3017,7 +3977,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 dsStructureMode === "COMPLETE_EXAM_MAROC";
               const hasSynthesisProblem =
                 dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-                dsStructureMode === "COMPLETE_EXAM_MAROC";
+                dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+                dsStructureMode === "EXAMEN_BLANC_2BAC";
               const qcmBlock = hasQCM
                 ? generateMoroccanQCMExercise(orderedLessons, modelCode, track.cycle, {
                     ...qcmConfig,
@@ -3705,8 +4666,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                         ? { color: lessonBranchTheme.accentColorHex }
                                         : undefined
                                     }
+                                    className="inline-flex items-center gap-1.5"
                                   >
-                                    Exercice {displayExNum} : {lesson.lessonFr}
+                                    <LessonHeaderIconBadge lesson={lesson} isFr={true} />
+                                    <span>Exercice {displayExNum} : {lesson.lessonFr}</span>
                                   </span>
                                   <span className="font-mono tabular-nums text-xs text-indigo-950">
                                     ({exPoints} pts · {effectiveWeight}%)
@@ -3752,8 +4715,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                         ? { color: lessonBranchTheme.accentColorHex }
                                         : undefined
                                     }
+                                    className="inline-flex items-center gap-1.5"
                                   >
-                                    التمرين {displayExNum} : {lesson.lessonAr}
+                                    <LessonHeaderIconBadge lesson={lesson} isFr={false} />
+                                    <span>التمرين {displayExNum} : {lesson.lessonAr}</span>
                                   </span>
                                   <span className="font-mono tabular-nums text-xs text-indigo-950">
                                     ({exPoints} ن · {effectiveWeight}%)
@@ -3886,7 +4851,15 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                               {latexPackageTheme === "BCLOGO" && (
                                 <span className="text-amber-700 font-black">★</span>
                               )}
-                              {lessonBranchTheme && (
+                              <LessonHeaderIconBadge
+                                lesson={lesson}
+                                isDarkHeader={
+                                  Boolean(lessonBranchTheme) &&
+                                  latexPackageTheme === "TCOLORBOX"
+                                }
+                                isFr={isFr}
+                              />
+                              {lessonBranchTheme && !resolveLessonHeaderIcon(lesson) && (
                                 <span
                                   className={`w-6 h-6 rounded-md inline-flex items-center justify-center font-serif text-xs font-black shrink-0 ${
                                     latexPackageTheme === "TCOLORBOX"
@@ -5215,6 +6188,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 }`}
                               >
                                 <div className="flex flex-wrap items-center gap-2">
+                                  <LessonHeaderIconBadge
+                                    lesson={associatedLesson}
+                                    isDarkHeader={
+                                      Boolean(serieBranchTheme) &&
+                                      latexPackageTheme === "TCOLORBOX"
+                                    }
+                                    isFr={isFr}
+                                  />
                                   <span className="bg-indigo-950 text-amber-300 text-[11px] font-mono px-2.5 py-0.5 rounded font-black">
                                     {isFr ? `EX ${exIdx + 1}` : `التمرين ${exIdx + 1}`}
                                   </span>
@@ -5404,7 +6385,15 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 }`}
                               >
                                 <div className="flex flex-wrap items-center gap-2">
-                                  {dmBranchTheme && (
+                                  <LessonHeaderIconBadge
+                                    lesson={lesson}
+                                    isDarkHeader={
+                                      Boolean(dmBranchTheme) &&
+                                      latexPackageTheme === "TCOLORBOX"
+                                    }
+                                    isFr={isFr}
+                                  />
+                                  {dmBranchTheme && !resolveLessonHeaderIcon(lesson) && (
                                     <span className="w-6 h-6 rounded-md bg-white/20 text-amber-200 border border-white/30 inline-flex items-center justify-center font-serif text-xs font-black">
                                       {dmBranchTheme.iconSymbol}
                                     </span>

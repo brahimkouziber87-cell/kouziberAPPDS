@@ -11,6 +11,13 @@ export type PaperSurfaceTexture =
   | "SEYES_FRENCH"
   | "ACADEMIC_IVORY";
 
+export type StudentGridStyle =
+  | "SEYES_FRENCH"
+  | "LINED_RULED"
+  | "MILLIMETER_GRID"
+  | "DOTTED_BOX"
+  | "PLAIN_BOX";
+
 export interface LatexPackageOption {
   id: LatexPackageTheme;
   packageCmd: string;

@@ -26,7 +26,9 @@ export type AiPedagogicalTask =
   | "GENERATE_SYNTHESIS_PROBLEM"
   | "GENERATE_BILINGUAL_RUBRIC"
   | "GENERATE_PYTHON_DIDACTIC"
-  | "DIDACTIC_AUDIT_142_08";
+  | "DIDACTIC_AUDIT_142_08"
+  | "GENERATE_EPIS_REMEDIATION"
+  | "GENERATE_OLYMPIAD_CHALLENGE";
 
 export interface AiGradingCriterion {
   questionRef: string;
@@ -201,6 +203,18 @@ const AI_TASKS: Array<{
     labelAr: "تدقيق المفتش التربوي وتوازن المهارات (N1/N2/N3)",
     labelFr: "Audit didactique et conformité référentielle",
     badge: "تدقيق المفتش",
+  },
+  {
+    id: "GENERATE_EPIS_REMEDIATION",
+    labelAr: "تشخيص العوائق الإبستيمولوجية وبطاقة الدعم الفردي (Brousseau)",
+    labelFr: "Diagnostic d'obstacles épistémologiques & Fiche de remédiation",
+    badge: "عوائق ودعم",
+  },
+  {
+    id: "GENERATE_OLYMPIAD_CHALLENGE",
+    labelAr: "توليد مسألة أولمبياد وتميز مع إرشادات بوليا (Olympiades N3+)",
+    labelFr: "Défi Olympiades & Concours Général avec Heuristiques de Polya",
+    badge: "أولمبياد وتميز",
   },
 ];
 
@@ -530,7 +544,9 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
 
       if (
         activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
-        activeTask === "GENERATE_SYNTHESIS_PROBLEM"
+        activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
+        activeTask === "GENERATE_EPIS_REMEDIATION" ||
+        activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
       ) {
         setActiveResultTab("VARIANT");
       } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
@@ -552,7 +568,9 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
       setResult((prev) => ({ ...prev, task: activeTask, trackLabel }));
       if (
         activeTask === "GENERATE_ISOMORPHIC_VARIANT" ||
-        activeTask === "GENERATE_SYNTHESIS_PROBLEM"
+        activeTask === "GENERATE_SYNTHESIS_PROBLEM" ||
+        activeTask === "GENERATE_EPIS_REMEDIATION" ||
+        activeTask === "GENERATE_OLYMPIAD_CHALLENGE"
       ) {
         setActiveResultTab("VARIANT");
       } else if (activeTask === "GENERATE_BILINGUAL_RUBRIC") {
@@ -730,13 +748,10 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                   المساعد الديداكتيكي والرياضياتي الذكي (Gemini Pedagogical Math
                   Studio)
                 </h2>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                  <span>
-                    {aiStatus.configured
-                      ? "Gemini Cloud + Hybrid Engine Ready"
-                      : "Hybrid Symbolic Math Engine Ready"}
-                  </span>
+                <span className="text-[10.5px] font-mono font-bold text-teal-300">
+                  · {aiStatus.configured
+                    ? "Gemini Cloud + Hybrid CAS"
+                    : "Hybrid Symbolic Math Engine"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-300">

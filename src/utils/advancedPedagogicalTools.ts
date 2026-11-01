@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import {
   LessonItem,
   InsertedFigure,
@@ -72,7 +73,9 @@ export function build2DSpecificationMatrix(
   const hasQCM =
     dsStructureMode === "QCM_ET_EXERCICES" || dsStructureMode === "COMPLETE_EXAM_MAROC";
   const hasProb =
-    dsStructureMode === "EXERCICES_ET_PROBLEME" || dsStructureMode === "COMPLETE_EXAM_MAROC";
+    dsStructureMode === "EXERCICES_ET_PROBLEME" ||
+    dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+    dsStructureMode === "EXAMEN_BLANC_2BAC";
 
   const validQcmCount = Math.max(2, Math.min(10, qcmQuestionCount || 4));
   const fixedQcmPts = hasQCM ? Number((validQcmCount * 1.0).toFixed(2)) : 0;
@@ -973,6 +976,8 @@ export interface DidacticErrorCard {
   id: string;
   lessonTitleAr: string;
   lessonTitleFr: string;
+  epistemologicalObstacleTypeAr: string;
+  epistemologicalObstacleTypeFr: string;
   frequentMistakeAr: string;
   frequentMistakeFr: string;
   wrongExpressionLatex: string;
@@ -981,6 +986,10 @@ export interface DidacticErrorCard {
   cognitiveOriginFr: string;
   teacherRemediationTipAr: string;
   teacherRemediationTipFr: string;
+  remediationExerciseAr: string;
+  remediationExerciseFr: string;
+  remediationSolutionAr: string;
+  remediationSolutionFr: string;
   severity: "CRITICAL" | "HIGH" | "MODERATE";
 }
 
@@ -995,6 +1004,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_lim_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق إبستيمولوجي: تعميم الحساب الجبري المنتهي على الأشكال غير المحددة (∞ - ∞)",
+        epistemologicalObstacleTypeFr: "Obstacle épistémologique : Extension abusive du terme dominant sous un radical",
         frequentMistakeAr: "الخلط بين الشروط الثلاثة لمبرهنة القيم الوسيطية (TVI) أو إغفال رتابة الدالة قطعا عند إثبات وحدانية الحل α.",
         frequentMistakeFr: "Omission de la stricte monotonie lors de l'application du TVI pour l'unicité de la solution α, ou confusion sur les formes indéterminées.",
         wrongExpressionLatex: "\\lim_{x \\to +\\infty} (\\sqrt{x^2+x} - x) = 0",
@@ -1003,6 +1014,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Généralisation abusive du terme de plus haut degré sous le radical sans expression conjuguée.",
         teacherRemediationTipAr: "فرض المرور الإلزامي عبر الضرب في المرافق عندما يكون معامل الحد الأكبر داخل الجذر مساوياً لمعامل x خارجه.",
         teacherRemediationTipFr: "Exiger le passage systématique par l'expression conjuguée lorsque √a = |b|.",
+        remediationExerciseAr: "تمرين دعم استدراكي: 1) أحسب النهاية lim_{x→+∞} (√(x² + 4x + 1) - x) باستعمال المرافق. 2) بين أن المعادلة x³ + 2x - 4 = 0 تقبل حلاً وحيداً α في ]1, 2[.",
+        remediationExerciseFr: "Exercice de remédiation : 1) Calculer lim_{x→+∞} (√(x² + 4x + 1) - x) par l'expression conjuguée. 2) Montrer que x³ + 2x - 4 = 0 admet une unique solution α ∈ ]1, 2[.",
+        remediationSolutionAr: "1) بضرب وقسمة التعبير في المرافق نحصل على (4x+1)/(√(x²+4x+1)+x) ونعمل بـ x فنجد النهاية تساوي 4/2 = 2. 2) الدالة متصلة وتزايدية قطعا على [1,2] لأن مشتقتها 3x²+2 > 0 و f(1)×f(2) = (-1)×(8) < 0.",
+        remediationSolutionFr: "1) Par conjugué : lim (4x+1)/(x(√(1+4/x+1/x²)+1)) = 4/2 = 2. 2) Continuité + stricte croissance (f'(x)=3x²+2>0) + f(1)f(2) < 0.",
         severity: "CRITICAL",
       });
     } else if (text.includes("dériv") || text.includes("اشتقاق") || text.includes("دراسة الدوال")) {
@@ -1010,6 +1025,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_deriv_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق إبستيمولوجي: اختزال خطي لمؤثر الاشتقاق على الدوال المركبة f(u(x))",
+        epistemologicalObstacleTypeFr: "Obstacle opératoire : Omission de la dérivée interne dans la règle de chaîne (u ∘ v)'",
         frequentMistakeAr: "نسيان مشتقة الدالة الداخلة u'(x) عند حساب مشتقة مركب دالتين مثل f(x) = √(u(x)) أو u(x)ⁿ.",
         frequentMistakeFr: "Oubli du facteur u'(x) lors de la dérivation d'une fonction composée √(u(x)), ln(u(x)) ou e^{u(x)}.",
         wrongExpressionLatex: "(\\ln(x^2+1))' = \\frac{1}{x^2+1}",
@@ -1018,6 +1035,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Assimilation directe de la fonction composée u(x) à la variable simple x.",
         teacherRemediationTipAr: "تدريب المتعلمين على وضع u(x) و u'(x) في هامش المسودة قبل كتابة تعبير المشتقة f'(x).",
         teacherRemediationTipFr: "Poser explicitement u(x) et u'(x) avant d'appliquer la formule de dérivation.",
+        remediationExerciseAr: "تمرين دعم استدراكي: حدد مشتقة كل من الدوال التالية مع تفصيل u(x) و u'(x): أ) f(x) = √(x² - 2x + 5) ، ب) g(x) = (x² + 1)e^{-2x}.",
+        remediationExerciseFr: "Exercice de remédiation : Calculer la dérivée en explicitant u(x) et u'(x) pour : a) f(x) = √(x² - 2x + 5), b) g(x) = (x² + 1)e^{-2x}.",
+        remediationSolutionAr: "أ) نضع u(x) = x²-2x+5 ومنه u'(x) = 2x-2، إذن f'(x) = u'/(2√u) = (x-1)/√(x²-2x+5). ب) g'(x) = 2x e^{-2x} - 2(x²+1)e^{-2x} = (-2x²+2x-2)e^{-2x}.",
+        remediationSolutionFr: "a) f'(x) = (2x-2)/(2√(x²-2x+5)) = (x-1)/√(x²-2x+5). b) g'(x) = 2(-x²+x-1)e^{-2x}.",
         severity: "CRITICAL",
       });
     } else if (text.includes("suite") || text.includes("متتالي")) {
@@ -1025,6 +1046,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_suite_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق إبستيمولوجي: الخلط بين الرتبة الصحيحة n والحد الحقيقي u_n في الاستدلال بالترجع",
+        epistemologicalObstacleTypeFr: "Obstacle didactique : Confusion entre l'indice discret n et la valeur réelle u_n",
         frequentMistakeAr: "الخلط بين u_{n+1} و u_n + 1 أو استنتاج تقارب المتتالية من كونها محدودة فقط دون إثبات الرتابة.",
         frequentMistakeFr: "Confusion d'indice entre u_{n+1} et u_n + 1, ou affirmation de convergence sans vérifier la monotonie.",
         wrongExpressionLatex: "u_{n+1} - u_n > 0 \\implies (u_n) \\text{ converge}",
@@ -1033,6 +1056,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Confusion entre le rang entier n et la valeur du terme u_n lors de la récurrence.",
         teacherRemediationTipAr: "تقسيم البرهان بالترجع إلى 3 مراحل مرقمة بوضوح (التحقق، افتراض الترجع، البرهان للرتبة n+1).",
         teacherRemediationTipFr: "Structurer la récurrence en 3 étapes explicites : Initialisation, Hérédité, Conclusion.",
+        remediationExerciseAr: "تمرين دعم استدراكي: نعتبر المتتالية u_0 = 1 و u_{n+1} = √(2 + u_n). 1) بين بالترجع أن 0 < u_n < 2. 2) أدرس إشارة u_{n+1} - u_n واستنتج أن (u_n) متقاربة.",
+        remediationExerciseFr: "Exercice de remédiation : Soit u_0 = 1 et u_{n+1} = √(2 + u_n). 1) Montrer par récurrence que 0 < u_n < 2. 2) Étudier la monotonie et conclure sur la convergence.",
+        remediationSolutionAr: "1) من أجل n=0: 0 < 1 < 2. نفترض 0 < u_n < 2 إذن 2 < 2+u_n < 4 ومنه √2 < u_{n+1} < 2. 2) u_{n+1}-u_n = (2+u_n-u_n²)/(√(2+u_n)+u_n) = (2-u_n)(1+u_n)/(...) > 0؛ تزايدية ومكبورة بـ 2 إذن متقاربة.",
+        remediationSolutionFr: "1) Par encadrement sous la racine croissante. 2) Croissante et majorée par 2 donc convergente vers 2.",
         severity: "HIGH",
       });
     } else if (text.includes("log") || text.includes("exp") || text.includes("لوغاريتم") || text.includes("أسية")) {
@@ -1040,6 +1067,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_lnexp_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق إبستيمولوجي: إغفال حيز المفهوم (Domaine de validité) قبل التحويل اللوغاريتمي",
+        epistemologicalObstacleTypeFr: "Obstacle algébrique : Transformation formelle de ln(u²) sans valeur absolue ni domaine",
         frequentMistakeAr: "حل معادلات أو متراجحات لوغاريتمية دون تحديد مجموعة التعريف D_E مسبقاً، وتطبيق خاطئ لخاصية ln(a+b).",
         frequentMistakeFr: "Résolution d'équations logarithmiques sans déterminer le domaine d'existence D_E au préalable.",
         wrongExpressionLatex: "\\ln(x^2) = 2\\ln(x) \\quad (\\text{sur } \\mathbb{R}^*)",
@@ -1048,6 +1077,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Oubli de la condition de stricte positivité de l'argument du logarithme népérien.",
         teacherRemediationTipAr: "تخصيص 0.25 نقطة مستقلة في سلم التنقيط لتحديد مجموعة تعريف المعادلة اللوغاريتمية قبل حلها.",
         teacherRemediationTipFr: "Attribuer 0.25 pt spécifique dans le barème à la détermination du domaine de validité.",
+        remediationExerciseAr: "تمرين دعم استدراكي: حل في R المعادلة (E): ln(x - 1) + ln(x + 2) = ln(4) مع البدء الإلزامي بتحديد مجموعة التعريف D_E.",
+        remediationExerciseFr: "Exercice de remédiation : Résoudre dans ℝ l'équation (E) : ln(x - 1) + ln(x + 2) = ln(4) après avoir précisé D_E.",
+        remediationSolutionAr: "شرط الوجود: x - 1 > 0 و x + 2 > 0 يكافئ x > 1 أي D_E = ]1, +∞[. على D_E تصبح المعادلة (x-1)(x+2) = 4 أي x² + x - 6 = 0 وحلاها x = 2 ∈ D_E و x = -3 ∉ D_E، إذن S = {2}.",
+        remediationSolutionFr: "D_E = ]1, +∞[. Sur D_E, x² + x - 6 = 0 donne x = 2 (retenu) et x = -3 (rejeté car ∉ D_E). Donc S = {2}.",
         severity: "CRITICAL",
       });
     } else if (text.includes("complexe") || text.includes("عقدية") || text.includes("مركبة")) {
@@ -1055,6 +1088,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_cplx_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق إبستيمولوجي: الخلط بين الإشارة الجبرية والمعيار الهندسي الموجب قطعا |z| > 0",
+        epistemologicalObstacleTypeFr: "Obstacle géométrique : Confusion entre coefficient réel négatif et module d'un complexe",
         frequentMistakeAr: "كتابة الشكل المثلثي لعدد عقدي مع معيار سالب r < 0 أو الخلط بين العمدة في الربع الثاني والرابع.",
         frequentMistakeFr: "Écriture d'une forme trigonométrique avec un module négatif ou erreur de signe sur l'argument.",
         wrongExpressionLatex: "z = -2(\\cos\\theta + i\\sin\\theta) \\implies |z|=-2",
@@ -1063,6 +1098,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Lecture mécanique du facteur devant la parenthèse sans vérifier la positivité du module.",
         teacherRemediationTipAr: "التذكير الدائم بقواعد التحويل المثلثي cos(π+θ) = -cos(θ) لإدخال الإشارة السالبة في العمدة.",
         teacherRemediationTipFr: "Rappeler systématiquement que le module est une distance strictement positive.",
+        remediationExerciseAr: "تمرين دعم استدراكي: حدد المعيار والعمدة والكتابة المثلثية للعدد العقدي z = -2(cos(π/5) - i sin(π/5)).",
+        remediationExerciseFr: "Exercice de remédiation : Déterminer le module et un argument de z = -2(cos(π/5) - i sin(π/5)).",
+        remediationSolutionAr: "لدينا z = 2(-cos(π/5) + i sin(π/5)) = 2(cos(π - π/5) + i sin(π - π/5)) = 2(cos(4π/5) + i sin(4π/5))، إذن |z| = 2 و arg(z) ≡ 4π/5 [2π].",
+        remediationSolutionFr: "En utilisant -cos(α) = cos(π-α) et sin(α) = sin(π-α), on obtient z = [2, 4π/5].",
         severity: "HIGH",
       });
     } else {
@@ -1070,6 +1109,8 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         id: `err_gen_${idx}`,
         lessonTitleAr: lesson.lessonAr,
         lessonTitleFr: lesson.lessonFr,
+        epistemologicalObstacleTypeAr: "عائق منطقي ولغوي: الخلط بين الاستلزام الأحادي (⟹) والتكافؤ المنطقي (⟺)",
+        epistemologicalObstacleTypeFr: "Obstacle logique : Usage abusif du connecteur d'équivalence ⟺ lors de l'élévation au carré",
         frequentMistakeAr: "الخلط بين الاستلزام المباشر (⟹) والتكافؤ المنطقي (⟺) أثناء حل المعادلات والتحويلات الجبرية والهندسية.",
         frequentMistakeFr: "Confusion entre l'implication (⟹) et l'équivalence logique (⟺) et manque de justification des théorèmes utilisés.",
         wrongExpressionLatex: "A = B \\implies A^2 = B^2 \\iff A = B",
@@ -1078,6 +1119,10 @@ export function getTypicalErrorsForLessons(lessons: LessonItem[]): DidacticError
         cognitiveOriginFr: "Utilisation mécanique du symbole ⟺ comme simple séparateur de lignes.",
         teacherRemediationTipAr: "تنبيه المتعلمين في توجيهات الفرض إلى أن سلامة الروابط المنطقية جزء من تنقيط السؤال.",
         teacherRemediationTipFr: "Valoriser dans le barème la rigueur des connecteurs logiques et l'énoncé des hypothèses.",
+        remediationExerciseAr: "تمرين دعم استدراكي: حل في R المعادلة √(x + 3) = x - 3 مع الحفاظ على التكافؤ المنطقي السليم.",
+        remediationExerciseFr: "Exercice de remédiation : Résoudre dans ℝ l'équation √(x + 3) = x - 3 par équivalences logiques.",
+        remediationSolutionAr: "المعادلة تكافئ: (x - 3 ≥ 0 و x + 3 = (x - 3)²) ⟺ (x ≥ 3 و x² - 7x + 6 = 0) ⟺ (x ≥ 3 و (x=6 أو x=1)) ⟺ x = 6.",
+        remediationSolutionFr: "√(x+3) = x-3 ⟺ (x ≥ 3 et x² - 7x + 6 = 0) ⟺ x = 6 (car 1 < 3 est rejeté).",
         severity: "MODERATE",
       });
     }
@@ -1377,4 +1422,456 @@ export function buildTBIProjectorSteps(lessons: LessonItem[]): TBIProjectorStep[
 
   return steps;
 }
+
+// ============================================================================
+// 7. مولد شبكات التقويم الذاتي للتلميذ (Auto-évaluation Formative de l'Élève)
+// ============================================================================
+
+export interface StudentSelfAssessmentItem {
+  id: string;
+  exerciseNum: number;
+  lessonTitleAr: string;
+  lessonTitleFr: string;
+  capacityAr: string;
+  capacityFr: string;
+  cognitiveLevel: "N1" | "N2" | "N3";
+  points: number;
+  criteriaIndicatorAr: string;
+  criteriaIndicatorFr: string;
+}
+
+export function buildStudentSelfAssessmentGrid(
+  lessons: LessonItem[],
+  n1Target: number = 35,
+  n2Target: number = 45,
+  n3Target: number = 20
+): StudentSelfAssessmentItem[] {
+  const items: StudentSelfAssessmentItem[] = [];
+  const exactPts = computeExactExerciseEffectiveWeights(lessons, 20);
+
+  lessons.forEach((lesson, exIdx) => {
+    const exTotal = exactPts[exIdx] || 5.0;
+    const capsAr =
+      lesson.capacitiesAr && lesson.capacitiesAr.length > 0
+        ? lesson.capacitiesAr
+        : [
+            `تطبيق التعاريف والخاصيات الأساسية لدرس ${lesson.lessonAr}`,
+            `تعبئة المبرهنات والاستدلال المرحلي لحل أسئلة ${lesson.lessonAr}`,
+          ];
+    const capsFr =
+      lesson.capacitiesFr && lesson.capacitiesFr.length > 0
+        ? lesson.capacitiesFr
+        : [
+            `Mobiliser les définitions et propriétés directes de ${lesson.lessonFr}`,
+            `Raisonner et rédiger rigoureusement sur ${lesson.lessonFr}`,
+          ];
+
+    const count = Math.min(3, Math.max(2, capsAr.length));
+    const metas = getQuestionBaremesAndLevels(
+      (exTotal / 20) * 100,
+      count,
+      n1Target,
+      n2Target,
+      n3Target
+    );
+
+    for (let i = 0; i < count; i++) {
+      const level = metas[i]?.level || (i === 0 ? "N1" : i === 1 ? "N2" : "N3");
+      const pts = Number(parseFloat(metas[i]?.points || (exTotal / count).toFixed(2)).toFixed(2));
+      items.push({
+        id: `self_eval_${exIdx}_${i}`,
+        exerciseNum: exIdx + 1,
+        lessonTitleAr: lesson.lessonAr,
+        lessonTitleFr: lesson.lessonFr,
+        capacityAr: capsAr[i % capsAr.length],
+        capacityFr: capsFr[i % capsFr.length],
+        cognitiveLevel: level,
+        points: pts,
+        criteriaIndicatorAr:
+          level === "N1"
+            ? "تطبيق سليم للصيغة والحساب المباشر دون أخطاء إشارة"
+            : level === "N2"
+            ? "ذكر شروط المبرهنة وتنظيم مراحل الاستدلال الرياضي"
+            : "الربط التوليفي بين نتائج الأسئلة السابقة والمبادرة للحل",
+        criteriaIndicatorFr:
+          level === "N1"
+            ? "Application directe de la formule sans erreur de calcul"
+            : level === "N2"
+            ? "Énoncé précis des hypothèses du théorème et rédaction structurée"
+            : "Synthèse des questions précédentes et prise d'initiative",
+      });
+    }
+  });
+
+  return items;
+}
+
+export function generateStudentSelfAssessmentLatex(
+  items: StudentSelfAssessmentItem[],
+  isFr: boolean = false
+): string {
+  const lines: string[] = [
+    "% ==========================================================================",
+    "% Grille d'Auto-évaluation Formative de l'Élève (Note 142-08)",
+    "% ==========================================================================",
+    "\\vspace{0.3cm}",
+    "\\begin{tcolorbox}[colback=indigo!3!white,colframe=indigo!75!black,title=\\textbf{" +
+      (isFr
+        ? "Grille d'Auto-évaluation Formative de l'Élève (Après l'épreuve)"
+        : "شبكة التقويم الذاتي التكويني للمتعلم(ة) — التتبع الفردي للقدرات المستهدفة") +
+      "}]",
+    "\\footnotesize",
+    "\\renewcommand{\\arraystretch}{1.35}",
+    "\\begin{tabular}{|c|p{6.2cm}|c|c|c|c|c|}",
+    "\\hline",
+    "\\textbf{Ex.} & \\textbf{Capacité mathématique visée / Critère} & \\textbf{Niv.} & \\textbf{Barème} & \\textbf{Acquis (A)} & \\textbf{En cours (ECA)} & \\textbf{À revoir (NA)} \\\\ \\hline",
+  ];
+
+  items.forEach((it) => {
+    lines.push(
+      `\\textbf{Ex.${it.exerciseNum}} & ${it.capacityFr} & \\textbf{${it.cognitiveLevel}} & ${it.points.toFixed(
+        2
+      )} pt & $\\square$ & $\\square$ & $\\square$ \\\\ \\hline`
+    );
+  });
+
+  lines.push("\\end{tabular}");
+  lines.push("\\end{tcolorbox}");
+  return lines.join("\n");
+}
+
+// ============================================================================
+// 8. مصدر ملفات GeoGebra الأصيلة (.ggb ZIP Archive containing geogebra.xml)
+// ============================================================================
+
+export async function exportRealGeoGebraGgbArchive(options: {
+  fileName?: string;
+  mode: "2D_FUNCTION" | "3D_SPACE" | "COMPLEX_PLANE";
+  formulaExpr?: string;
+  title?: string;
+}): Promise<void> {
+  const {
+    fileName = "Figure_Math_TBI.ggb",
+    mode,
+    formulaExpr = "x - 1 + ln(x)/x",
+    title = "Courbe C_f & Repere Orthonorme",
+  } = options;
+
+  const cleanExpr = formulaExpr
+    .replace(/Math\./g, "")
+    .replace(/pow\(x,\s*2\)/g, "x^2")
+    .replace(/pow\(x,\s*3\)/g, "x^3");
+
+  let constructionXml = "";
+
+  if (mode === "3D_SPACE") {
+    constructionXml = `
+      <element type="point3d" label="A">
+        <show object="true" label="true"/>
+        <coords x="1" y="0" z="2" w="1"/>
+      </element>
+      <element type="point3d" label="B">
+        <show object="true" label="true"/>
+        <coords x="2" y="1" z="0" w="1"/>
+      </element>
+      <element type="point3d" label="C">
+        <show object="true" label="true"/>
+        <coords x="0" y="1" z="1" w="1"/>
+      </element>
+      <element type="point3d" label="Omega">
+        <show object="true" label="true"/>
+        <coords x="1" y="-1" z="2" w="1"/>
+      </element>
+      <command name="Plane">
+        <input a0="A" a1="B" a2="C"/>
+        <output a0="P"/>
+      </command>
+      <command name="Sphere">
+        <input a0="Omega" a1="3"/>
+        <output a0="S"/>
+      </command>
+    `;
+  } else if (mode === "COMPLEX_PLANE") {
+    constructionXml = `
+      <element type="point" label="O">
+        <show object="true" label="true"/>
+        <coords x="0" y="0" z="1"/>
+      </element>
+      <element type="point" label="A">
+        <show object="true" label="true"/>
+        <coords x="1.73205" y="1" z="1"/>
+      </element>
+      <element type="point" label="B">
+        <show object="true" label="true"/>
+        <coords x="1.73205" y="-1" z="1"/>
+      </element>
+      <element type="point" label="C">
+        <show object="true" label="true"/>
+        <coords x="0" y="2" z="1"/>
+      </element>
+      <command name="Circle">
+        <input a0="O" a1="2"/>
+        <output a0="c"/>
+      </command>
+      <command name="Polygon">
+        <input a0="O" a1="A" a2="C"/>
+        <output a0="poly1"/>
+      </command>
+    `;
+  } else {
+    constructionXml = `
+      <expression label="f" exp="f(x) = ${cleanExpr}" type="function"/>
+      <element type="function" label="f">
+        <show object="true" label="true"/>
+        <objColor r="30" g="58" b="138" alpha="0"/>
+        <lineStyle thickness="5" type="0"/>
+      </element>
+      <expression label="d" exp="y = x - 1" type="line"/>
+      <element type="line" label="d">
+        <show object="true" label="true"/>
+        <objColor r="220" g="38" b="38" alpha="0"/>
+        <lineStyle thickness="3" type="15"/>
+      </element>
+    `;
+  }
+
+  const geogebraXml = `<?xml version="1.0" encoding="utf-8"?>
+<geogebra format="5.0" version="5.0.764.0" app="classic" platform="w" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.geogebra.org/apps/xsd/ggb.xsd">
+  <gui>
+    <window width="1200" height="800"/>
+  </gui>
+  <euclidianView>
+    <coordSystem xZero="320.0" yZero="320.0" scale="50.0" yscale="50.0"/>
+    <evSettings axes="true" grid="true" gridIsBold="false" pointCapturing="3" rightAngleStyle="1" checkboxSize="26" gridType="3"/>
+    <bgColor r="255" g="255" b="255"/>
+    <axesColor r="15" g="23" b="42"/>
+    <gridColor r="203" g="213" b="225"/>
+  </euclidianView>
+  <kernel>
+    <continuous val="false"/>
+    <usePathAndRegionParameters val="true"/>
+    <decimals val="2"/>
+    <angleUnit val="rad"/>
+    <algebraStyle val="3" spreadsheet="0"/>
+    <coordStyle val="0"/>
+  </kernel>
+  <construction title="${title.replace(/"/g, "&quot;")}" author="Doc2App Math Studio" date="2026">
+    ${constructionXml}
+  </construction>
+</geogebra>`;
+
+  const zip = new JSZip();
+  zip.file("geogebra.xml", geogebraXml);
+  const blob = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.geogebra.file" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName.endsWith(".ggb") ? fileName : `${fileName}.ggb`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// 9. مكتبة مواضيع الأولمبياد الوطنية والمغاربية والتميز (Olympiades & Défis d'Excellence)
+// ============================================================================
+
+export interface OlympiadChallengeItem {
+  id: string;
+  competitionAr: string;
+  competitionFr: string;
+  targetCycleBadge: string;
+  domainAr: string;
+  domainFr: string;
+  difficultyStars: 3 | 4 | 5;
+  polyaHeuristicAr: string[];
+  polyaHeuristicFr: string[];
+  lessonItem: LessonItem;
+}
+
+export const OFFICIAL_OLYMPIAD_EXCELLENCE_BANK: OlympiadChallengeItem[] = [
+  {
+    id: "olymp_maroc_tc_cauchy_amgm",
+    competitionAr: "أولمبياد الرياضيات الوطنية المغربية — الجذع المشترك العلمي (الفرض الوطني للانتقاء)",
+    competitionFr: "Olympiades Nationales de Mathématiques (Maroc) — Tronc Commun Scientifique",
+    targetCycleBadge: "TC Scientifique · المتفاوتات الأولمبية",
+    domainAr: "الجبر والمتفاوتات الكلاسيكية (AM-GM & Cauchy-Schwarz)",
+    domainFr: "Algèbre & Inégalités Olympiques (AM-GM / Cauchy-Schwarz)",
+    difficultyStars: 4,
+    polyaHeuristicAr: [
+      "1. فهم المسألة: لاحظ التماثل الدوري بين المتغيرات الموجبة قطعا a و b و c وشرط الجداء abc = 1.",
+      "2. بناء الخطة (إرشاد بوليا): طبق متفاوتة الوسط الحسابي والهندسي (AM-GM) على كل مقام، أو ضع تحويلاً يبسط الجذور.",
+      "3. تنفيذ البرهان: اجمع المتفاوتات الجزئية الثلاث بعد توحيد المقامات للحصول على القيمة الدنيا المضبوطة.",
+    ],
+    polyaHeuristicFr: [
+      "1. Comprendre le problème : Exploiter la symétrie cyclique en (a, b, c) et la condition abc = 1.",
+      "2. Plan de Polya : Utiliser l'inégalité arithmético-géométrique a + b ≥ 2√(ab) ou poser a = x/y, b = y/z, c = z/x.",
+      "3. Vérification : Tester le cas d'égalité a = b = c = 1.",
+    ],
+    lessonItem: {
+      lessonAr: "تحدي أولمبياد وطنية (TC): المتفاوتات الدورية والوسط الحسابي-الهندسي",
+      lessonFr: "Défi Olympiade Nationale (TC) : Inégalités symétriques et condition abc = 1",
+      weight: 25,
+      hours: "4h",
+      category: "Algebra",
+      subCategory: "جبر",
+      subCategoryFr: "Algèbre Olympique",
+      tags: ["Algebra", "جبر", "أولمبياد"],
+      capacitiesAr: [
+        "توظيف المتطابقات الهامة ومتفاوتة الوسط الحسابي-الهندسي لإثبات متفاوتات دورية",
+      ],
+      capacitiesFr: [
+        "Mobiliser l'inégalité AM-GM et la symétrie cyclique pour démontrer une inégalité olympique",
+      ],
+      sampleExerciseAr: [
+        "لتكن a و b و c أعداداً حقيقية موجبة قطعا تحقق الشرط: a·b·c = 1.",
+        "1. أ) بين أنه لكل عددين حقيقيين موجبين قطعا x و y لدينا: x + y ≥ 2√(xy)، وحدد حالة التساوي.",
+        "1. ب) استنتج أن: (a + b)(b + c)(c + a) ≥ 8.",
+        "2. برهن على المتفاوتة الأولمبية التالية: 1/(a²(b + c)) + 1/(b²(c + a)) + 1/(c²(a + b)) ≥ 3/2.",
+      ],
+      sampleExerciseFr: [
+        "Soient a, b et c trois réels strictement positifs tels que a·b·c = 1.",
+        "1. a) Démontrer que pour tous réels x, y > 0 : x + y ≥ 2√(xy), et préciser le cas d'égalité.",
+        "1. b) En déduire que : (a + b)(b + c)(c + a) ≥ 8.",
+        "2. Démontrer l'inégalité olympique : 1/(a²(b + c)) + 1/(b²(c + a)) + 1/(c²(a + b)) ≥ 3/2.",
+      ],
+      sampleSolutionAr: [
+        "1. أ) لدينا (√x - √y)² ≥ 0 يكافئ x + y ≥ 2√(xy) مع التساوي إذا وفقط إذا كان x = y.",
+        "1. ب) بضرب المتفاوتات الثلاث (a+b ≥ 2√ab) و (b+c ≥ 2√bc) و (c+a ≥ 2√ca) نجد الجداء ≥ 8 abc = 8.",
+        "2. نضع x = 1/a و y = 1/b و z = 1/c فيكون xyz = 1، ويؤول المجموع إلى x²/(y+z) + y²/(z+x) + z²/(x+y) ≥ (x+y+z)/2 ≥ 3/2 حسب كوشي-شوارتز.",
+      ],
+      sampleSolutionFr: [
+        "1. a) (√x - √y)² ≥ 0 donne x + y ≥ 2√(xy) avec égalité ssi x = y.",
+        "1. b) Le produit des trois inégalités donne (a+b)(b+c)(c+a) ≥ 8abc = 8.",
+        "2. En posant x=1/a, y=1/b, z=1/c (avec xyz=1), l'expression devient ∑ x²/(y+z) ≥ (x+y+z)² / (2(x+y+z)) = (x+y+z)/2 ≥ 3∛(xyz)/2 = 3/2.",
+      ],
+      isImportedSimulation: true,
+      importedOriginLabel: "أولمبياد الرياضيات الوطنية — الجذع المشترك",
+    },
+  },
+  {
+    id: "olymp_maroc_1bac_sm_arith_func",
+    competitionAr: "أولمبياد الرياضيات الوطنية — الأولى بكالوريا علوم رياضية (الحسابيات والمعادلات الدالية)",
+    competitionFr: "Olympiades Nationales (1Bac SM) — Arithmétique & Équations Fonctionnelles",
+    targetCycleBadge: "1Bac SM · المعادلات الدالية والحسابيات",
+    domainAr: "الحسابيات في Z والمعادلات الدالية (Équations de Cauchy)",
+    domainFr: "Arithmétique dans ℤ & Équations fonctionnelles",
+    difficultyStars: 5,
+    polyaHeuristicAr: [
+      "1. فهم المسألة: جرب تعويض المتغيرين x و y بقيم خاصة استراتيجية مثل (0, 0) و (x, 0) و (x, -x).",
+      "2. بناء الخطة: استخرج قيمة f(0) ثم أثبت أن الدالة فردية أو خطية على الأعداد الصحيحة.",
+      "3. التحقق العكسي: تأكد من أن كل دالة محصل عليها تحقق المعادلة الأصلية.",
+    ],
+    polyaHeuristicFr: [
+      "1. Substitutions stratégiques : Tester x = y = 0, puis y = 0 et y = -x.",
+      "2. Induction sur ℕ : Exprimer f(nx) en fonction de f(x) et utiliser les propriétés de divisibilité.",
+      "3. Réciproque : Vérifier systématiquement que les solutions candidates conviennent.",
+    ],
+    lessonItem: {
+      lessonAr: "تحدي أولمبياد (1Bac SM): المعادلات الدالية في R وقابلية القسمة في Z",
+      lessonFr: "Défi Olympiade (1Bac SM) : Équation fonctionnelle et Arithmétique",
+      weight: 25,
+      hours: "5h",
+      category: "Algebra",
+      subCategory: "حسابيات",
+      subCategoryFr: "Arithmétique & Équations fonctionnelles",
+      tags: ["Algebra", "حسابيات", "منطق ومجموعات"],
+      capacitiesAr: [
+        "توظيف الاستدلال بالترجع وتقنيات التعويض الموجه لحل معادلة دالية أولمبية",
+      ],
+      capacitiesFr: [
+        "Résoudre une équation fonctionnelle par substitutions successives et raisonnement arithmétique",
+      ],
+      sampleExerciseAr: [
+        "نبحث عن جميع الدوال f : R → R التي تحقق لكل عددين حقيقيين x و y العلاقة: (E) : f(x² - y²) = x f(x) - y f(y).",
+        "1. أ) أحسب f(0)، ثم بين أن الدالة f فردية على R (أي f(-x) = -f(x) لكل x من R).",
+        "1. ب) بين أنه لكل x ≥ 0 لدينا: f(x²) = x f(x)، ثم استنتج أنه لكل x و y من R لدينا f(x² - y²) = f(x²) - f(y²).",
+        "2. استنتج أن الدالة f تآلفية خطية من الشكل f(x) = k·x حيث k عدد حقيقي ثابت.",
+      ],
+      sampleExerciseFr: [
+        "On cherche toutes les fonctions f : ℝ → ℝ vérifiant pour tous réels x, y : (E) : f(x² - y²) = x f(x) - y f(y).",
+        "1. a) Calculer f(0) et montrer que f est une fonction impaire sur ℝ.",
+        "1. b) Montrer que pour tout x ∈ ℝ, f(x²) = x f(x), puis en déduire que f est additive sur ℝ.",
+        "2. Démontrer que les solutions sont les fonctions linéaires f(x) = k·x (où k ∈ ℝ).",
+      ],
+      sampleSolutionAr: [
+        "1. أ) بوضع x=y=0 نجد f(0)=0. بوضع y=0 نجد f(x²) = x f(x)، وبتعويض x بـ -x نجد -x f(-x) = f(x²) = x f(x) إذن f(-x) = -f(x) لكل x ≠ 0.",
+        "1. ب) لكل a, b ≥ 0 نضع x=√a و y=√b فنجد f(a - b) = f(a) - f(b)، وبما أن f فردية فإن f(u + v) = f(u) + f(v) لكل u, v من R.",
+        "2. باستعمال f((x+1)² - x²) = f(2x+1) وتفكيكها خطياً نستنتج أن f(x) = f(1)·x لكل x من R.",
+      ],
+      sampleSolutionFr: [
+        "1. a) Pour y=0, f(x²) = x f(x). En remplaçant x par -x, on obtient -x f(-x) = x f(x), donc f est impaire.",
+        "1. b) Pour tous réels positifs u, v, f(u - v) = f(u) - f(v), d'où l'additivité de f sur ℝ.",
+        "2. En développant f((x+1)² - x²) = (x+1)f(x+1) - x f(x) par additivité, on obtient f(x) = f(1)·x.",
+      ],
+      isImportedSimulation: true,
+      importedOriginLabel: "أولمبياد الرياضيات الوطنية — الأولى بكالوريا علوم رياضية",
+    },
+  },
+  {
+    id: "olymp_concours_general_2bac_sm_analyse",
+    competitionAr: "المباراة العامة للعلوم والتقنيات — الثانية بكالوريا علوم رياضية (متتاليات الجذور والتكامل)",
+    competitionFr: "Concours Général des Sciences et Techniques (2Bac SM) — Suites implicites & Analyse",
+    targetCycleBadge: "2Bac SM A/B · المباراة العامة للعلوم",
+    domainAr: "التحليل المتقدم: متتاليات المعادلات الضمنية f_n(x)=0 والتكامل",
+    domainFr: "Analyse supérieure : Suites définies implicitement et calcul asymptotique",
+    difficultyStars: 5,
+    polyaHeuristicAr: [
+      "1. فهم المسألة: لكل n ≥ 1، الدالة f_n تزايدية قطعا ومتصلة، مما يضمن وجود ووحدانية الجذر x_n.",
+      "2. بناء الخطة: لدراسة رتابة (x_n)، أحسب إشارة f_{n+1}(x_n) ثم استثمر رتابة f_{n+1}.",
+      "3. السلوك المقارب: استعمل اللوغاريتم أو التأطير التكاملي لإيجاد المكافئ الحدي لـ x_n بجوار +∞.",
+    ],
+    polyaHeuristicFr: [
+      "1. Existence et unicité : Appliquer le théorème de la bijection à f_n sur ℝ+.",
+      "2. Monotonie de (x_n) : Évaluer le signe de f_{n+1}(x_n) et utiliser la stricte croissance de f_{n+1}.",
+      "3. Développement asymptotique : Prendre le logarithme de la relation x_n^n = ... pour déterminer la limite.",
+    ],
+    lessonItem: {
+      lessonAr: "مسألة التميز والمباراة العامة (2Bac SM): متتالية الجذور الضمنية والتقارب",
+      lessonFr: "Problème d'Excellence & Concours Général (2Bac SM) : Suite implicite des racines",
+      weight: 30,
+      hours: "6h",
+      category: "Calculus",
+      subCategory: "تحليل",
+      subCategoryFr: "Analyse d'Excellence",
+      tags: ["Calculus", "تحليل", "متتاليات عددية"],
+      capacitiesAr: [
+        "توظيف مبرهنة التقابل لدراسة متتالية معرفة ضمنياً بمعادلة f_n(x_n) = 1 وتحديد سلوكها الحدي",
+      ],
+      capacitiesFr: [
+        "Étudier une suite définie implicitement par f_n(x_n) = 1 et déterminer son équivalent asymptotique",
+      ],
+      sampleExerciseAr: [
+        "لكل عدد صحيح طبيعي غير منعدم n ≥ 1، نعتبر الدالة f_n المعرفة على المجال [0, 1] بـ: f_n(x) = x^n + x - 1.",
+        "1. أ) بين أن المعادلة f_n(x) = 0 تقبل حلاً وحيداً α_n في المجال ]0, 1[ لكل n ≥ 1.",
+        "1. ب) تحقق من أنه لكل n ≥ 1 لدينا f_{n+1}(α_n) < 0، ثم استنتج أن المتتالية (α_n) تزايدية قطعا وأنها متقاربة.",
+        "2. أ) بين أنه لكل n ≥ 1 لدينا: α_n^n = 1 - α_n، ثم افترض بالخلف أن lim α_n = ℓ < 1 واستنتج أن lim_{n→+∞} α_n = 1.",
+        "2. ب) بين أن: lim_{n→+∞} n(1 - α_n) / ln(n) = 1.",
+      ],
+      sampleExerciseFr: [
+        "Pour tout entier n ≥ 1, on considère la fonction f_n définie sur [0, 1] par : f_n(x) = x^n + x - 1.",
+        "1. a) Montrer que l'équation f_n(x) = 0 admet une unique solution α_n ∈ ]0, 1[.",
+        "1. b) Vérifier que f_{n+1}(α_n) < 0, en déduire que la suite (α_n) est strictement croissante et convergente.",
+        "2. a) À l'aide de la relation α_n^n = 1 - α_n, démontrer par l'absurde que lim_{n→+∞} α_n = 1.",
+        "2. b) Établir l'équivalent asymptotique : lim_{n→+∞} n(1 - α_n) / ln(n) = 1.",
+      ],
+      sampleSolutionAr: [
+        "1. أ) f_n متصلة وتزايدية قطعا على [0,1] و f_n(0) = -1 < 0 و f_n(1) = 1 > 0، إذن بالتقابل توجد α_n وحيدة في ]0,1[.",
+        "1. ب) f_{n+1}(α_n) - f_n(α_n) = α_n^{n+1} - α_n^n = α_n^n(α_n - 1) < 0 لأن α_n ∈ ]0,1[، ومنه f_{n+1}(α_n) < f_{n+1}(α_{n+1}) أي α_n < α_{n+1}.",
+        "2. أ) لو كانت ℓ < 1 لكانت lim α_n^n = 0 ومنه 0 = 1 - ℓ أي ℓ = 1 تناقض، إذن lim α_n = 1.",
+        "2. ب) بأخذ اللوغاريتم: n ln(α_n) = ln(1 - α_n)، وبما أن ln(α_n) ~ -(1 - α_n) بجوار 1 نستنتج النتيجة.",
+      ],
+      sampleSolutionFr: [
+        "1. a) f_n est continue et strictement croissante sur [0,1] avec f_n(0)=-1 et f_n(1)=1.",
+        "1. b) f_{n+1}(α_n) = α_n^n(α_n - 1) < 0 = f_{n+1}(α_{n+1}), donc α_n < α_{n+1} par croissance de f_{n+1}.",
+        "2. a) Si ℓ < 1 alors α_n^n → 0 et 1 - α_n → 1 - ℓ > 0, absurde. Donc lim α_n = 1.",
+        "2. b) n ln(α_n) = ln(1 - α_n) donne n(α_n - 1) ~ ln(1 - α_n), d'où n(1 - α_n) ~ ln(n).",
+      ],
+      isImportedSimulation: true,
+      importedOriginLabel: "المباراة العامة للعلوم والتقنيات — 2Bac SM",
+    },
+  },
+];
+
 

@@ -54,7 +54,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
         },
         devOptions: {
           enabled: true,
@@ -69,6 +69,24 @@ export default defineConfig(() => {
     },
     build: {
       chunkSizeWarningLimit: 4000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules/mathjs")) {
+              return "vendor-mathjs";
+            }
+            if (id.includes("node_modules/katex")) {
+              return "vendor-katex";
+            }
+            if (id.includes("node_modules/pdfjs-dist")) {
+              return "vendor-pdfjs";
+            }
+            if (id.includes("node_modules/lucide-react")) {
+              return "vendor-icons";
+            }
+          },
+        },
+      },
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
