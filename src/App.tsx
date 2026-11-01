@@ -195,6 +195,7 @@ import {
 } from "./utils/latexPackagesAndMath";
 import { PythonAlgorithmLabModal } from "./components/PythonAlgorithmLabModal";
 import { PedagogicalAiAssistantModal } from "./components/PedagogicalAiAssistantModal";
+import { GeminiApiKeyModal } from "./components/GeminiApiKeyModal";
 import { PythonAlgorithmPreset } from "./data/pythonAlgorithms";
 import { generateOverleafZipBundle } from "./utils/overleafZipExporter";
 import { getClientGeminiApiKey, generateDocumentWithClientGemini } from "./services/geminiClient";
@@ -815,6 +816,7 @@ export default function App() {
   // 18. مختبر بايثون ومساعد الذكاء الاصطناعي البيداغوجي المطور وحزمة Overleaf ZIP ولوحة الملفات المصدرة
   const [showPythonLabModal, setShowPythonLabModal] = useState<boolean>(false);
   const [showPedagogicalAiModal, setShowPedagogicalAiModal] = useState<boolean>(false);
+  const [showGeminiApiKeyModal, setShowGeminiApiKeyModal] = useState<boolean>(false);
   const [pedagogicalAiInitialView, setPedagogicalAiInitialView] = useState<
     "WORKSPACE" | "SETTINGS_DOCS"
   >("WORKSPACE");
@@ -4373,9 +4375,12 @@ export default function App() {
       if (!clientSuccess) {
         triggerOfflineGeneration();
         setViewMode("CODE");
+        if (!clientKey) {
+          setShowGeminiApiKeyModal(true);
+        }
         setStatusMessage({
           type: "info",
-          text: `تم توليد الفرض والحلول المفصلة بنجاح عبر المحرك البيداغوجي المدمج (وضع العمل المستقل / أوفلاين). لتفعيل التوليد المباشر بـ Gemini، يمكنك إدخال مفتاح GEMINI_API_KEY من نافذة المساعد الذكي أو تشغيل الخادم (npm start).`,
+          text: `تم توليد الفرض والحلول المفصلة بنجاح عبر المحرك البيداغوجي المدمج. لتفعيل التوليد الذكي التلقائي عبر Gemini، يرجى إدخال مفتاح API المجاني.`,
         });
       }
     } finally {
@@ -11581,6 +11586,20 @@ export default function App() {
       )}
 
       {/* نافذة المساعد الرياضي والديداكتيكي المطور للذكاء الاصطناعي (Gemini) */}
+      <GeminiApiKeyModal
+        isOpen={showGeminiApiKeyModal}
+        onClose={() => setShowGeminiApiKeyModal(false)}
+        onSuccessActivated={handleAIGenerate}
+        onUseBuiltinFallback={() => {
+          triggerOfflineGeneration();
+          setStatusMessage({
+            type: "success",
+            text: "تم الاعتماد على المحرك التربوي المدمج لتوليد الوثيقة بنجاح.",
+          });
+        }}
+        onNotify={(type, text) => setStatusMessage({ type, text })}
+      />
+
       {showPedagogicalAiModal && (
         <PedagogicalAiAssistantModal
           isOpen={showPedagogicalAiModal}

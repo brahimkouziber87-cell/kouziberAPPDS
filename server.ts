@@ -40,13 +40,13 @@ function resolveGeminiModel(modelChoice?: string): {
 } {
   if (modelChoice === "gemini-4-argon" || modelChoice === "gemini-3.1-pro-preview") {
     return {
-      sdkModel: "gemini-3.1-pro-preview",
-      displayLabel: "Gemini 3.1 Pro (High-Reasoning Math Engine)",
+      sdkModel: "gemini-1.5-pro",
+      displayLabel: "Gemini 1.5 Pro (High-Reasoning Math Engine)",
     };
   }
   return {
-    sdkModel: "gemini-3-flash-preview",
-    displayLabel: "Gemini 3 Flash (Fast Pedagogical Engine)",
+    sdkModel: "gemini-1.5-flash",
+    displayLabel: "Gemini 1.5 Flash (Fast Pedagogical Engine)",
   };
 }
 
@@ -117,7 +117,7 @@ async function generateGeminiContentWithFallback(
     // Retry 1: fallback to gemini-3-flash-preview with config
     try {
       return await client.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: contents as any,
         ...(config && Object.keys(config).length > 0 ? { config } : {}),
       });

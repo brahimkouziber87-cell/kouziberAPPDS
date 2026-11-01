@@ -6,7 +6,7 @@
 
 export interface ClientGeminiConfig {
   apiKey: string;
-  preferredModel?: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.0-flash" | "gemini-1.5-flash";
+  preferredModel?: "gemini-1.5-flash" | "gemini-2.0-flash" | "gemini-1.5-pro";
 }
 
 const STORAGE_KEY = "GEMINI_API_KEY";
@@ -47,6 +47,8 @@ export function removeClientGeminiApiKey(): void {
   }
 }
 
+const FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+
 export async function testGeminiApiKey(
   apiKeyToTest?: string
 ): Promise<{ success: boolean; message: string; latencyMs?: number }> {
@@ -59,53 +61,53 @@ export async function testGeminiApiKey(
   }
 
   const t0 = performance.now();
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-    key
-  )}`;
+  let lastErrorMsg = "";
 
-  try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: "Bonjour, réponds brièvement par OK pour valider la connexion." }],
+  for (const model of FALLBACK_MODELS) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
+      key
+    )}`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: "Bonjour, réponds OK pour valider la connexion." }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 20,
+            temperature: 0.1,
           },
-        ],
-        generationConfig: {
-          maxOutputTokens: 20,
-          temperature: 0.1,
-        },
-      }),
-    });
+        }),
+      });
 
-    const elapsed = Math.round(performance.now() - t0);
+      const elapsed = Math.round(performance.now() - t0);
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const errMsg = errData.error?.message || `HTTP ${res.status} ${res.statusText}`;
-      return {
-        success: false,
-        message: `فشل التحقق من المفتاح: ${errMsg}`,
-        latencyMs: elapsed,
-      };
+      if (res.ok) {
+        return {
+          success: true,
+          message: `تم التحقق من مفتاح Gemini بنجاح عبر نموذج (${model})! الاستجابة نشطة (${elapsed} ms).`,
+          latencyMs: elapsed,
+        };
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        lastErrorMsg = errData.error?.message || `HTTP ${res.status}`;
+      }
+    } catch (netErr: unknown) {
+      lastErrorMsg = netErr instanceof Error ? netErr.message : "خطأ اتصال بالشبكة";
     }
-
-    return {
-      success: true,
-      message: `تم التحقق من مفتاح Gemini بنجاح! الاستجابة نشطة (${elapsed} ms).`,
-      latencyMs: elapsed,
-    };
-  } catch (err) {
-    const elapsed = Math.round(performance.now() - t0);
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع في الشبكة";
-    return {
-      success: false,
-      message: `تعذر الاتصال بخوادم Google Gemini (${msg}). يرجى التأكد من اتصال الإنترنت.`,
-      latencyMs: elapsed,
-    };
   }
+
+  const elapsed = Math.round(performance.now() - t0);
+  return {
+    success: false,
+    message: `فشل التحقق من المفتاح: ${lastErrorMsg || "يرجى التأكد من صحة المفتاح واتصال الإنترنت."}`,
+    latencyMs: elapsed,
+  };
 }
 
 export interface ClientDocumentGenerationParams {
@@ -148,10 +150,10 @@ export async function generateDocumentWithClientGemini(
     throw new Error("لا يوجد مفتاح GEMINI_API_KEY مسجل في المتصفح.");
   }
 
-  const modelName =
-    params.modelChoice === "gemini-4-argon" || params.modelChoice?.includes("pro")
-      ? "gemini-2.5-pro"
-      : "gemini-2.5-flash";
+  const isPro = params.modelChoice === "gemini-4-argon" || params.modelChoice?.includes("pro");
+  const modelsToTry = isPro
+    ? ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"]
+    : ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
 
   const isLatex = params.exportFormat === "LATEX";
   const formatName = isLatex ? "LaTeX / XeLaTeX" : "Typst";
@@ -185,43 +187,51 @@ Directives de rédaction:
 4. Code propre, compilable immédiatement sans erreurs.
 Sortie: Retourne UNIQUEMENT le bloc de code source entre \`\`\`${isLatex ? "latex" : "typst"} et \`\`\`.`;
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
-    apiKey
-  )}`;
+  let lastErr = "";
+  for (const modelName of modelsToTry) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
+      apiKey
+    )}`;
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-      },
-    }),
-  });
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+          },
+        }),
+      });
 
-  if (!response.ok) {
-    const errObj = await response.json().catch(() => ({}));
-    throw new Error(errObj.error?.message || `Erreur API Gemini (${response.status})`);
+      if (!response.ok) {
+        const errObj = await response.json().catch(() => ({}));
+        lastErr = errObj.error?.message || `Erreur API Gemini (${response.status})`;
+        continue; // try next model
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Extract code from fences
+      const fenceRegex = isLatex
+        ? /```(?:latex|tex)?\s*([\s\S]*?)```/i
+        : /```(?:typst)?\s*([\s\S]*?)```/i;
+
+      const match = rawText.match(fenceRegex);
+      const code = (match ? match[1] : rawText).trim();
+
+      if (code.length > 50) {
+        return {
+          code,
+          modelUsed: `${modelName} (Google Gemini AI Direct)`,
+        };
+      }
+    } catch (e: unknown) {
+      lastErr = e instanceof Error ? e.message : "Erreur de connexion";
+    }
   }
 
-  const data = await response.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-  // Extract code from fences
-  const fenceRegex = isLatex
-    ? /```(?:latex|tex)?\s*([\s\S]*?)```/i
-    : /```(?:typst)?\s*([\s\S]*?)```/i;
-
-  const match = rawText.match(fenceRegex);
-  const code = (match ? match[1] : rawText).trim();
-
-  if (code.length < 50) {
-    throw new Error("استجابة غير مكتملة من الذكاء الاصطناعي.");
-  }
-
-  return {
-    code,
-    modelUsed: `${modelName} (Direct Client-Side)`,
-  };
+  throw new Error(lastErr || "استجابة غير مكتملة من الذكاء الاصطناعي.");
 }
