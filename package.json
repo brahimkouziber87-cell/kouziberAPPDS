@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "clean": "node -e \"const fs=require('fs');['dist','server.js'].forEach(p=>fs.rmSync(p,{recursive:true,force:true}))\"",
     "lint": "tsc --noEmit",
+    "test": "tsx test_suite.ts",
     "desktop:electron": "vite build && electron .",
     "desktop:tauri": "tauri dev",
     "desktop:tauri-build": "tauri build",
