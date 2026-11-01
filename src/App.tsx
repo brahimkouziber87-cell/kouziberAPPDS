@@ -197,6 +197,7 @@ import { PythonAlgorithmLabModal } from "./components/PythonAlgorithmLabModal";
 import { PedagogicalAiAssistantModal } from "./components/PedagogicalAiAssistantModal";
 import { PythonAlgorithmPreset } from "./data/pythonAlgorithms";
 import { generateOverleafZipBundle } from "./utils/overleafZipExporter";
+import { getClientGeminiApiKey, generateDocumentWithClientGemini } from "./services/geminiClient";
 import {
   deleteDriveDocument,
   DriveFileItem,
@@ -4259,13 +4260,14 @@ export default function App() {
       text: "جاري صياغة التمارين والحلول المفصلة وفق الدروس والنسب المختارة...",
     });
 
+    const targetLessons =
+      activeModule === "DS_142_08" || activeModule === "DM_SERIE"
+        ? activeCustomLessons
+        : activeModule === "FICHE_OP2007"
+        ? [allTrackLessons[selectedLessonIdx] || allTrackLessons[0]]
+        : allTrackLessons;
+
     try {
-      const targetLessons =
-        activeModule === "DS_142_08" || activeModule === "DM_SERIE"
-          ? activeCustomLessons
-          : activeModule === "FICHE_OP2007"
-          ? [allTrackLessons[selectedLessonIdx] || allTrackLessons[0]]
-          : allTrackLessons;
 
       const response = await fetch("/api/generate-document", {
         method: "POST",
@@ -4332,11 +4334,50 @@ export default function App() {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "خطأ في الاتصال";
-      triggerOfflineGeneration();
-      setStatusMessage({
-        type: "error",
-        text: `تعذر التوليد عبر الخادم (${msg}). تم توليد القالب الكامل عبر المحرك الفوري المدمج.`,
-      });
+      let clientSuccess = false;
+      const clientKey = getClientGeminiApiKey();
+
+      if (clientKey) {
+        try {
+          const clientRes = await generateDocumentWithClientGemini({
+            school,
+            prof,
+            year,
+            academy,
+            direction,
+            trackLabelAr: currentTrack.labelAr,
+            trackLabelFr: currentTrack.labelFr,
+            durationAr: currentTrack.durationAr,
+            durationFr: currentTrack.durationFr,
+            exportFormat: exportFormat === "TYPST" ? "TYPST" : "LATEX",
+            examModel,
+            activeModule,
+            semester,
+            dsKey,
+            lessons: targetLessons,
+            customTopicNote,
+            modelChoice: selectedAiModel,
+          });
+          setGeneratedCode(clientRes.code);
+          setViewMode("CODE");
+          setStatusMessage({
+            type: "success",
+            text: `تم توليد الوثيقة الكاملة بالذكاء الاصطناعي بنجاح عبر Gemini (${clientRes.modelUsed}).`,
+          });
+          clientSuccess = true;
+        } catch (clientErr) {
+          console.warn("Client-side Gemini generation attempt encountered an error:", clientErr);
+        }
+      }
+
+      if (!clientSuccess) {
+        triggerOfflineGeneration();
+        setViewMode("CODE");
+        setStatusMessage({
+          type: "info",
+          text: `تم توليد الفرض والحلول المفصلة بنجاح عبر المحرك البيداغوجي المدمج (وضع العمل المستقل / أوفلاين). لتفعيل التوليد المباشر بـ Gemini، يمكنك إدخال مفتاح GEMINI_API_KEY من نافذة المساعد الذكي أو تشغيل الخادم (npm start).`,
+        });
+      }
     } finally {
       setIsGeneratingAI(false);
     }

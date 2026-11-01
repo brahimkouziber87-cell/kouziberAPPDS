@@ -13,12 +13,16 @@ import {
   ShieldCheck,
   Sliders,
   Sparkles,
+  Key,
+  Eye,
+  EyeOff,
   Terminal,
   Wand2,
   X,
   Zap,
 } from "lucide-react";
 import { MathText } from "./MathRenderer";
+import { getClientGeminiApiKey, setClientGeminiApiKey, testGeminiApiKey } from "../services/geminiClient";
 
 export type AiPedagogicalTask =
   | "SOLVE_STEP_BY_STEP"
@@ -278,6 +282,37 @@ export const PedagogicalAiAssistantModal: React.FC<
   );
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
+  const [clientKeyInput, setClientKeyInput] = useState<string>(() => getClientGeminiApiKey() || "");
+  const [showClientKey, setShowClientKey] = useState<boolean>(false);
+  const [isTestingClientKey, setIsTestingClientKey] = useState<boolean>(false);
+  const [clientKeyTestStatus, setClientKeyTestStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleSaveClientKey = () => {
+    setClientGeminiApiKey(clientKeyInput);
+    if (clientKeyInput.trim()) {
+      onNotify?.("success", "تم حفظ وتفعيل مفتاح Google Gemini API في المتصفح بنجاح!");
+      setClientKeyTestStatus({ success: true, message: "✓ تم حفظ المفتاح وتفعيله في المتصفح." });
+    } else {
+      onNotify?.("info", "تم حذف المفتاح من المتصفح والاعتماد على المحرك المدمج.");
+      setClientKeyTestStatus(null);
+    }
+  };
+
+  const handleTestClientKey = async () => {
+    setIsTestingClientKey(true);
+    setClientKeyTestStatus(null);
+    try {
+      const res = await testGeminiApiKey(clientKeyInput);
+      setClientKeyTestStatus(res);
+      if (res.success) {
+        onNotify?.("success", res.message);
+      } else {
+        onNotify?.("error", res.message);
+      }
+    } finally {
+      setIsTestingClientKey(false);
+    }
+  };
 
   const [result, setResult] = useState<AiPedagogicalResponse>({
     task: "SOLVE_STEP_BY_STEP",
@@ -911,6 +946,66 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                     </span>
                   </button>
                 </div>
+              </div>
+
+              {/* إعداد مفتاح API للمتصفح والأجهزة الذكية دون خادم */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 border border-indigo-700/60 text-slate-100 space-y-3 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-800/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-black text-white">
+                      مفتاح Google Gemini API للمتصفح والأجهزة الذكية (Client-Side Direct Key)
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-mono px-2.5 py-0.5 rounded-full border border-cyan-400/30">
+                    PWA & Mobile & Desktop Ready
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  أدخل مفتاح Gemini الخاص بك لتشغيل الذكاء الاصطناعي مباشرة من المتصفح في أي وقت ودون الحاجة لتشغيل خادم Node.js محلي. يتم تخزين المفتاح بأمان داخل متصفحك فقط.
+                </p>
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showClientKey ? "text" : "password"}
+                      value={clientKeyInput}
+                      onChange={(e) => setClientKeyInput(e.target.value)}
+                      placeholder="AIzaSy..."
+                      dir="ltr"
+                      className="w-full bg-slate-950 border border-indigo-700/80 rounded-xl px-3.5 py-2.5 text-xs font-mono text-cyan-200 placeholder-slate-500 focus:outline-hidden focus:border-cyan-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowClientKey(!showClientKey)}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                      title={showClientKey ? "إخفاء المفتاح" : "إظهار المفتاح"}
+                    >
+                      {showClientKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveClientKey}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shrink-0"
+                  >
+                    حفظ وتفعيل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestClientKey}
+                    disabled={isTestingClientKey || !clientKeyInput.trim()}
+                    className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shrink-0 disabled:opacity-50"
+                  >
+                    {isTestingClientKey ? "جاري الاختبار..." : "اختبار الاتصال الحي"}
+                  </button>
+                </div>
+                {clientKeyTestStatus && (
+                  <div className={`text-xs font-bold p-2.5 rounded-xl flex items-center gap-2 ${
+                    clientKeyTestStatus.success ? "bg-emerald-950/80 border border-emerald-500/50 text-emerald-300" : "bg-rose-950/80 border border-rose-500/50 text-rose-300"
+                  }`}>
+                    <span>{clientKeyTestStatus.message}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
