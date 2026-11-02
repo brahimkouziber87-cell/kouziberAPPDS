@@ -1,9 +1,176 @@
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import {
+  buildInteractiveQuizLinkForDocument,
+  generateIsoQrMatrix,
+} from "./qrCodeHelper";
 
 export type PrintMarginPreset = "NARROW" | "STANDARD" | "OFFICIAL_EXAM";
 export type PrintColorMode = "FULL_COLOR" | "LASER_MONO";
 export type PrintDpiQuality = "STANDARD_150" | "HIGH_300" | "ULTRA_PRINT";
+export type PrintPageSizePreset = "A4" | "LETTER" | "CUSTOM";
+
+export interface PrintPageMetricsResult {
+  preset: PrintPageSizePreset;
+  labelAr: string;
+  labelFr: string;
+  widthMm: number;
+  heightMm: number;
+  widthPx: number;
+  heightPx: number;
+  printableWidthMm: number;
+  printableHeightMm: number;
+  pageBreakIntervalPx: number;
+  marginBufferPx: number;
+  estimatedPageCount: number;
+  pageBreakOffsetsPx: number[];
+  cssPageSizeValue: string;
+  cssPageRule: string;
+  cssMediaPrintBlock: string;
+}
+
+/**
+ * محرك محاكاة استعلامات الطباعة الفورية (@media print & @page Simulator)
+ * يحسب الأبعاد الفيزيائية والبيكسلات الدقيقة ونقاط فواصل الصفحات (Page Break Boundaries)
+ * لمقاسات الورق القياسية (A4, US Letter) والمقاسات المخصصة (Custom @page)
+ */
+export function computePrintMediaQueryMetrics(params: {
+  preset: PrintPageSizePreset;
+  orientation?: "portrait" | "landscape" | "PORTRAIT" | "LANDSCAPE";
+  customWidthMm?: number;
+  customHeightMm?: number;
+  marginTopMm?: number;
+  marginBottomMm?: number;
+  marginXMm?: number;
+  contentHeightPx?: number;
+  contentWidthPx?: number;
+}): PrintPageMetricsResult {
+  const isLandscape =
+    String(params.orientation || "portrait").toUpperCase() === "LANDSCAPE";
+
+  const baseW =
+    params.preset === "A4"
+      ? 210
+      : params.preset === "LETTER"
+      ? 215.9
+      : Math.max(120, Math.min(350, Number(params.customWidthMm) || 210));
+
+  const baseH =
+    params.preset === "A4"
+      ? 297
+      : params.preset === "LETTER"
+      ? 279.4
+      : Math.max(160, Math.min(450, Number(params.customHeightMm) || 297));
+
+  const widthMm = Number((isLandscape ? Math.max(baseW, baseH) : Math.min(baseW, baseH)).toFixed(1));
+  const heightMm = Number((isLandscape ? Math.min(baseW, baseH) : Math.max(baseW, baseH)).toFixed(1));
+
+  // معامل التحويل القياسي CSS 96 DPI: 1mm = 96 / 25.4 ≈ 3.779527559 px
+  const MM_TO_PX = 96 / 25.4;
+  const widthPx = Math.round(widthMm * MM_TO_PX);
+  const heightPx = Math.round(heightMm * MM_TO_PX);
+
+  const marginTopMm = Math.max(5, Math.min(30, params.marginTopMm ?? 10));
+  const marginBottomMm = Math.max(5, Math.min(30, params.marginBottomMm ?? 12));
+  const marginXMm = Math.max(5, Math.min(30, params.marginXMm ?? 12));
+
+  const printableWidthMm = Number(Math.max(80, widthMm - marginXMm * 2).toFixed(1));
+  const printableHeightMm = Number(
+    Math.max(100, heightMm - marginTopMm - marginBottomMm).toFixed(1)
+  );
+
+  // حساب النسبة الفعلية للبيكسل في المعاينة الحية إذا كان عرض العنصر الفعلي متوفراً
+  const effectivePxPerMm =
+    params.contentWidthPx && params.contentWidthPx > 240
+      ? params.contentWidthPx / widthMm
+      : MM_TO_PX;
+
+  const pageBreakIntervalPx = Math.max(
+    360,
+    Math.round(heightMm * effectivePxPerMm)
+  );
+  const marginBufferPx = Math.max(
+    18,
+    Math.round((marginTopMm + marginBottomMm) * effectivePxPerMm)
+  );
+
+  const totalContentHeightPx = Math.max(
+    pageBreakIntervalPx,
+    params.contentHeightPx || pageBreakIntervalPx
+  );
+  const estimatedPageCount = Math.max(
+    1,
+    Math.ceil(totalContentHeightPx / pageBreakIntervalPx - 0.02)
+  );
+
+  // توليد إحداثيات خطوط فواصل الصفحات (حتى 8 فواصل كحد أقصى للمعاينة الواضحة)
+  const breakLinesCount = Math.max(4, Math.min(10, estimatedPageCount + 1));
+  const pageBreakOffsetsPx: number[] = [];
+  for (let p = 1; p <= breakLinesCount; p++) {
+    pageBreakOffsetsPx.push(p * pageBreakIntervalPx);
+  }
+
+  const orientCss = isLandscape ? "landscape" : "portrait";
+  const cssPageSizeValue =
+    params.preset === "A4"
+      ? `A4 ${orientCss}`
+      : params.preset === "LETTER"
+      ? `letter ${orientCss}`
+      : `${widthMm}mm ${heightMm}mm`;
+
+  const cssPageRule = `@page { size: ${cssPageSizeValue}; margin: ${marginTopMm}mm ${marginXMm}mm ${marginBottomMm}mm ${marginXMm}mm; }`;
+  const cssMediaPrintBlock = `@media print {\n  ${cssPageRule}\n  .print-sheet { width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; min-height: ${heightMm}mm !important; }\n}`;
+
+  const labelAr =
+    params.preset === "A4"
+      ? `A4 القياسي (${widthMm}×${heightMm}mm)`
+      : params.preset === "LETTER"
+      ? `US Letter (${widthMm}×${heightMm}mm)`
+      : `مقاس مخصص (${widthMm}×${heightMm}mm)`;
+
+  const labelFr =
+    params.preset === "A4"
+      ? `A4 ISO (${widthMm}×${heightMm}mm)`
+      : params.preset === "LETTER"
+      ? `US Letter (${widthMm}×${heightMm}mm)`
+      : `Format Sur-Mesure (${widthMm}×${heightMm}mm)`;
+
+  return {
+    preset: params.preset,
+    labelAr,
+    labelFr,
+    widthMm,
+    heightMm,
+    widthPx,
+    heightPx,
+    printableWidthMm,
+    printableHeightMm,
+    pageBreakIntervalPx,
+    marginBufferPx,
+    estimatedPageCount,
+    pageBreakOffsetsPx,
+    cssPageSizeValue,
+    cssPageRule,
+    cssMediaPrintBlock,
+  };
+}
+
+export interface A4LayoutOverflowReport {
+  hasHorizontalOverflow: boolean;
+  horizontalOverflowPx: number;
+  hasTrailingOrphanOverflow: boolean;
+  rawPageCount: number;
+  adjustedPageCount: number;
+  lastPageFillPercentBefore: number;
+  lastPageFillPercentAfter: number;
+  recommendedMarginMm: number;
+  recommendedMarginTopMm: number;
+  recommendedMarginBottomMm: number;
+  recommendedMarginXMm: number;
+  recommendedScaleFactor: number;
+  recommendedVerticalGapClass: "space-y-4" | "space-y-6" | "space-y-8";
+  adjustmentsApplied: string[];
+}
 
 export interface ExportPDFOptions {
   elementId?: string;
@@ -17,6 +184,286 @@ export interface ExportPDFOptions {
   dpiQuality?: PrintDpiQuality;
   isMission?: boolean;
   isFrench?: boolean;
+  /** رابط الاختبار التفاعلي لتوليد رمز QR تلقائياً في تذييل PDF */
+  interactiveQuizUrl?: string;
+  /** تفعيل إدراج رمز QR للاختبار التفاعلي تلقائياً في تذييل كل صفحة PDF (افتراضياً true) */
+  includeFooterQrCode?: boolean;
+  /** الكشف التلقائي عن تجاوز صفحات A4 وضبط الهوامش والتباعد قبل التصدير (افتراضياً true) */
+  autoAdjustA4Layout?: boolean;
+  /** دالة استرجاع اختيارية لتلقي تقرير الضبط التلقائي لتخطيط A4 */
+  onLayoutAdjusted?: (report: A4LayoutOverflowReport) => void;
+}
+
+/**
+ * محرك تحليلي نقي (Pure Analyzer) للكشف عن تجاوزات تخطيط A4 وحساب الهوامش المثلى للطباعة
+ * يكشف:
+ * 1. التجاوز الأفقي (Horizontal Overflow) للجداول أو المعادلات العريضة
+ * 2. الذيل اليتيم في الصفحة الأخيرة (Trailing Orphan Page Overflow عندما يمتلئ أقل من 24% من الصفحة الأخيرة)
+ * 3. الهوامش غير المتوازنة للطباعة الفعلية (يضمن هوامش آمنة >= 8mm)
+ */
+export function analyzeA4LayoutMetrics(params: {
+  contentWidthPx: number;
+  scrollWidthPx?: number;
+  contentHeightPx: number;
+  orientation?: "portrait" | "landscape";
+  marginPreset?: PrintMarginPreset;
+  currentMarginTopMm?: number;
+  currentMarginBottomMm?: number;
+  currentMarginXMm?: number;
+  includeFooterQrCode?: boolean;
+}): A4LayoutOverflowReport {
+  const orientation = params.orientation || "portrait";
+  const pageWidthMm = orientation === "landscape" ? 297 : 210;
+  const pageHeightMm = orientation === "landscape" ? 210 : 297;
+  const includeQr = params.includeFooterQrCode !== false;
+
+  const basePresetMarginMm =
+    params.marginPreset === "NARROW"
+      ? 8.0
+      : params.marginPreset === "OFFICIAL_EXAM"
+      ? 11.0
+      : 9.0;
+
+  const footerHeightMm = includeQr ? 14.0 : 8.5;
+  const runningHeaderMm = 6.5;
+
+  const usableWidthMm = pageWidthMm - basePresetMarginMm * 2;
+  const usableFirstPageHeightMm =
+    pageHeightMm - basePresetMarginMm * 2 - footerHeightMm - runningHeaderMm;
+
+  const safeWidthPx = Math.max(320, params.contentWidthPx || 794);
+  const safeScrollWidthPx = Math.max(safeWidthPx, params.scrollWidthPx || safeWidthPx);
+  const horizontalOverflowPx = Math.max(0, Math.round(safeScrollWidthPx - safeWidthPx));
+  const hasHorizontalOverflow = horizontalOverflowPx > 2;
+
+  const pxPerMm = safeWidthPx / usableWidthMm;
+  const singlePageCapacityPx = Math.max(240, Math.floor(usableFirstPageHeightMm * pxPerMm));
+
+  const safeHeightPx = Math.max(100, params.contentHeightPx || singlePageCapacityPx);
+  const exactPagesFloat = safeHeightPx / singlePageCapacityPx;
+  const rawPageCount = Math.max(1, Math.ceil(exactPagesFloat - 0.01));
+
+  const remainderPx = safeHeightPx - (rawPageCount - 1) * singlePageCapacityPx;
+  const lastPageFillPercentBefore =
+    rawPageCount === 1
+      ? Math.min(100, Math.round((safeHeightPx / singlePageCapacityPx) * 100))
+      : Math.max(1, Math.min(100, Math.round((remainderPx / singlePageCapacityPx) * 100)));
+
+  // إذا كانت الوثيقة تمتد لصفحة إضافية بنسبة امتلاء ضئيلة (<= 24%) نعتبرها تجاوزاً يتيماً قابلاً للضم
+  const hasTrailingOrphanOverflow =
+    rawPageCount > 1 && lastPageFillPercentBefore > 0 && lastPageFillPercentBefore <= 24;
+
+  const adjustmentsApplied: string[] = [];
+  let recommendedMarginMm = basePresetMarginMm;
+  let recommendedMarginTopMm = Math.max(8, Math.min(18, params.currentMarginTopMm ?? 10));
+  let recommendedMarginBottomMm = Math.max(10, Math.min(18, params.currentMarginBottomMm ?? 12));
+  let recommendedMarginXMm = Math.max(10, Math.min(18, params.currentMarginXMm ?? 12));
+  let recommendedScaleFactor = 1;
+  let recommendedVerticalGapClass: "space-y-4" | "space-y-6" | "space-y-8" = "space-y-6";
+
+  if (hasHorizontalOverflow) {
+    const widthRatio = safeWidthPx / safeScrollWidthPx;
+    recommendedScaleFactor = Math.max(0.88, Math.min(0.98, Number(widthRatio.toFixed(3))));
+    recommendedMarginXMm = Math.max(8, recommendedMarginXMm - 2);
+    adjustmentsApplied.push(
+      `ضبط التجاوز الأفقي (${horizontalOverflowPx}px) وتقليص العناصر العريضة لتناسب عرض A4`
+    );
+  }
+
+  if (hasTrailingOrphanOverflow) {
+    recommendedMarginMm = Math.max(7.5, basePresetMarginMm - 1.5);
+    recommendedMarginTopMm = 8;
+    recommendedMarginBottomMm = 9;
+    recommendedMarginXMm = 10;
+    recommendedVerticalGapClass = "space-y-4";
+    const neededCompaction =
+      ((rawPageCount - 1) * singlePageCapacityPx) / Math.max(1, safeHeightPx);
+    const orphanScale = Math.max(0.91, Math.min(0.97, Number(neededCompaction.toFixed(3))));
+    recommendedScaleFactor = Math.min(recommendedScaleFactor, orphanScale);
+    adjustmentsApplied.push(
+      `ضم التجاوز اليتيم في الصفحة ${rawPageCount} (امتلاء ${lastPageFillPercentBefore}%) وتوفير ورقة طباعة كاملة`
+    );
+  } else if (rawPageCount === 1 && lastPageFillPercentBefore < 65) {
+    recommendedMarginTopMm = Math.max(12, recommendedMarginTopMm);
+    recommendedMarginBottomMm = Math.max(12, recommendedMarginBottomMm);
+    recommendedMarginXMm = Math.max(13, recommendedMarginXMm);
+    recommendedVerticalGapClass = "space-y-8";
+    adjustmentsApplied.push("موازنة الهوامش والتباعد العمودي لملء ورقة A4 بشكل متناسق");
+  } else {
+    // ضمان هوامش طباعة قياسية آمنة لجميع الطابعات المكتبية (>= 8mm)
+    if ((params.currentMarginTopMm ?? 10) < 8 || (params.currentMarginXMm ?? 12) < 8) {
+      recommendedMarginTopMm = Math.max(8, params.currentMarginTopMm ?? 8);
+      recommendedMarginXMm = Math.max(9, params.currentMarginXMm ?? 9);
+      adjustmentsApplied.push("تأمين الحد الأدنى لهوامش الطابعة الفيزيائية (8mm) لمنع بتر الأطراف");
+    }
+  }
+
+  const adjustedHeightPx = safeHeightPx * recommendedScaleFactor * (hasTrailingOrphanOverflow ? 0.93 : 1);
+  const adjustedUsableHeightMm =
+    pageHeightMm - recommendedMarginMm * 2 - footerHeightMm - runningHeaderMm;
+  const adjustedCapacityPx = Math.max(240, Math.floor(adjustedUsableHeightMm * pxPerMm));
+  const adjustedPageCount = hasTrailingOrphanOverflow
+    ? Math.max(1, rawPageCount - 1)
+    : Math.max(1, Math.ceil(adjustedHeightPx / adjustedCapacityPx - 0.01));
+
+  const adjustedRemainderPx =
+    adjustedHeightPx - (adjustedPageCount - 1) * adjustedCapacityPx;
+  const lastPageFillPercentAfter =
+    adjustedPageCount === 1
+      ? Math.min(100, Math.round((adjustedHeightPx / adjustedCapacityPx) * 100))
+      : Math.max(15, Math.min(98, Math.round((adjustedRemainderPx / adjustedCapacityPx) * 100)));
+
+  return {
+    hasHorizontalOverflow,
+    horizontalOverflowPx,
+    hasTrailingOrphanOverflow,
+    rawPageCount,
+    adjustedPageCount,
+    lastPageFillPercentBefore,
+    lastPageFillPercentAfter,
+    recommendedMarginMm,
+    recommendedMarginTopMm,
+    recommendedMarginBottomMm,
+    recommendedMarginXMm,
+    recommendedScaleFactor,
+    recommendedVerticalGapClass,
+    adjustmentsApplied,
+  };
+}
+
+/**
+ * فحص عنصر ورقة A4 في DOM وتطبيق تحسينات تلقائية مؤقتة أثناء التصدير لمنع قص المعادلات أو الجداول أو الصفحات اليتيمة
+ * مع إرجاع دالة restore() لإعادة العناصر إلى حالتها الأصلية فور انتهاء التصدير
+ */
+export function detectAndAdjustA4LayoutForExport(
+  element: HTMLElement,
+  options: {
+    orientation?: "portrait" | "landscape";
+    marginPreset?: PrintMarginPreset;
+    includeFooterQrCode?: boolean;
+  } = {}
+): {
+  report: A4LayoutOverflowReport;
+  restore: () => void;
+} {
+  const rect = element.getBoundingClientRect();
+  const contentWidthPx = Math.max(320, Math.round(rect.width || element.clientWidth || 794));
+  const scrollWidthPx = Math.max(contentWidthPx, Math.round(element.scrollWidth || contentWidthPx));
+  const contentHeightPx = Math.max(200, Math.round(element.scrollHeight || rect.height || 1122));
+
+  const report = analyzeA4LayoutMetrics({
+    contentWidthPx,
+    scrollWidthPx,
+    contentHeightPx,
+    orientation: options.orientation,
+    marginPreset: options.marginPreset,
+    includeFooterQrCode: options.includeFooterQrCode,
+  });
+
+  const savedStyles: Array<{ el: HTMLElement; cssText: string }> = [];
+  const recordAndStyle = (el: HTMLElement, mutator: (style: CSSStyleDeclaration) => void) => {
+    savedStyles.push({ el, cssText: el.style.cssText });
+    mutator(el.style);
+  };
+
+  // 1. حماية شاملة من التجاوز الأفقي للجداول والصيغ الرياضية العريضة والأشكال
+  recordAndStyle(element, (style) => {
+    style.boxSizing = "border-box";
+    style.overflowX = "hidden";
+    if (report.hasTrailingOrphanOverflow) {
+      style.paddingTop = `${report.recommendedMarginTopMm}mm`;
+      style.paddingBottom = `${report.recommendedMarginBottomMm}mm`;
+      style.paddingLeft = `${report.recommendedMarginXMm}mm`;
+      style.paddingRight = `${report.recommendedMarginXMm}mm`;
+      style.lineHeight = "1.42";
+    }
+  });
+
+  const wideBlocks = Array.from(
+    element.querySelectorAll<HTMLElement>(
+      "table, .katex-display, pre, svg, img, .inserted-figure-card"
+    )
+  );
+  wideBlocks.forEach((child) => {
+    const childScroll = child.scrollWidth;
+    if (childScroll > contentWidthPx - 24) {
+      const fitScale = Math.max(0.78, Math.min(0.98, (contentWidthPx - 36) / childScroll));
+      recordAndStyle(child, (style) => {
+        style.maxWidth = "100%";
+        style.overflowX = "hidden";
+        if (child.tagName === "TABLE" || child.classList.contains("katex-display")) {
+          style.transform = `scale(${fitScale.toFixed(3)})`;
+          style.transformOrigin = "center top";
+        }
+      });
+    } else {
+      recordAndStyle(child, (style) => {
+        style.maxWidth = "100%";
+      });
+    }
+  });
+
+  // 2. إذا كان هناك ذيل يتيم قصير في الصفحة الأخيرة، نقوم بضغط المسافات العمودية بين التمارين تلقائياً
+  if (report.hasTrailingOrphanOverflow) {
+    const spacedContainers = Array.from(
+      element.querySelectorAll<HTMLElement>(".space-y-8, .space-y-6, .mb-8, .mb-6, .py-6, .p-6")
+    );
+    spacedContainers.forEach((box) => {
+      recordAndStyle(box, (style) => {
+        style.marginBottom = "0.5rem";
+        style.paddingTop = "0.45rem";
+        style.paddingBottom = "0.45rem";
+      });
+    });
+  }
+
+  return {
+    report,
+    restore: () => {
+      for (let i = savedStyles.length - 1; i >= 0; i--) {
+        const item = savedStyles[i];
+        item.el.style.cssText = item.cssText;
+      }
+    },
+  };
+}
+
+/**
+ * رسم مصفوفة رمز QR القياسية (ISO/IEC 18004) مباشرة على Canvas بدقة عالية وحواف حادة
+ */
+function drawQrMatrixOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  matrix: (boolean | number)[][],
+  x: number,
+  y: number,
+  sizePx: number
+): void {
+  const N = matrix.length;
+  if (!N) return;
+  const quietZoneModules = 2;
+  const totalModules = N + quietZoneModules * 2;
+  const cellPx = sizePx / totalModules;
+
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, sizePx, sizePx);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = Math.max(1, Math.round(sizePx / 45));
+  ctx.strokeRect(x, y, sizePx, sizePx);
+
+  ctx.fillStyle = "#0f172a";
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      if (matrix[r][c]) {
+        const rx = Math.floor(x + (c + quietZoneModules) * cellPx);
+        const ry = Math.floor(y + (r + quietZoneModules) * cellPx);
+        const rw = Math.ceil(x + (c + quietZoneModules + 1) * cellPx) - rx;
+        const rh = Math.ceil(y + (r + quietZoneModules + 1) * cellPx) - ry;
+        ctx.fillRect(rx, ry, rw, rh);
+      }
+    }
+  }
+  ctx.restore();
 }
 
 /**
@@ -118,7 +565,7 @@ function applyLaserMonochromeFilter(ctx: CanvasRenderingContext2D, width: number
 
 /**
  * رسم الترويسة الجارية للصفحات الموالية والتذييل الرسمي المشكّل بالعربية والفرنسية بدقة Canvas
- * (يتفادى مشكلة تشوه الحروف العربية في خطوط jsPDF الافتراضية)
+ * مع إدراج رمز QR تلقائي للاختبار التفاعلي في التذييل السفلي
  */
 function drawCanvasRunningHeaderAndFooter(
   ctx: CanvasRenderingContext2D,
@@ -133,11 +580,14 @@ function drawCanvasRunningHeaderAndFooter(
     headerMeta?: string;
     isMission?: boolean;
     isFrench?: boolean;
+    qrMatrix?: (boolean | number)[][];
+    interactiveQuizUrl?: string;
   }
 ) {
   const scaleFactor = Math.max(1, canvasWidth / 1200);
-  const fontSizePx = Math.round(15 * scaleFactor);
-  const smallFontPx = Math.round(13 * scaleFactor);
+  const fontSizePx = Math.round(14 * scaleFactor);
+  const smallFontPx = Math.round(12 * scaleFactor);
+  const tinyFontPx = Math.round(10.5 * scaleFactor);
 
   // 1. الترويسة الجارية للصفحات الثانية فما فوق
   if (headerHeightPx > 0 && pageIndex > 0) {
@@ -177,7 +627,7 @@ function drawCanvasRunningHeaderAndFooter(
     ctx.restore();
   }
 
-  // 2. التذييل الرسمي السفلي لكل صفحة
+  // 2. التذييل الرسمي السفلي لكل صفحة (مع رمز QR للاختبار التفاعلي)
   if (footerHeightPx > 0) {
     const footerTopY = canvasHeight - footerHeightPx;
     ctx.save();
@@ -185,14 +635,51 @@ function drawCanvasRunningHeaderAndFooter(
     ctx.fillRect(0, footerTopY, canvasWidth, footerHeightPx);
 
     // خط علوي رفيع للتذييل
+    const lineY = footerTopY + Math.round(6 * scaleFactor);
     ctx.strokeStyle = "#94a3b8";
     ctx.lineWidth = Math.max(1, Math.round(1.2 * scaleFactor));
     ctx.beginPath();
-    ctx.moveTo(0, footerTopY + Math.round(8 * scaleFactor));
-    ctx.lineTo(canvasWidth, footerTopY + Math.round(8 * scaleFactor));
+    ctx.moveTo(0, lineY);
+    ctx.lineTo(canvasWidth, lineY);
     ctx.stroke();
 
-    const textY = footerTopY + Math.round(footerHeightPx * 0.58);
+    const hasQr = Boolean(options.qrMatrix && options.qrMatrix.length > 0);
+    const qrBoxSizePx = hasQr
+      ? Math.max(36, Math.min(Math.round(footerHeightPx - 12 * scaleFactor), Math.round(74 * scaleFactor)))
+      : 0;
+    const qrX = 8;
+    const qrY = lineY + Math.max(3, Math.round((footerHeightPx - (lineY - footerTopY) - qrBoxSizePx) / 2));
+
+    if (hasQr && options.qrMatrix) {
+      drawQrMatrixOnCanvas(ctx, options.qrMatrix, qrX, qrY, qrBoxSizePx);
+
+      // تسمية توضيحية بجانب رمز QR في التذييل
+      const labelX = qrX + qrBoxSizePx + Math.round(8 * scaleFactor);
+      const labelPrimaryY = qrY + Math.round(qrBoxSizePx * 0.36);
+      const labelSecondaryY = qrY + Math.round(qrBoxSizePx * 0.72);
+
+      ctx.direction = "ltr";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#0f172a";
+      ctx.font = `bold ${smallFontPx}px 'Cairo', 'IBM Plex Sans Arabic', sans-serif`;
+      ctx.fillText(
+        options.isFrench
+          ? "Quiz Interactif · Auto-Correction"
+          : "امسح للاختبار التفاعلي · Quiz Interactif",
+        labelX,
+        labelPrimaryY
+      );
+
+      ctx.fillStyle = "#475569";
+      ctx.font = `600 ${tinyFontPx}px 'Cairo', 'IBM Plex Sans Arabic', sans-serif`;
+      const metaSummary =
+        [options.docTitle, options.headerMeta].filter(Boolean).join(" · ") ||
+        "نسخة رقمية تفاعلية مع تصحيح فوري";
+      ctx.fillText(metaSummary.slice(0, 62), labelX, labelSecondaryY);
+    }
+
+    const textY = lineY + Math.round((footerHeightPx - (lineY - footerTopY)) * 0.52);
 
     // وسط التذييل: رقم الصفحة المزدوج
     ctx.fillStyle = "#0f172a";
@@ -217,13 +704,15 @@ function drawCanvasRunningHeaderAndFooter(
       : "المملكة المغربية · وزارة التربية الوطنية والتعليم الأولي والرياضة";
     ctx.fillText(rightFooter, canvasWidth - 8, textY);
 
-    // يسار التذييل: مرجع الوثيقة والسنة
-    ctx.direction = "ltr";
-    ctx.textAlign = "left";
-    const leftFooter = [options.docTitle, options.headerMeta]
-      .filter(Boolean)
-      .join(" · ") || "Mathématiques · Format Officiel A4";
-    ctx.fillText(leftFooter, 8, textY);
+    // يسار التذييل (عند عدم تفعيل QR): مرجع الوثيقة والسنة
+    if (!hasQr) {
+      ctx.direction = "ltr";
+      ctx.textAlign = "left";
+      const leftFooter =
+        [options.docTitle, options.headerMeta].filter(Boolean).join(" · ") ||
+        "Mathématiques · Format Officiel A4";
+      ctx.fillText(leftFooter, 8, textY);
+    }
 
     ctx.restore();
   }
@@ -231,7 +720,7 @@ function drawCanvasRunningHeaderAndFooter(
 
 /**
  * تصدير مباشر للوثيقة المعاينة إلى ملف PDF بحجم A4 مع الحفاظ الكامل على التنسيق والخطوط والشعارات
- * وتقسيم ذكي يراعي حدود التمارين والفقرات (Smart Pagination) وتذييل عربي/فرنسي سليم 100%
+ * وتقسيم ذكي يراعي حدود التمارين والفقرات (Smart Pagination) وضبط تلقائي لتخطيط A4 ورمز QR تفاعلي في التذييل
  */
 export async function exportPreviewToPDF({
   elementId = "printable-document-sheet",
@@ -245,6 +734,10 @@ export async function exportPreviewToPDF({
   dpiQuality = "HIGH_300",
   isMission = false,
   isFrench = false,
+  interactiveQuizUrl,
+  includeFooterQrCode = true,
+  autoAdjustA4Layout = true,
+  onLayoutAdjusted,
 }: ExportPDFOptions): Promise<void> {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -256,140 +749,194 @@ export async function exportPreviewToPDF({
     await document.fonts.ready;
   }
 
-  const pixelRatio =
-    dpiQuality === "ULTRA_PRINT" ? 3.0 : dpiQuality === "STANDARD_150" ? 1.8 : 2.5;
+  // 1. تحديد رابط الاختبار التفاعلي للوثيقة وتوليد مصفوفة رمز QR القياسية
+  const domQuizUrl = element.getAttribute("data-interactive-quiz-url") || "";
+  const resolvedQuizUrl =
+    interactiveQuizUrl ||
+    domQuizUrl ||
+    buildInteractiveQuizLinkForDocument({
+      educationSystem: isMission ? "MISSION_FR" : "MOROCCO_MEN",
+      title: docTitle || fileName,
+    });
 
-  // استبعاد جميع أزرار وشرائط الأدوات التي تحمل الفئة .no-print داخل الورقة أثناء التصدير
-  const dataUrl = await toPng(element, {
-    quality: 1.0,
-    pixelRatio,
-    backgroundColor: "#ffffff",
-    cacheBust: true,
-    filter: (node: Node) => {
-      if (node instanceof HTMLElement && node.classList.contains("no-print")) {
-        return false;
-      }
-      return true;
-    },
-    style: {
-      transform: "none",
-      margin: "0",
-      boxShadow: "none",
-      borderRadius: "0",
-      border: "none",
-    },
-  });
+  const qrMatrix =
+    includeFooterQrCode && resolvedQuizUrl
+      ? generateIsoQrMatrix(resolvedQuizUrl, "M")
+      : undefined;
 
-  const img = new Image();
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("تعذر معالجة صورة الوثيقة لتوليد ملف PDF."));
-    img.src = dataUrl;
-  });
+  // 2. الكشف التلقائي عن تجاوزات صفحات A4 وضبط التخطيط والهوامش قبل التقاط الوثيقة
+  const layoutGuard = autoAdjustA4Layout
+    ? detectAndAdjustA4LayoutForExport(element, {
+        orientation,
+        marginPreset,
+        includeFooterQrCode,
+      })
+    : null;
 
-  const pdf = new jsPDF({
-    orientation: orientation,
-    unit: "mm",
-    format: "a4",
-    compress: true,
-  });
-
-  const pageWidthMm = pdf.internal.pageSize.getWidth(); // 210mm (Portrait) أو 297mm (Landscape)
-  const pageHeightMm = pdf.internal.pageSize.getHeight(); // 297mm (Portrait) أو 210mm (Landscape)
-
-  const marginMm =
-    marginPreset === "NARROW" ? 6 : marginPreset === "OFFICIAL_EXAM" ? 11 : 8.5;
-  const footerHeightMm = showPageNumbers ? 8.5 : 0;
-  const runningHeaderMm = showPageNumbers ? 6.5 : 0;
-
-  const contentWidthMm = pageWidthMm - marginMm * 2;
-  const firstPageBodyMm = pageHeightMm - marginMm * 2 - footerHeightMm;
-
-  const pxPerMm = img.width / contentWidthMm;
-  const maxSliceHeightPx = Math.floor((firstPageBodyMm - runningHeaderMm) * pxPerMm);
-  const footerHeightPx = Math.round(footerHeightMm * pxPerMm);
-  const runningHeaderPx = Math.round(runningHeaderMm * pxPerMm);
-
-  const cuts = calculateSmartPageSlices(element, img.width, img.height, maxSliceHeightPx);
-  const totalPages = Math.max(1, cuts.length - 1);
-
-  for (let i = 0; i < totalPages; i++) {
-    if (i > 0) {
-      pdf.addPage();
-    }
-
-    const startY = cuts[i];
-    const endY = cuts[i + 1];
-    const sliceHeightPx = endY - startY;
-
-    if (sliceHeightPx <= 0) continue;
-
-    const currentHeaderPx = i > 0 ? runningHeaderPx : 0;
-    const totalCanvasHeightPx = currentHeaderPx + sliceHeightPx + footerHeightPx;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = totalCanvasHeightPx;
-
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // رسم محتوى الشريحة
-      ctx.drawImage(
-        img,
-        0,
-        startY,
-        img.width,
-        sliceHeightPx,
-        0,
-        currentHeaderPx,
-        img.width,
-        sliceHeightPx
-      );
-
-      // رسم الترويسة الجارية والتذييل بالعربية والفرنسية السليمة
-      if (showPageNumbers) {
-        drawCanvasRunningHeaderAndFooter(
-          ctx,
-          canvas.width,
-          canvas.height,
-          currentHeaderPx,
-          footerHeightPx,
-          i,
-          totalPages,
-          {
-            docTitle,
-            headerMeta,
-            isMission,
-            isFrench,
-          }
-        );
-      }
-
-      if (colorMode === "LASER_MONO") {
-        applyLaserMonochromeFilter(ctx, canvas.width, canvas.height);
-      }
-
-      const sliceDataUrl = canvas.toDataURL("image/png", 0.98);
-      const totalSliceMm = totalCanvasHeightPx / pxPerMm;
-
-      pdf.addImage(
-        sliceDataUrl,
-        "PNG",
-        marginMm,
-        marginMm,
-        contentWidthMm,
-        Math.min(totalSliceMm, pageHeightMm - marginMm * 2),
-        undefined,
-        "FAST"
-      );
-    }
+  if (layoutGuard && onLayoutAdjusted) {
+    onLayoutAdjusted(layoutGuard.report);
   }
 
-  const cleanFileName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
-  pdf.save(cleanFileName);
+  try {
+    const pixelRatio =
+      dpiQuality === "ULTRA_PRINT" ? 3.0 : dpiQuality === "STANDARD_150" ? 1.8 : 2.5;
+
+    // استبعاد جميع أزرار وشرائط الأدوات التي تحمل الفئة .no-print داخل الورقة أثناء التصدير
+    const dataUrl = await toPng(element, {
+      quality: 1.0,
+      pixelRatio,
+      backgroundColor: "#ffffff",
+      cacheBust: true,
+      filter: (node: Node) => {
+        if (node instanceof HTMLElement && node.classList.contains("no-print")) {
+          return false;
+        }
+        return true;
+      },
+      style: {
+        transform: "none",
+        margin: "0",
+        boxShadow: "none",
+        borderRadius: "0",
+        border: "none",
+      },
+    });
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("تعذر معالجة صورة الوثيقة لتوليد ملف PDF."));
+      img.src = dataUrl;
+    });
+
+    const pdf = new jsPDF({
+      orientation: orientation,
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+
+    const pageWidthMm = pdf.internal.pageSize.getWidth(); // 210mm (Portrait) أو 297mm (Landscape)
+    const pageHeightMm = pdf.internal.pageSize.getHeight(); // 297mm (Portrait) أو 210mm (Landscape)
+
+    const baseMarginMm =
+      marginPreset === "NARROW" ? 8.0 : marginPreset === "OFFICIAL_EXAM" ? 11.0 : 9.0;
+    const marginMm = layoutGuard
+      ? layoutGuard.report.recommendedMarginMm
+      : baseMarginMm;
+
+    const shouldRenderFooter = showPageNumbers || includeFooterQrCode;
+    const footerHeightMm = includeFooterQrCode
+      ? 14.0
+      : showPageNumbers
+      ? 8.5
+      : 0;
+    const runningHeaderMm = showPageNumbers ? 6.5 : 0;
+
+    const contentWidthMm = pageWidthMm - marginMm * 2;
+    const firstPageBodyMm = pageHeightMm - marginMm * 2 - footerHeightMm;
+
+    const pxPerMm = img.width / contentWidthMm;
+    const maxSliceHeightPx = Math.floor((firstPageBodyMm - runningHeaderMm) * pxPerMm);
+    const footerHeightPx = Math.round(footerHeightMm * pxPerMm);
+    const runningHeaderPx = Math.round(runningHeaderMm * pxPerMm);
+
+    const cuts = calculateSmartPageSlices(element, img.width, img.height, maxSliceHeightPx);
+    const totalPages = Math.max(1, cuts.length - 1);
+
+    for (let i = 0; i < totalPages; i++) {
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      const startY = cuts[i];
+      const endY = cuts[i + 1];
+      const sliceHeightPx = endY - startY;
+
+      if (sliceHeightPx <= 0) continue;
+
+      const currentHeaderPx = i > 0 ? runningHeaderPx : 0;
+      const totalCanvasHeightPx = currentHeaderPx + sliceHeightPx + footerHeightPx;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = totalCanvasHeightPx;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // رسم محتوى الشريحة
+        ctx.drawImage(
+          img,
+          0,
+          startY,
+          img.width,
+          sliceHeightPx,
+          0,
+          currentHeaderPx,
+          img.width,
+          sliceHeightPx
+        );
+
+        // رسم الترويسة الجارية والتذييل بالعربية والفرنسية السليمة مع رمز QR التفاعلي
+        if (shouldRenderFooter) {
+          drawCanvasRunningHeaderAndFooter(
+            ctx,
+            canvas.width,
+            canvas.height,
+            currentHeaderPx,
+            footerHeightPx,
+            i,
+            totalPages,
+            {
+              docTitle,
+              headerMeta,
+              isMission,
+              isFrench,
+              qrMatrix,
+              interactiveQuizUrl: resolvedQuizUrl,
+            }
+          );
+        }
+
+        if (colorMode === "LASER_MONO") {
+          applyLaserMonochromeFilter(ctx, canvas.width, canvas.height);
+        }
+
+        const sliceDataUrl = canvas.toDataURL("image/png", 0.98);
+        const totalSliceMm = totalCanvasHeightPx / pxPerMm;
+        const renderedSliceHeightMm = Math.min(totalSliceMm, pageHeightMm - marginMm * 2);
+
+        pdf.addImage(
+          sliceDataUrl,
+          "PNG",
+          marginMm,
+          marginMm,
+          contentWidthMm,
+          renderedSliceHeightMm,
+          undefined,
+          "FAST"
+        );
+
+        // إضافة رابط تفاعلي قابل للنقر فوق منطقة رمز QR في ملف PDF
+        if (includeFooterQrCode && resolvedQuizUrl) {
+          const qrTopMm = marginMm + renderedSliceHeightMm - footerHeightMm + 1;
+          pdf.link(marginMm, qrTopMm, 58, footerHeightMm - 1.5, {
+            url: resolvedQuizUrl,
+          });
+        }
+      }
+    }
+
+    const cleanFileName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+    pdf.save(cleanFileName);
+  } finally {
+    if (layoutGuard) {
+      layoutGuard.restore();
+    }
+  }
 }
 
 /**
@@ -1152,6 +1699,8 @@ export interface ExportBookletPDFOptions {
   isMission?: boolean;
   isFrench?: boolean;
   colorMode?: PrintColorMode;
+  interactiveQuizUrl?: string;
+  includeFooterQrCode?: boolean;
 }
 
 /**
@@ -1177,6 +1726,8 @@ export async function exportBookletImposedPDF(
     isMission = false,
     isFrench = false,
     colorMode = "FULL_COLOR",
+    interactiveQuizUrl,
+    includeFooterQrCode = true,
   } = options;
 
   const element = document.getElementById(elementId);
@@ -1187,6 +1738,19 @@ export async function exportBookletImposedPDF(
   if (document.fonts && document.fonts.ready) {
     await document.fonts.ready;
   }
+
+  const domQuizUrl = element.getAttribute("data-interactive-quiz-url") || "";
+  const resolvedQuizUrl =
+    interactiveQuizUrl ||
+    domQuizUrl ||
+    buildInteractiveQuizLinkForDocument({
+      educationSystem: isMission ? "MISSION_FR" : "MOROCCO_MEN",
+      title: docTitle || fileName,
+    });
+  const qrMatrix =
+    includeFooterQrCode && resolvedQuizUrl
+      ? generateIsoQrMatrix(resolvedQuizUrl, "M")
+      : undefined;
 
   const dataUrl = await toPng(element, {
     quality: 1.0,
@@ -1219,7 +1783,7 @@ export async function exportBookletImposedPDF(
   const a5WidthMm = 148.5;
   const a5HeightMm = 210;
   const a5MarginMm = 7.5;
-  const footerHeightMm = 7.5;
+  const footerHeightMm = includeFooterQrCode ? 12.0 : 7.5;
   const runningHeaderMm = 5.5;
 
   const contentWidthMm = a5WidthMm - a5MarginMm * 2;
@@ -1319,6 +1883,8 @@ export async function exportBookletImposedPDF(
         headerMeta,
         isMission,
         isFrench,
+        qrMatrix,
+        interactiveQuizUrl: resolvedQuizUrl,
       }
     );
 

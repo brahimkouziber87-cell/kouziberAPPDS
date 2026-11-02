@@ -112,9 +112,11 @@ import {
 import { generateOfflineSourceCode } from "./utils/docGenerator";
 import {
   exportBookletImposedPDF,
+  computePrintMediaQueryMetrics,
   exportPedagogicalAuditReportToPDF,
   exportPreviewToPDF,
   exportStandaloneHTML,
+  PrintPageSizePreset,
 } from "./utils/pdfExporter";
 import {
   buildCustomEvaluationGrid,
@@ -764,6 +766,12 @@ export default function App() {
   const [showRemedialExamModal, setShowRemedialExamModal] =
     useState<boolean>(false);
   const [showA4LivePageBreaks, setShowA4LivePageBreaks] =
+    useState<boolean>(false);
+  const [printPageSizePreset, setPrintPageSizePreset] =
+    useState<PrintPageSizePreset>("A4");
+  const [customPageWidthMm, setCustomPageWidthMm] = useState<number>(210);
+  const [customPageHeightMm, setCustomPageHeightMm] = useState<number>(297);
+  const [simulatePrintMediaQuery, setSimulatePrintMediaQuery] =
     useState<boolean>(false);
   const [economicTwoUpPrintMode, setEconomicTwoUpPrintMode] =
     useState<boolean>(false);
@@ -4960,6 +4968,9 @@ export default function App() {
         headerMeta: `${school} · ${year}`,
         isMission,
         isFrench: isMission || docLang === "FR",
+        interactiveQuizUrl: interactiveExamUrl,
+        includeFooterQrCode: includeInteractiveQrFooter,
+        autoAdjustA4Layout: true,
       });
       const updatedHist = recordExportHistoryEntry({
         fileName: baseName,
@@ -5550,6 +5561,8 @@ export default function App() {
           hasQcm={dsStructureMode === "QCM_ET_EXERCICES" || dsStructureMode === "COMPLETE_EXAM_MAROC"}
           hasPython={attachedPythonAlgorithms.length > 0}
           lessons={activeCustomLessons}
+          interactiveExamUrl={interactiveExamUrl}
+          includeInteractiveQrFooter={includeInteractiveQrFooter}
           onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
           onFileExported={(fileName, category, formatLabel, fileSizeKb) => {
             const updated = recordExportHistoryEntry({
@@ -7616,6 +7629,236 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* محاكي استعلامات الطباعة الفوري (@media print & @page Simulator: A4 / Letter / Custom + Page Break Boundaries) */}
+                {(() => {
+                  const activeMargins =
+                    customPageMarginsMm ||
+                    resolveAutoDocViewMarginModel(activeModule, dmSubType);
+                  const livePrintMetrics = computePrintMediaQueryMetrics({
+                    preset: printPageSizePreset,
+                    orientation: pageOrientation,
+                    customWidthMm: customPageWidthMm,
+                    customHeightMm: customPageHeightMm,
+                    marginTopMm: activeMargins.topMm,
+                    marginBottomMm: activeMargins.bottomMm,
+                    marginXMm: activeMargins.xMm,
+                  });
+
+                  return (
+                    <div className="bg-slate-950 text-white rounded-xl p-3 space-y-2.5 border border-cyan-500/40 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Printer className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span className="text-[11px] font-black text-cyan-200">
+                            محاكي استعلامات الطباعة الفوري (@media print &amp; @page)
+                          </span>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono text-[9.5px] font-bold">
+                          {livePrintMetrics.widthMm}×{livePrintMetrics.heightMm}mm
+                        </span>
+                      </div>
+
+                      {/* التبديل بين مقاسات @page (A4 / Letter / Custom) */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-300 mb-1">
+                          مقاس الورقة في قاعدة @page (A4 · Letter · Custom):
+                        </label>
+                        <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+                          {(
+                            [
+                              {
+                                id: "A4" as PrintPageSizePreset,
+                                title: "A4 القياسي",
+                                sub: "210×297mm",
+                              },
+                              {
+                                id: "LETTER" as PrintPageSizePreset,
+                                title: "US Letter",
+                                sub: "215.9×279.4mm",
+                              },
+                              {
+                                id: "CUSTOM" as PrintPageSizePreset,
+                                title: "مخصص Custom",
+                                sub: `${customPageWidthMm}×${customPageHeightMm}mm`,
+                              },
+                            ] as const
+                          ).map((item) => {
+                            const active = printPageSizePreset === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  setPrintPageSizePreset(item.id);
+                                  setShowA4LivePageBreaks(true);
+                                  if (viewMode === "CODE") {
+                                    setViewMode("PREVIEW");
+                                  }
+                                }}
+                                className={`py-1.5 px-1.5 rounded-md transition flex flex-col items-center justify-center cursor-pointer border ${
+                                  active
+                                    ? "bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-2xs"
+                                    : "bg-slate-950/60 text-slate-300 border-slate-800 hover:bg-slate-800"
+                                }`}
+                              >
+                                <span className="text-[10.5px] leading-tight">
+                                  {item.title}
+                                </span>
+                                <span
+                                  dir="ltr"
+                                  className={`font-mono text-[9px] ${
+                                    active ? "text-slate-900" : "text-slate-400"
+                                  }`}
+                                >
+                                  {item.sub}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* أبعاد المقاس المخصص (Custom @page size) */}
+                      {printPageSizePreset === "CUSTOM" && (
+                        <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 space-y-2">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="font-bold text-amber-300">
+                              أبعاد @page المخصصة (بالمليمتر mm):
+                            </span>
+                            <div className="flex items-center gap-1 font-mono text-[9px]">
+                              {[
+                                { label: "A5", w: 148, h: 210 },
+                                { label: "B5", w: 176, h: 250 },
+                                { label: "Legal", w: 216, h: 356 },
+                              ].map((q) => (
+                                <button
+                                  key={q.label}
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomPageWidthMm(q.w);
+                                    setCustomPageHeightMm(q.h);
+                                    setShowA4LivePageBreaks(true);
+                                  }}
+                                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-cyan-200 border border-slate-700 transition cursor-pointer"
+                                >
+                                  {q.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="flex justify-between text-[9.5px] text-slate-300 mb-0.5">
+                                <span>العرض (Width):</span>
+                                <span className="font-mono text-cyan-300 font-bold">
+                                  {customPageWidthMm}mm
+                                </span>
+                              </label>
+                              <input
+                                type="range"
+                                min={140}
+                                max={320}
+                                step={1}
+                                value={customPageWidthMm}
+                                onChange={(e) => {
+                                  setCustomPageWidthMm(Number(e.target.value));
+                                  setShowA4LivePageBreaks(true);
+                                }}
+                                className="w-full h-1.5 bg-slate-700 rounded-lg accent-cyan-400 cursor-pointer"
+                              />
+                            </div>
+                            <div>
+                              <label className="flex justify-between text-[9.5px] text-slate-300 mb-0.5">
+                                <span>الارتفاع (Height):</span>
+                                <span className="font-mono text-cyan-300 font-bold">
+                                  {customPageHeightMm}mm
+                                </span>
+                              </label>
+                              <input
+                                type="range"
+                                min={180}
+                                max={420}
+                                step={1}
+                                value={customPageHeightMm}
+                                onChange={(e) => {
+                                  setCustomPageHeightMm(Number(e.target.value));
+                                  setShowA4LivePageBreaks(true);
+                                }}
+                                className="w-full h-1.5 bg-slate-700 rounded-lg accent-cyan-400 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* أزرار إظهار حدود فواصل الصفحات (Page Break Boundaries) وتفعيل محاكاة @media print */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowA4LivePageBreaks((v) => !v);
+                            if (viewMode === "CODE") setViewMode("PREVIEW");
+                          }}
+                          className={`px-2 py-1.5 rounded-lg text-[10px] font-black border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            showA4LivePageBreaks || simulatePrintMediaQuery
+                              ? "bg-amber-400 text-slate-950 border-amber-300 shadow-2xs"
+                              : "bg-slate-900 text-slate-200 border-slate-700 hover:bg-slate-800"
+                          }`}
+                        >
+                          <Layers className="w-3 h-3 shrink-0" />
+                          <span>
+                            {showA4LivePageBreaks || simulatePrintMediaQuery
+                              ? "حدود فواصل الصفحات: مرئية"
+                              : "إظهار حدود فواصل الصفحات"}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSimulatePrintMediaQuery((prev) => {
+                              const next = !prev;
+                              if (next) setShowA4LivePageBreaks(true);
+                              return next;
+                            });
+                            if (viewMode === "CODE") setViewMode("PREVIEW");
+                          }}
+                          className={`px-2 py-1.5 rounded-lg text-[10px] font-black border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            simulatePrintMediaQuery
+                              ? "bg-emerald-400 text-slate-950 border-emerald-300 shadow-2xs"
+                              : "bg-slate-900 text-slate-200 border-slate-700 hover:bg-slate-800"
+                          }`}
+                        >
+                          <Eye className="w-3 h-3 shrink-0" />
+                          <span>
+                            {simulatePrintMediaQuery
+                              ? "محاكاة @media print: نشطة"
+                              : "محاكاة @media print الحية"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* سطر الكود الفوري لقاعدة @page ومقاييس القطع */}
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 space-y-1">
+                        <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-400">
+                          <span>حيز الطباعة الآمن: {livePrintMetrics.printableWidthMm}×{livePrintMetrics.printableHeightMm}mm</span>
+                          <span className="text-cyan-300">
+                            فاصل القطع: ~{livePrintMetrics.pageBreakIntervalPx}px
+                          </span>
+                        </div>
+                        <code
+                          dir="ltr"
+                          className="block text-[9.5px] font-mono text-amber-300 truncate"
+                          title={livePrintMetrics.cssPageRule}
+                        >
+                          {livePrintMetrics.cssPageRule}
+                        </code>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* خيار خط اليد للتصحيح وعناصر الإجابة فقط */}
                 <label className="flex items-center gap-2 pt-1 text-[11px] font-bold text-slate-900 cursor-pointer">
@@ -11866,6 +12109,26 @@ export default function App() {
                     }}
                     customPageMarginsMm={customPageMarginsMm}
                     onChangePageMarginsMm={setCustomPageMarginsMm}
+                    printPageSizePreset={printPageSizePreset}
+                    customPageWidthMm={customPageWidthMm}
+                    customPageHeightMm={customPageHeightMm}
+                    simulatePrintMediaQuery={simulatePrintMediaQuery}
+                    onChangePrintPageSizePreset={(preset) => {
+                      setPrintPageSizePreset(preset);
+                      setShowA4LivePageBreaks(true);
+                    }}
+                    onChangeCustomPageDimensionsMm={(w, h) => {
+                      setCustomPageWidthMm(w);
+                      setCustomPageHeightMm(h);
+                      setShowA4LivePageBreaks(true);
+                    }}
+                    onToggleSimulatePrintMediaQuery={() =>
+                      setSimulatePrintMediaQuery((prev) => {
+                        const next = !prev;
+                        if (next) setShowA4LivePageBreaks(true);
+                        return next;
+                      })
+                    }
                     onSwitchDocumentViewModel={(nextModule, nextDmSubType) => {
                       setActiveModule(nextModule);
                       if (nextDmSubType) {

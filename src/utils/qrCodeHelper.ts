@@ -1,7 +1,61 @@
+import QRCode from "qrcode";
+
 /**
- * مولد رموز الاستجابة السريعة (QR Code) المتجهي الحتمي الخفيف
- * يعمل بدون أي مكتبات خارجية بنسبة 100% داخل المتصفح وسطح المكتب والأندرويد
+ * مولد رموز الاستجابة السريعة (QR Code) المتجهي وفق معيار ISO/IEC 18004
+ * يدعم التوليد الفوري لروابط النسخة التفاعلية للاختبارات (Interactive Quiz) وتذييل ملفات PDF
  */
+
+export interface InteractiveQuizLinkParams {
+  origin?: string;
+  system?: string;
+  educationSystem?: string;
+  trackCode?: string;
+  semester?: string;
+  dsKey?: string;
+  dsNumber?: string;
+  examModel?: string;
+  docLang?: string;
+  docType?: string;
+  title?: string;
+  n1?: number;
+  n2?: number;
+  n3?: number;
+  lessonIndices?: number[];
+}
+
+/**
+ * بناء الرابط التفاعلي المباشر للاختبار (Interactive Quiz URL) الخاص بالوثيقة الحالية
+ */
+export function buildInteractiveQuizLinkForDocument(
+  params: InteractiveQuizLinkParams = {}
+): string {
+  const baseOrigin =
+    params.origin ||
+    (typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://ais-pre-rsw3xd2wr4jevx5kl4om4d-251237406585.europe-west2.run.app");
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("quiz", "1");
+  searchParams.set("sys", params.system || params.educationSystem || "MAROC_NATIONAL");
+  searchParams.set("track", params.trackCode || "2BAC_PC");
+  searchParams.set("sem", params.semester === "S2" ? "S2" : "S1");
+  const resolvedDs =
+    params.dsKey ||
+    (params.dsNumber ? `DS${String(params.dsNumber).replace(/^DS/i, "")}` : "DS1");
+  searchParams.set("ds", resolvedDs);
+  searchParams.set("model", params.examModel === "B" ? "B" : "A");
+  searchParams.set("lang", params.docLang === "AR" ? "AR" : "FR");
+  if (params.docType) searchParams.set("type", params.docType);
+  if (typeof params.n1 === "number") searchParams.set("n1", String(params.n1));
+  if (typeof params.n2 === "number") searchParams.set("n2", String(params.n2));
+  if (typeof params.n3 === "number") searchParams.set("n3", String(params.n3));
+  if (Array.isArray(params.lessonIndices) && params.lessonIndices.length > 0) {
+    searchParams.set("lessons", params.lessonIndices.join(","));
+  }
+
+  return `${baseOrigin.replace(/\/$/, "")}/?${searchParams.toString()}`;
+}
 
 export function generateDeterministicQrMatrix(text: string, size = 25): boolean[][] {
   const matrix: boolean[][] = Array.from({ length: size }, () =>
@@ -54,31 +108,63 @@ export function generateDeterministicQrMatrix(text: string, size = 25): boolean[
   return matrix;
 }
 
+/**
+ * توليد مصفوفة QR معيارية حقيقية (ISO/IEC 18004) قابلة للمسح الضوئي الفوري بكاميرا الهاتف
+ * مع احتياطي حتمي مضمون في جميع البيئات
+ */
+export function generateIsoQrMatrix(
+  text: string,
+  errorCorrectionLevel: "L" | "M" | "Q" | "H" = "M"
+): boolean[][] {
+  const safeText = (text || "").trim() || "https://math-pedagogy.ma/?quiz=1";
+  try {
+    const qr = QRCode.create(safeText, { errorCorrectionLevel });
+    const size = qr.modules.size;
+    const data = qr.modules.data;
+    const matrix: boolean[][] = [];
+    for (let r = 0; r < size; r++) {
+      const row: boolean[] = [];
+      for (let c = 0; c < size; c++) {
+        row.push(Boolean(data[r * size + c]));
+      }
+      matrix.push(row);
+    }
+    if (matrix.length >= 21) {
+      return matrix;
+    }
+  } catch {
+    // fallback to deterministic matrix
+  }
+  return generateDeterministicQrMatrix(safeText, 25);
+}
+
 export function renderQrSvgString(
   text: string,
   pixelSize = 140,
   darkColor = "#0f172a",
   lightColor = "#ffffff"
 ): string {
-  const size = 25;
-  const matrix = generateDeterministicQrMatrix(text, size);
-  const cellSize = pixelSize / size;
+  const matrix = generateIsoQrMatrix(text, "M");
+  const size = matrix.length;
+  const quietZoneModules = 2;
+  const totalModules = size + quietZoneModules * 2;
+  const cellSize = pixelSize / totalModules;
 
   let rects = "";
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (matrix[r][c]) {
-        rects += `<rect x="${(c * cellSize).toFixed(1)}" y="${(r * cellSize).toFixed(
-          1
-        )}" width="${cellSize.toFixed(1)}" height="${cellSize.toFixed(
-          1
-        )}" fill="${darkColor}" />`;
+        const x = ((c + quietZoneModules) * cellSize).toFixed(2);
+        const y = ((r + quietZoneModules) * cellSize).toFixed(2);
+        const w = (cellSize + 0.12).toFixed(2);
+        rects += `<rect x="${x}" y="${y}" width="${w}" height="${w}" fill="${darkColor}" />`;
       }
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pixelSize} ${pixelSize}" width="${pixelSize}" height="${pixelSize}">
-    <rect width="${pixelSize}" height="${pixelSize}" fill="${lightColor}" rx="8" />
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pixelSize} ${pixelSize}" width="${pixelSize}" height="${pixelSize}" shape-rendering="crispEdges">
+    <rect width="${pixelSize}" height="${pixelSize}" fill="${lightColor}" rx="6" />
     ${rects}
   </svg>`;
 }
+

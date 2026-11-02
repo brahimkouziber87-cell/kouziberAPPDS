@@ -56,6 +56,8 @@ export interface ExportCenterModalProps {
   hasQcm?: boolean;
   hasPython?: boolean;
   lessons?: LessonItem[];
+  interactiveExamUrl?: string;
+  includeInteractiveQrFooter?: boolean;
   onOpenExportDashboard?: () => void;
   onFileExported?: (
     fileName: string,
@@ -92,12 +94,16 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
   hasQcm = true,
   hasPython = true,
   lessons = [],
+  interactiveExamUrl,
+  includeInteractiveQrFooter = true,
   onOpenExportDashboard,
   onFileExported,
 }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingOverleafZip, setIsExportingOverleafZip] = useState(false);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
+  const [includeFooterQrCode, setIncludeFooterQrCode] = useState(includeInteractiveQrFooter);
+  const [autoAdjustA4Layout, setAutoAdjustA4Layout] = useState(true);
   const [marginPreset, setMarginPreset] = useState<PrintMarginPreset>("STANDARD");
   const [colorMode, setColorMode] = useState<PrintColorMode>("FULL_COLOR");
   const [dpiQuality, setDpiQuality] = useState<PrintDpiQuality>("HIGH_300");
@@ -287,6 +293,9 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
         marginPreset,
         colorMode,
         dpiQuality,
+        interactiveQuizUrl: interactiveExamUrl,
+        includeFooterQrCode,
+        autoAdjustA4Layout,
       });
 
       setGeneratingStatus({
@@ -612,6 +621,26 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
                 className="rounded text-cyan-700 w-3.5 h-3.5 accent-cyan-600"
               />
               <span>تضمين عناصر الإجابة وسلم التصحيح المفصل (Corrigé)</span>
+            </label>
+
+            <label className="flex items-center gap-2 font-bold text-emerald-900 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeFooterQrCode}
+                onChange={(e) => setIncludeFooterQrCode(e.target.checked)}
+                className="rounded text-emerald-700 w-3.5 h-3.5 accent-emerald-600"
+              />
+              <span>توليد وإدراج رمز QR للاختبار التفاعلي تلقائياً في تذييل PDF</span>
+            </label>
+
+            <label className="flex items-center gap-2 font-bold text-indigo-900 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoAdjustA4Layout}
+                onChange={(e) => setAutoAdjustA4Layout(e.target.checked)}
+                className="rounded text-indigo-700 w-3.5 h-3.5 accent-indigo-600"
+              />
+              <span>كشف وضبط تخطيط A4 تلقائياً لمنع تجاوز الصفحات وتأمين هوامش الطباعة</span>
             </label>
           </div>
         </div>

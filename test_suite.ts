@@ -353,6 +353,121 @@ try {
   assert(false, `Google Drive contract test crashed: ${e.message}`);
 }
 
+// ----------------------------------------------------------------------
+// 14. TEST INTERACTIVE QUIZ QR CODE LINK & ISO/IEC 18004 MATRIX ENGINE
+// ----------------------------------------------------------------------
+console.log("\n--- 14. Testing Interactive Quiz QR Code Link & ISO QR Matrix Engine ---");
+try {
+  const {
+    buildInteractiveQuizLinkForDocument,
+    generateIsoQrMatrix,
+    renderQrSvgString: renderQrSvg,
+  } = await import("./src/utils/qrCodeHelper.ts");
+
+  const quizLink = buildInteractiveQuizLinkForDocument({
+    educationSystem: "MOROCCO_MEN",
+    trackCode: "2BAC_SM",
+    semester: "S1",
+    dsNumber: "2",
+    examModel: "B",
+    docType: "DS_142_08",
+  });
+  assert(quizLink.includes("quiz=1"), `Interactive quiz link contains quiz=1 parameter: ${quizLink}`);
+  assert(quizLink.includes("track=2BAC_SM") && quizLink.includes("model=B"), `Interactive quiz link preserves track and exam model parameters`);
+
+  const qrMatrix = generateIsoQrMatrix(quizLink, "M");
+  assert(Array.isArray(qrMatrix) && qrMatrix.length >= 21 && qrMatrix.length === qrMatrix[0].length, `ISO/IEC 18004 QR matrix generated (${qrMatrix.length}x${qrMatrix.length})`);
+  // Top-left finder pattern outer corner (0,0) and center (3,3) must be dark (true)
+  assert(Boolean(qrMatrix[0][0]) === true && Boolean(qrMatrix[3][3]) === true, `QR matrix contains valid ISO 7x7 finder pattern at top-left corner`);
+
+  const svgStr = renderQrSvg(quizLink, 128, "#0f172a");
+  assert(svgStr.includes("<svg") && svgStr.includes('shape-rendering="crispEdges"'), `QR SVG renders crisp vector paths for PDF and print`);
+} catch (e: any) {
+  assert(false, `Interactive Quiz QR test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 15. TEST A4 AUTO-LAYOUT OVERFLOW DETECTOR & MARGIN OPTIMIZER
+// ----------------------------------------------------------------------
+console.log("\n--- 15. Testing A4 Auto-Layout Overflow Detector & Margin Optimizer ---");
+try {
+  const { analyzeA4LayoutMetrics } = await import("./src/utils/pdfExporter.ts");
+
+  // Case A: Trailing orphan overflow (e.g., 1.12 pages -> 2nd page only 12% full)
+  const orphanReport = analyzeA4LayoutMetrics({
+    contentWidthPx: 794,
+    scrollWidthPx: 794,
+    contentHeightPx: 1210, // ~1.12x single page capacity (~1080px)
+    orientation: "portrait",
+    marginPreset: "STANDARD",
+    currentMarginTopMm: 12,
+    currentMarginBottomMm: 14,
+    currentMarginXMm: 14,
+    includeFooterQrCode: true,
+  });
+  assert(orphanReport.rawPageCount === 2, `Detects raw 2-page split for 1210px height`);
+  assert(orphanReport.hasTrailingOrphanOverflow === true, `Flags trailing orphan overflow when page 2 fill (${orphanReport.lastPageFillPercentBefore}%) <= 24%`);
+  assert(orphanReport.adjustedPageCount === 1, `Auto-layout compacts trailing orphan slice onto 1 page`);
+  assert(orphanReport.recommendedScaleFactor < 1 && orphanReport.recommendedScaleFactor >= 0.91, `Computes safe compaction scale factor (${orphanReport.recommendedScaleFactor})`);
+
+  // Case B: Horizontal overflow detection (e.g., wide table or equation)
+  const horizReport = analyzeA4LayoutMetrics({
+    contentWidthPx: 794,
+    scrollWidthPx: 890,
+    contentHeightPx: 920,
+    orientation: "portrait",
+    marginPreset: "STANDARD",
+    currentMarginTopMm: 6, // unsafe narrow top margin
+    currentMarginXMm: 6,   // unsafe narrow X margin
+    includeFooterQrCode: true,
+  });
+  assert(horizReport.hasHorizontalOverflow === true && horizReport.horizontalOverflowPx === 96, `Detects 96px horizontal overflow accurately`);
+  assert(horizReport.recommendedMarginTopMm >= 8 && horizReport.recommendedMarginXMm >= 8, `Enforces hardware-safe print margins (>= 8mm)`);
+} catch (e: any) {
+  assert(false, `A4 Auto-Layout analyzer test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 16. TEST REAL-TIME PRINT MEDIA QUERY (@page A4, Letter, Custom) SIMULATOR
+// ----------------------------------------------------------------------
+console.log("\n--- 16. Testing Real-Time Print Media Query (@page) Simulator ---");
+try {
+  const { computePrintMediaQueryMetrics } = await import("./src/utils/pdfExporter.ts");
+
+  const a4Metrics = computePrintMediaQueryMetrics({
+    preset: "A4",
+    orientation: "PORTRAIT",
+    marginTopMm: 10,
+    marginBottomMm: 12,
+    marginXMm: 12,
+    contentHeightPx: 2300,
+  });
+  assert(a4Metrics.widthMm === 210 && a4Metrics.heightMm === 297, `A4 portrait dimensions resolved to 210x297mm`);
+  assert(a4Metrics.cssPageRule.includes("size: A4 portrait"), `A4 generates valid @page { size: A4 portrait; ... } rule`);
+  assert(a4Metrics.pageBreakOffsetsPx.length >= 2 && a4Metrics.pageBreakOffsetsPx[0] === a4Metrics.pageBreakIntervalPx, `A4 page break boundaries calculated accurately (${a4Metrics.pageBreakOffsetsPx[0]}px)`);
+
+  const letterMetrics = computePrintMediaQueryMetrics({
+    preset: "LETTER",
+    orientation: "PORTRAIT",
+    marginTopMm: 10,
+    marginBottomMm: 12,
+    marginXMm: 12,
+  });
+  assert(letterMetrics.widthMm === 215.9 && letterMetrics.heightMm === 279.4, `US Letter dimensions resolved to 215.9x279.4mm`);
+  assert(letterMetrics.pageBreakIntervalPx < a4Metrics.pageBreakIntervalPx, `US Letter page break interval (${letterMetrics.pageBreakIntervalPx}px) is shorter than A4 (${a4Metrics.pageBreakIntervalPx}px)`);
+
+  const customMetrics = computePrintMediaQueryMetrics({
+    preset: "CUSTOM",
+    orientation: "LANDSCAPE",
+    customWidthMm: 180,
+    customHeightMm: 260,
+  });
+  assert(customMetrics.widthMm === 260 && customMetrics.heightMm === 180, `Custom @page in landscape swaps dimensions to 260x180mm`);
+  assert(customMetrics.cssPageRule.includes("size: 260mm 180mm"), `Custom @page rule includes custom mm dimensions`);
+} catch (e: any) {
+  assert(false, `Print Media Query simulator test crashed: ${e.message}`);
+}
+
 console.log("\n=================================================");
 console.log(`=== TEST SUMMARY: ${passCount} PASSED, ${failCount} FAILED ===`);
 console.log("=================================================");
@@ -360,5 +475,6 @@ console.log("=================================================");
 if (failCount > 0) {
   process.exit(1);
 }
+
 
 

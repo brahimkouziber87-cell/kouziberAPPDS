@@ -66,6 +66,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { InteractiveExamQrFooter } from "./InteractiveExamQrFooter";
+import { buildInteractiveQuizLinkForDocument } from "../utils/qrCodeHelper";
+import {
+  A4LayoutOverflowReport,
+  analyzeA4LayoutMetrics,
+  computePrintMediaQueryMetrics,
+  PrintPageSizePreset,
+} from "../utils/pdfExporter";
 import {
   PythonAlgorithmPreset,
   executeSimulatedPython,
@@ -261,6 +268,13 @@ interface PrintablePreviewProps {
       modelId: DocumentViewMarginModelId;
     } | null
   ) => void;
+  printPageSizePreset?: PrintPageSizePreset;
+  customPageWidthMm?: number;
+  customPageHeightMm?: number;
+  simulatePrintMediaQuery?: boolean;
+  onChangePrintPageSizePreset?: (preset: PrintPageSizePreset) => void;
+  onChangeCustomPageDimensionsMm?: (widthMm: number, heightMm: number) => void;
+  onToggleSimulatePrintMediaQuery?: () => void;
 }
 
 export type DocumentViewMarginModelId =
@@ -737,6 +751,13 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   onSwitchDocumentViewModel,
   customPageMarginsMm = null,
   onChangePageMarginsMm,
+  printPageSizePreset = "A4",
+  customPageWidthMm = 210,
+  customPageHeightMm = 297,
+  simulatePrintMediaQuery = false,
+  onChangePrintPageSizePreset,
+  onChangeCustomPageDimensionsMm,
+  onToggleSimulatePrintMediaQuery,
 }) => {
   const [showMarginGuides, setShowMarginGuides] = React.useState<boolean>(false);
   const [internalShowA4PageBreaks, setInternalShowA4PageBreaks] = React.useState<boolean>(false);
@@ -745,6 +766,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   const [showPositiveMarkingTips, setShowPositiveMarkingTips] = React.useState<boolean>(true);
   const [syncDocTypeOnModelClick, setSyncDocTypeOnModelClick] = React.useState<boolean>(true);
   const [showCustomMarginSliders, setShowCustomMarginSliders] = React.useState<boolean>(false);
+  const [measuredSheetDims, setMeasuredSheetDims] = React.useState<{
+    widthPx: number;
+    heightPx: number;
+  }>({ widthPx: 794, heightPx: 1122 });
   const [internalMarginOverride, setInternalMarginOverride] = React.useState<{
     topMm: number;
     bottomMm: number;
@@ -813,24 +838,45 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
     [syncDocTypeOnModelClick, onSwitchDocumentViewModel, updateMarginOverride]
   );
 
-  const a4TotalWidthMm = pageOrientation === "LANDSCAPE" ? 297 : 210;
-  const a4TotalHeightMm = pageOrientation === "LANDSCAPE" ? 210 : 297;
-  const safePrintWidthMm = Math.max(
-    100,
-    a4TotalWidthMm - activeMarginModelSpec.xMm * 2
+  const printMediaMetrics = React.useMemo(
+    () =>
+      computePrintMediaQueryMetrics({
+        preset: printPageSizePreset,
+        orientation: pageOrientation,
+        customWidthMm: customPageWidthMm,
+        customHeightMm: customPageHeightMm,
+        marginTopMm: activeMarginModelSpec.topMm,
+        marginBottomMm: activeMarginModelSpec.bottomMm,
+        marginXMm: activeMarginModelSpec.xMm,
+        contentWidthPx: measuredSheetDims.widthPx,
+        contentHeightPx: measuredSheetDims.heightPx,
+      }),
+    [
+      printPageSizePreset,
+      pageOrientation,
+      customPageWidthMm,
+      customPageHeightMm,
+      activeMarginModelSpec.topMm,
+      activeMarginModelSpec.bottomMm,
+      activeMarginModelSpec.xMm,
+      measuredSheetDims.widthPx,
+      measuredSheetDims.heightPx,
+    ]
   );
-  const safePrintHeightMm = Math.max(
-    100,
-    a4TotalHeightMm - activeMarginModelSpec.topMm - activeMarginModelSpec.bottomMm
-  );
+
+  const a4TotalWidthMm = printMediaMetrics.widthMm;
+  const a4TotalHeightMm = printMediaMetrics.heightMm;
+  const safePrintWidthMm = printMediaMetrics.printableWidthMm;
+  const safePrintHeightMm = printMediaMetrics.printableHeightMm;
   const printableAreaUtilizationPct =
     Math.round(
       ((safePrintWidthMm * safePrintHeightMm) /
-        (a4TotalWidthMm * a4TotalHeightMm)) *
+        Math.max(1, a4TotalWidthMm * a4TotalHeightMm)) *
         1000
     ) / 10;
 
-  const effectiveShowA4Breaks = showA4LivePageBreaks ?? internalShowA4PageBreaks;
+  const effectiveShowA4Breaks =
+    (showA4LivePageBreaks ?? internalShowA4PageBreaks) || simulatePrintMediaQuery;
   const effectiveEconomicMode = economicTwoUpPrintMode ?? internalEconomicTwoUpMode;
   const effectiveIncludeInteractiveQr = includeInteractiveQrFooter ?? internalIncludeInteractiveQr;
 
@@ -848,6 +894,101 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
     if (onToggleInteractiveQrFooter) onToggleInteractiveQrFooter();
     else setInternalIncludeInteractiveQr((v) => !v);
   };
+
+  const resolvedInteractiveQuizUrl = React.useMemo(() => {
+    if (interactiveExamUrl && interactiveExamUrl.trim().length > 0) {
+      return interactiveExamUrl;
+    }
+    return buildInteractiveQuizLinkForDocument({
+      system: system === "MISSION_FRANCAISE" ? "MISSION_FRANCAISE" : "MAROC_NATIONAL",
+      trackCode: track.code,
+      semester: sem,
+      dsNumber: dsKey.replace("DS", "") || "1",
+      examModel: examModel === "B" ? "B" : "A",
+      docType: activeModule,
+      title: track.labelAr,
+    });
+  }, [interactiveExamUrl, system, track.code, track.labelAr, sem, dsKey, examModel, activeModule]);
+
+  const [autoFitCompactionScale, setAutoFitCompactionScale] = React.useState<number>(1);
+  const [a4LayoutReport, setA4LayoutReport] = React.useState<A4LayoutOverflowReport>(() =>
+    analyzeA4LayoutMetrics({
+      contentWidthPx: 794,
+      scrollWidthPx: 794,
+      contentHeightPx: 1050,
+      orientation: pageOrientation === "LANDSCAPE" ? "landscape" : "portrait",
+      currentMarginTopMm: activeMarginModelSpec.topMm,
+      currentMarginBottomMm: activeMarginModelSpec.bottomMm,
+      currentMarginXMm: activeMarginModelSpec.xMm,
+      includeFooterQrCode: effectiveIncludeInteractiveQr,
+    })
+  );
+
+  React.useEffect(() => {
+    const measureSheet = () => {
+      const el = document.getElementById("printable-document-sheet");
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const wPx = Math.max(320, Math.round(rect.width || el.clientWidth || 794));
+      const hPx = Math.max(240, Math.round(el.scrollHeight || rect.height || 1050));
+      setMeasuredSheetDims((prev) =>
+        Math.abs(prev.widthPx - wPx) > 2 || Math.abs(prev.heightPx - hPx) > 2
+          ? { widthPx: wPx, heightPx: hPx }
+          : prev
+      );
+      const report = analyzeA4LayoutMetrics({
+        contentWidthPx: wPx,
+        scrollWidthPx: Math.max(320, Math.round(el.scrollWidth || rect.width || 794)),
+        contentHeightPx: hPx,
+        orientation: pageOrientation === "LANDSCAPE" ? "landscape" : "portrait",
+        currentMarginTopMm: activeMarginModelSpec.topMm,
+        currentMarginBottomMm: activeMarginModelSpec.bottomMm,
+        currentMarginXMm: activeMarginModelSpec.xMm,
+        includeFooterQrCode: effectiveIncludeInteractiveQr,
+      });
+      setA4LayoutReport(report);
+    };
+
+    const timer = window.setTimeout(measureSheet, 120);
+    window.addEventListener("resize", measureSheet);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", measureSheet);
+    };
+  }, [
+    activeModule,
+    dmSubType,
+    pageOrientation,
+    printPageSizePreset,
+    customPageWidthMm,
+    customPageHeightMm,
+    simulatePrintMediaQuery,
+    activeMarginModelSpec.topMm,
+    activeMarginModelSpec.bottomMm,
+    activeMarginModelSpec.xMm,
+    effectiveIncludeInteractiveQr,
+    n1,
+    n2,
+    n3,
+    docFontSize,
+    docFontFamily,
+    solutionDisplayMode,
+    autoFitCompactionScale,
+  ]);
+
+  const handleApplyAutoA4LayoutFit = React.useCallback(() => {
+    updateMarginOverride({
+      topMm: a4LayoutReport.recommendedMarginTopMm,
+      bottomMm: a4LayoutReport.recommendedMarginBottomMm,
+      xMm: a4LayoutReport.recommendedMarginXMm,
+      modelId: activeMarginModelSpec.id,
+    });
+    if (a4LayoutReport.hasTrailingOrphanOverflow || a4LayoutReport.hasHorizontalOverflow) {
+      setAutoFitCompactionScale(a4LayoutReport.recommendedScaleFactor);
+    } else {
+      setAutoFitCompactionScale(1);
+    }
+  }, [a4LayoutReport, activeMarginModelSpec.id, updateMarginOverride]);
 
   const [showBacCurvesLibrary, setShowBacCurvesLibrary] = React.useState<boolean>(false);
   const [massarRoster, setMassarRoster] = React.useState<MassarStudentEntry[]>([]);
@@ -3008,6 +3149,84 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
               </div>
             </div>
           )}
+
+          {/* شريط الفحص والضبط التلقائي لتخطيط A4 ومنع تجاوز الصفحات + رمز QR في تذييل PDF */}
+          <div className="mt-2 pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-extrabold border ${
+                  a4LayoutReport.hasTrailingOrphanOverflow || a4LayoutReport.hasHorizontalOverflow
+                    ? "bg-amber-50 text-amber-900 border-amber-300"
+                    : "bg-emerald-50 text-emerald-900 border-emerald-200"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    a4LayoutReport.hasTrailingOrphanOverflow || a4LayoutReport.hasHorizontalOverflow
+                      ? "bg-amber-500 animate-pulse"
+                      : "bg-emerald-500"
+                  }`}
+                />
+                <span>
+                  {a4LayoutReport.hasTrailingOrphanOverflow
+                    ? `تنبيه تجاوز A4: صفحة ${a4LayoutReport.rawPageCount} ممتلئة بـ ${a4LayoutReport.lastPageFillPercentBefore}% فقط`
+                    : a4LayoutReport.hasHorizontalOverflow
+                    ? `تنبيه عرض A4: تجاوز أفقي بمقدار ${a4LayoutReport.horizontalOverflowPx}px`
+                    : `تخطيط A4 متوازن للطباعة (${a4LayoutReport.rawPageCount} ص · امتلاء ${a4LayoutReport.lastPageFillPercentBefore}%)`}
+                </span>
+              </span>
+
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-mono text-[10px]">
+                هوامش PDF التلقائية: {a4LayoutReport.recommendedMarginMm}mm
+              </span>
+
+              {autoFitCompactionScale < 1 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-800 font-bold text-[10px]">
+                  ضغط ذكي نشط: {Math.round(autoFitCompactionScale * 100)}%
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleApplyAutoA4LayoutFit}
+                className="px-2.5 py-1 rounded-lg text-[10.5px] font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                title="ضبط الهوامش والمسافات تلقائياً لمنع تجاوز الصفحات وتأمين هوامش طباعة A4 مثالية"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>ضبط تلقائي لصفحات A4 (Auto-Fit)</span>
+              </button>
+
+              {autoFitCompactionScale < 1 && (
+                <button
+                  type="button"
+                  onClick={() => setAutoFitCompactionScale(1)}
+                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
+                >
+                  إلغاء الضغط
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleToggleInteractiveQr}
+                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveIncludeInteractiveQr
+                    ? "bg-emerald-900 text-emerald-100 border-emerald-800"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                }`}
+                title="تضمين رمز QR للاختبار التفاعلي تلقائياً في تذييل كل صفحة عند تصدير PDF"
+              >
+                <QrCode className="w-3 h-3" />
+                <span>
+                  {effectiveIncludeInteractiveQr
+                    ? "QR تفاعلي بتذييل PDF: مفعّل"
+                    : "QR تفاعلي بتذييل PDF: معطّل"}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -3558,48 +3777,148 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         </div>
       )}
 
+      {/* حقن قاعدة @media print و @page الفورية لمطابقة مقاس الورقة المختار أثناء الطباعة */}
+      <style>{printMediaMetrics.cssMediaPrintBlock}</style>
+
+      {/* شريط محاكي استعلامات الطباعة الفوري (@media print & @page Simulator) عند تفعيله */}
+      {(simulatePrintMediaQuery || printPageSizePreset !== "A4" || effectiveShowA4Breaks) && (
+        <div
+          dir="rtl"
+          className="no-print bg-slate-950 text-white rounded-2xl px-3.5 py-2.5 border border-cyan-500/40 shadow-md flex flex-wrap items-center justify-between gap-2 text-[11px]"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-black text-[10.5px]">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span>@media print Simulator</span>
+            </span>
+            <code
+              dir="ltr"
+              className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 border border-slate-800 font-mono text-[10px]"
+            >
+              {printMediaMetrics.cssPageRule}
+            </code>
+            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-mono text-[10px] border border-slate-700">
+              المقاس: {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · فاصل الصفحة:{" "}
+              {printMediaMetrics.pageBreakIntervalPx}px ({printMediaMetrics. estimatedPageCount} صفحات)
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                { id: "A4" as PrintPageSizePreset, label: "A4 (210×297)" },
+                { id: "LETTER" as PrintPageSizePreset, label: "Letter (216×279)" },
+                { id: "CUSTOM" as PrintPageSizePreset, label: `Custom (${customPageWidthMm}×${customPageHeightMm})` },
+              ] as const
+            ).map((presetBtn) => {
+              const active = printPageSizePreset === presetBtn.id;
+              return (
+                <button
+                  key={presetBtn.id}
+                  type="button"
+                  onClick={() => onChangePrintPageSizePreset?.(presetBtn.id)}
+                  className={`px-2 py-1 rounded-lg font-mono text-[10px] font-bold border transition cursor-pointer ${
+                    active
+                      ? "bg-cyan-500 text-slate-950 border-cyan-400 font-black"
+                      : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
+                  }`}
+                >
+                  {presetBtn.label}
+                </button>
+              );
+            })}
+
+            {onToggleSimulatePrintMediaQuery && (
+              <button
+                type="button"
+                onClick={onToggleSimulatePrintMediaQuery}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition cursor-pointer ${
+                  simulatePrintMediaQuery
+                    ? "bg-amber-400 text-slate-950 border-amber-300"
+                    : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+                }`}
+              >
+                {simulatePrintMediaQuery ? "إيقاف محاكاة @media print" : "تفعيل محاكاة @media print"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         id="printable-document-sheet"
         dir={isFr ? "ltr" : "rtl"}
         contentEditable={isInlineEditable}
         suppressContentEditableWarning={true}
         style={{
-          paddingTop: `${activeMarginModelSpec.previewPadTopPx}px`,
-          paddingBottom: `${activeMarginModelSpec.previewPadBottomPx}px`,
-          paddingLeft: `${activeMarginModelSpec.previewPadXPx}px`,
-          paddingRight: `${activeMarginModelSpec.previewPadXPx}px`,
+          paddingTop: `${Math.round(activeMarginModelSpec.previewPadTopPx * autoFitCompactionScale)}px`,
+          paddingBottom: `${Math.round(activeMarginModelSpec.previewPadBottomPx * autoFitCompactionScale)}px`,
+          paddingLeft: `${Math.round(activeMarginModelSpec.previewPadXPx * autoFitCompactionScale)}px`,
+          paddingRight: `${Math.round(activeMarginModelSpec.previewPadXPx * autoFitCompactionScale)}px`,
+          ...(printPageSizePreset !== "A4" || simulatePrintMediaQuery
+            ? {
+                width: `${printMediaMetrics.widthMm}mm`,
+                maxWidth: "100%",
+                minHeight: `${printMediaMetrics.heightMm}mm`,
+              }
+            : {}),
+          ...(autoFitCompactionScale < 1
+            ? { fontSize: `${Math.round(autoFitCompactionScale * 100)}%` }
+            : {}),
         }}
         data-margin-model={activeMarginModelSpec.id}
+        data-page-size-preset={printPageSizePreset}
+        data-page-dimensions-mm={`${printMediaMetrics.widthMm}x${printMediaMetrics.heightMm}`}
+        data-interactive-quiz-url={resolvedInteractiveQuizUrl}
+        data-a4-auto-fit={autoFitCompactionScale < 1 ? "compacted" : "standard"}
         className={`print-sheet ${fontClass} ${scaleClass} ${orientationClass} ${
           selectedLatexPkg.sheetSkinClass
         } ${selectedPaperSurf.cssClass} ${
           effectiveEconomicMode ? "mode-two-up-print" : ""
         } ${
+          simulatePrintMediaQuery
+            ? "ring-4 ring-cyan-500/60 shadow-2xl mx-auto"
+            : ""
+        } ${
           isInlineEditable ? "editable-sheet ring-2 ring-indigo-500/40" : ""
         } relative overflow-hidden text-slate-900 border border-slate-300 rounded-2xl shadow-md transition-all duration-200 ${
-          activeMarginModelSpec.verticalSpaceClass
+          autoFitCompactionScale < 1
+            ? a4LayoutReport.recommendedVerticalGapClass
+            : activeMarginModelSpec.verticalSpaceClass
         }`}
       >
-      {/* فواصل الصفحات الحية A4 لمعاينة حدود الصفحات وتفادي تشطير المسائل والجداول */}
+      {/* فواصل الصفحات الحية لمعاينة حدود @page (A4 / Letter / Custom) وتفادي تشطير المسائل والجداول */}
       {effectiveShowA4Breaks && (
         <div
           aria-hidden="true"
           className="no-print pointer-events-none absolute inset-0 z-30"
         >
-          {[1, 2, 3, 4, 5].map((pageNum) => {
-            const topOffset = pageNum * 1120;
+          {printMediaMetrics.pageBreakOffsetsPx.map((topOffset, idx) => {
+            const pageNum = idx + 1;
+            const halfBuffer = Math.round(printMediaMetrics.marginBufferPx / 2);
+            const cutMm = Math.round(pageNum * printMediaMetrics.heightMm);
             return (
               <div
-                key={pageNum}
-                style={{ top: `${topOffset}px` }}
-                className="absolute left-0 right-0 border-b-2 border-dashed border-cyan-500/80 flex items-center justify-between px-4 py-1 bg-cyan-50/20 backdrop-blur-2xs"
+                key={`page-break-${printPageSizePreset}-${pageNum}`}
+                style={{
+                  top: `${Math.max(0, topOffset - halfBuffer)}px`,
+                  height: `${halfBuffer * 2}px`,
+                }}
+                className="absolute left-0 right-0 flex flex-col justify-center bg-gradient-to-b from-amber-500/10 via-cyan-500/20 to-amber-500/10 border-y border-dashed border-amber-500/50"
               >
-                <span className="bg-cyan-900 text-cyan-200 text-[10px] font-mono font-black px-2.5 py-0.5 rounded shadow-xs">
-                  ✂ فاصل صفحة A4: نهاية صفحة {pageNum} / بداية صفحة {pageNum + 1}
-                </span>
-                <span className="bg-white/90 text-cyan-800 text-[9.5px] font-mono px-2 py-0.5 rounded border border-cyan-300">
-                  A4 Interval: 297mm (~1120px)
-                </span>
+                <div className="w-full border-b-2 border-dashed border-cyan-600 flex flex-wrap items-center justify-between px-3 py-0.5 bg-white/85 backdrop-blur-2xs shadow-2xs">
+                  <span className="bg-slate-950 text-cyan-300 text-[10px] font-mono font-black px-2.5 py-0.5 rounded shadow-xs flex items-center gap-1.5 border border-cyan-500/40">
+                    <span>✂</span>
+                    <span>
+                      فاصل صفحة @page ({printPageSizePreset}): نهاية ص {pageNum} / بداية ص{" "}
+                      {pageNum + 1}
+                    </span>
+                  </span>
+                  <span className="bg-cyan-950 text-amber-300 text-[9.5px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-700">
+                    @page {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · Cut @{" "}
+                    {cutMm}mm (~{topOffset}px)
+                  </span>
+                </div>
               </div>
             );
           })}
@@ -8447,10 +8766,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       {/* صندوق رمز الاستجابة السريعة (QR Code) للنسخة التفاعلية الرقمية للفرض في أسفل وثيقة PDF */}
       {effectiveIncludeInteractiveQr && (
         <InteractiveExamQrFooter
-          url={
-            interactiveExamUrl ||
-            `${typeof window !== "undefined" ? window.location.origin : "https://ais-pre-rsw3xd2wr4jevx5kl4om4d-251237406585.europe-west2.run.app"}/?quiz=1&track=${encodeURIComponent(track.code)}&sem=${sem}&ds=${encodeURIComponent(dsKey)}&model=${examModel === "B" ? "B" : "A"}`
-          }
+          url={resolvedInteractiveQuizUrl}
           docLang={isFr ? "FR" : "AR"}
           trackTitleAr={track.labelAr}
           trackTitleFr={track.labelFr}
