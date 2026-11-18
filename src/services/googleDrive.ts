@@ -442,3 +442,130 @@ export async function fetchSettingsFromDrive(
   };
 }
 
+/**
+ * استخراج معرف ملف Google Drive من رابط مشاركة أو معرف مباشر
+ */
+export function extractDriveFileIdFromInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const matchD = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/);
+  if (matchD) return matchD[1];
+  const matchId = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if (matchId) return matchId[1];
+  if (/^[a-zA-Z0-9_-]{15,}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+/**
+ * جلب ملفات PDF والوثائق البيداغوجية المحفوظة في Google Drive لتحويلها إلى عرض تفاعلي
+ */
+export async function listDrivePdfAndPresentationFiles(
+  accessToken: string
+): Promise<DriveFileItem[]> {
+  const query = encodeURIComponent(
+    `(mimeType = 'application/pdf' or mimeType = 'text/plain' or name contains '.pdf') and mimeType != 'application/vnd.google-apps.folder' and trashed = false`
+  );
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=25&orderBy=createdTime desc&fields=files(id,name,webViewLink,createdTime,mimeType,description)`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    cachedAccessToken = null;
+    throw new Error("AUTH_REQUIRED");
+  }
+
+  if (!res.ok) {
+    throw new Error("تعذر جلب ملفات PDF من حساب Google Drive");
+  }
+
+  const data = await res.json();
+  return data.files || [];
+}
+
+/**
+ * تنزيل محتوى ملف PDF من Google Drive بصيغة ArrayBuffer لتحويله مباشرة إلى شرائح تفاعلية أو Beamer
+ */
+export async function downloadDriveFileAsArrayBuffer(
+  accessToken: string,
+  fileId: string
+): Promise<ArrayBuffer> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
+      fileId
+    )}?alt=media`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    cachedAccessToken = null;
+    throw new Error("AUTH_REQUIRED");
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      "تعذر تنزيل ملف الـ PDF من Google Drive. تأكد من أن الملف تم رفعه عبر المنصة أو متاح لحسابك."
+    );
+  }
+
+  return await res.arrayBuffer();
+}
+
+/**
+ * رفع ملف PDF من جهاز الأستاذ إلى مجلد المنصة في Google Drive وإرجاع بياناته
+ */
+export async function uploadPdfFileToDrive(params: {
+  accessToken: string;
+  file: File;
+  description?: string;
+}): Promise<DriveFileItem> {
+  const {
+    accessToken,
+    file,
+    description = "ملف PDF مرفوع للتحويل إلى عرض تقديمي تفاعلي (Beamer / Slideshow)",
+  } = params;
+
+  const folderId = await findOrCreatePedagogicalFolder(accessToken);
+
+  const metadata = {
+    name: file.name,
+    mimeType: "application/pdf",
+    parents: [folderId],
+    description,
+  };
+
+  const form = new FormData();
+  form.append(
+    "metadata",
+    new Blob([JSON.stringify(metadata)], { type: "application/json" })
+  );
+  form.append("file", file);
+
+  const uploadRes = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,createdTime,mimeType,description",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: form,
+    }
+  );
+
+  if (uploadRes.status === 401 || uploadRes.status === 403) {
+    cachedAccessToken = null;
+    throw new Error("AUTH_REQUIRED");
+  }
+
+  if (!uploadRes.ok) {
+    throw new Error("تعذر رفع ملف الـ PDF إلى Google Drive");
+  }
+
+  return await uploadRes.json();
+}
+
+

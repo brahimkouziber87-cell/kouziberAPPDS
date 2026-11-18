@@ -8,6 +8,7 @@ import {
 } from "../utils/importedExamSimulator";
 import { EducationSystem, LessonItem } from "../data/curriculum";
 import { PdfDocumentHighlighterStudio } from "./PdfDocumentHighlighterStudio";
+import { InteractivePdfSlideshowViewer } from "./InteractivePdfSlideshowViewer";
 import {
   CheckCircle2,
   CopyPlus,
@@ -17,6 +18,7 @@ import {
   Highlighter,
   Layers,
   RefreshCw,
+  Scissors,
   Sliders,
   Sparkles,
   Trash2,
@@ -28,7 +30,8 @@ export type ImportSimulatorTabId =
   | "ARCHIVE"
   | "UPLOAD_FILE"
   | "PASTE_TEXT"
-  | "PDF_HIGHLIGHTER";
+  | "PDF_HIGHLIGHTER"
+  | "PDF_SLIDESHOW";
 
 interface ImportedExamSimulatorPanelProps {
   activeBlueprint: ImportedExamBlueprint | null;
@@ -439,7 +442,19 @@ export const ImportedExamSimulatorPanel: React.FC<
               }`}
             >
               <Highlighter className="w-3.5 h-3.5" />
-              <span>4. عارض PDF التفاعلي والتظليل الذكي</span>
+              <span>4. عارض PDF والتظليل</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportTab("PDF_SLIDESHOW")}
+              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                importTab === "PDF_SLIDESHOW"
+                  ? "bg-amber-500 text-slate-950 shadow-2xs"
+                  : "bg-indigo-950 text-cyan-300 hover:bg-indigo-900"
+              }`}
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              <span>5. شرائح الدرس التفاعلية (PDF Slideshow)</span>
             </button>
           </div>
 
@@ -534,6 +549,15 @@ export const ImportedExamSimulatorPanel: React.FC<
                       <Highlighter className="w-3.5 h-3.5" />
                       <span>فتح في عارض PDF التفاعلي وتظليل المقاطع</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setImportTab("PDF_SLIDESHOW")}
+                      className="px-3.5 py-2 rounded-lg text-xs font-black bg-cyan-600 hover:bg-cyan-500 text-white transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Scissors className="w-3.5 h-3.5" />
+                      <span>تقطيع الـ PDF إلى شرائح درس تفاعلية (Slideshow)</span>
+                    </button>
                   </>
                 )}
               </div>
@@ -555,6 +579,17 @@ export const ImportedExamSimulatorPanel: React.FC<
                 <Highlighter className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>
                   عارض PDF التفاعلي مفتوح بالأسفل بكامل العرض — ظلل أي مقطع بالماوس لتوليد تمرين رياضي موازٍ وإدراجه في الفرض!
+                </span>
+              </div>
+            </div>
+          )}
+
+          {importTab === "PDF_SLIDESHOW" && (
+            <div className="bg-slate-900 text-cyan-200 rounded-xl p-3 text-xs font-bold flex items-center justify-between gap-2 border border-cyan-600/40">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  عارض شرائح الـ PDF التفاعلي (Interactive Slideshow) مفتوح بالأسفل — يتم تقطيع صفحات الـ PDF إلى شرائح منفصلة بأسلوب الدرس المحروس مع أزرار (التالي/السابق)، وضع ملء الشاشة، وتعليقات نصية لكل شريحة!
                 </span>
               </div>
             </div>
@@ -739,6 +774,21 @@ export const ImportedExamSimulatorPanel: React.FC<
             setFeedbackBanner(msg);
             onNotify?.(type, msg);
           }}
+        />
+      )}
+
+      {/* عارض شرائح الـ PDF المقطّعة التفاعلي بأسلوب الدرس المحروس (Interactive PDF Slideshow) */}
+      {importTab === "PDF_SLIDESHOW" && (
+        <InteractivePdfSlideshowViewer
+          initialPdfFile={
+            uploadedFileInfo?.base64
+              ? {
+                  name: uploadedFileInfo.name,
+                  base64: uploadedFileInfo.base64,
+                }
+              : null
+          }
+          trackLabelAr={trackLabel}
         />
       )}
 

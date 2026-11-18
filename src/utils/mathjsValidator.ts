@@ -277,12 +277,18 @@ export function sanitizeQuestionMathExpressions(questionText: string): {
   return { sanitizedText: text, issues, wasAutoFixed };
 }
 
+const SINGLE_EXPR_MATHJS_CACHE = new Map<string, SingleExpressionCheckResult>();
+const QUESTION_VALIDATION_CACHE = new Map<string, QuestionMathValidationResult>();
+
 /**
- * فحص تعبير جبري مفرد عبر مكتبة mathjs (parse + simplify + derivative)
+ * فحص تعبير جبري مفرد عبر مكتبة mathjs (parse + simplify + derivative) مع ذاكرة تخزين مؤقت (Memoization)
  */
 export function checkSingleMathExpressionWithMathJS(
   rawSegment: string
 ): SingleExpressionCheckResult {
+  const cached = SINGLE_EXPR_MATHJS_CACHE.get(rawSegment);
+  if (cached) return cached;
+
   const normalized = latexToMathJSExpression(rawSegment);
 
   // استبعاد المقاطع النصية البحتة أو الرموز الهندسية التي ليست صيغة جبرية
@@ -294,12 +300,17 @@ export function checkSingleMathExpressionWithMathJS(
       rawSegment
     )
   ) {
-    return {
+    const symbolicRes: SingleExpressionCheckResult = {
       rawLatex: rawSegment,
       normalizedMathJS: normalized,
       isValid: true,
       astType: "SymbolicStatement",
     };
+    if (SINGLE_EXPR_MATHJS_CACHE.size >= 800) {
+      SINGLE_EXPR_MATHJS_CACHE.clear();
+    }
+    SINGLE_EXPR_MATHJS_CACHE.set(rawSegment, symbolicRes);
+    return symbolicRes;
   }
 
   try {
@@ -330,7 +341,7 @@ export function checkSingleMathExpressionWithMathJS(
       }
     }
 
-    return {
+    const validRes: SingleExpressionCheckResult = {
       rawLatex: rawSegment,
       normalizedMathJS: normalized,
       isValid: true,
@@ -339,14 +350,24 @@ export function checkSingleMathExpressionWithMathJS(
       symbolicDerivativeX: derivativeStr,
       sampleEvalAt1: evalAt1Str,
     };
+    if (SINGLE_EXPR_MATHJS_CACHE.size >= 800) {
+      SINGLE_EXPR_MATHJS_CACHE.clear();
+    }
+    SINGLE_EXPR_MATHJS_CACHE.set(rawSegment, validRes);
+    return validRes;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Syntax error in expression";
-    return {
+    const errRes: SingleExpressionCheckResult = {
       rawLatex: rawSegment,
       normalizedMathJS: normalized,
       isValid: false,
       errorMessage: msg,
     };
+    if (SINGLE_EXPR_MATHJS_CACHE.size >= 800) {
+      SINGLE_EXPR_MATHJS_CACHE.clear();
+    }
+    SINGLE_EXPR_MATHJS_CACHE.set(rawSegment, errRes);
+    return errRes;
   }
 }
 
@@ -356,6 +377,9 @@ export function checkSingleMathExpressionWithMathJS(
 export function validateCustomQuestionWithMathJS(
   questionText: string
 ): QuestionMathValidationResult {
+  const cached = QUESTION_VALIDATION_CACHE.get(questionText);
+  if (cached) return cached;
+
   const { sanitizedText, issues, wasAutoFixed } =
     sanitizeQuestionMathExpressions(questionText);
 
@@ -391,7 +415,7 @@ export function validateCustomQuestionWithMathJS(
   const hasErrors = issues.some((i) => i.type === "ERROR");
   const hasWarnings = issues.some((i) => i.type === "WARNING");
 
-  return {
+  const finalResult: QuestionMathValidationResult = {
     originalText: questionText,
     sanitizedText,
     isValid: !hasErrors,
@@ -400,6 +424,12 @@ export function validateCustomQuestionWithMathJS(
     expressionsChecked,
     issues,
   };
+
+  if (QUESTION_VALIDATION_CACHE.size >= 600) {
+    QUESTION_VALIDATION_CACHE.clear();
+  }
+  QUESTION_VALIDATION_CACHE.set(questionText, finalResult);
+  return finalResult;
 }
 
 /**
@@ -3430,5 +3460,315 @@ ${categoryHeader}
 ${questionsXml}
 </quiz>`;
 }
+
+// ============================================================================
+// خارطة الطريق الاستراتيجية — المرحلة 2:
+// المحرك الجبري الرمزي المحلي لتكافؤ الخطوات الاستدلالية وحساب النقط الجزئية (CAS Step-Equivalence Verifier)
+// ============================================================================
+
+export type AlgebraicStepStatus =
+  | "EQUIVALENT_TO_REF"
+  | "FOLLOW_THROUGH_VALID"
+  | "ALGEBRAIC_SLIP"
+  | "SYNTAX_UNPARSABLE";
+
+export interface AlgebraicStepTransitionReport {
+  stepIndex: number;
+  rawStepLatex: string;
+  normalizedMathJS: string;
+  simplifiedForm: string;
+  isEquivalentToPrevious: boolean;
+  isEquivalentToReference: boolean;
+  status: AlgebraicStepStatus;
+  diagnosticCommentAr: string;
+  diagnosticCommentFr: string;
+}
+
+export interface AlgebraicChainVerificationResult {
+  referenceLatex: string;
+  referenceSimplified: string;
+  steps: AlgebraicStepTransitionReport[];
+  validTransitionsCount: number;
+  followThroughStepsCount: number;
+  slipsCount: number;
+  finalStepMatchesReference: boolean;
+  recommendedAwardedPoints: number;
+  maxPoints: number;
+  reasoningVerdictAr: string;
+  reasoningVerdictFr: string;
+}
+
+function stripEquationLhsForCas(raw: string): string {
+  const cleaned = raw.trim().replace(/^\$+|\$+$/g, "").trim();
+  const parts = cleaned.split("=");
+  if (parts.length >= 2) {
+    const lhs = parts[0].trim();
+    // إذا كان الطرف الأيسر مجرد تسمية دالة أو متتالية مثل f(x) أو f'(x) أو y أو u_n أو A
+    if (
+      /^(?:[fghFGH]\s*'{0,2}\s*\(\s*[xnt]\s*\)|[yYzZ]|[uUvV]_(?:\{?[n0-9+]+\}?)|[A-Z])$/.test(
+        lhs
+      )
+    ) {
+      return parts.slice(1).join("=").trim();
+    }
+    // إذا كانت معادلة طرفان يساويان بعضهما: نحولها إلى فرق الطرفين (LHS) - (RHS)
+    if (parts.length === 2 && parts[1].trim() === "0") {
+      return parts[0].trim();
+    }
+  }
+  return cleaned;
+}
+
+/**
+ * التحقق الرمزي والعددي المزدوج من تكافؤ تعبيرين جبريين (Symbolic + Multi-Point Probing)
+ */
+export function areTwoMathExpressionsEquivalent(
+  exprALatex: string,
+  exprBLatex: string
+): {
+  equivalent: boolean;
+  simplifiedA: string;
+  simplifiedB: string;
+  methodUsed: "SYMBOLIC_EXACT" | "NUMERICAL_PROBING" | "MISMATCH";
+} {
+  const rhsA = stripEquationLhsForCas(exprALatex);
+  const rhsB = stripEquationLhsForCas(exprBLatex);
+  const normA = latexToMathJSExpression(rhsA);
+  const normB = latexToMathJSExpression(rhsB);
+
+  if (!normA || !normB) {
+    return {
+      equivalent: false,
+      simplifiedA: normA,
+      simplifiedB: normB,
+      methodUsed: "MISMATCH",
+    };
+  }
+
+  let simpA = normA;
+  let simpB = normB;
+
+  try {
+    const nodeA = parse(normA);
+    const nodeB = parse(normB);
+    simpA = simplify(nodeA).toString();
+    simpB = simplify(nodeB).toString();
+
+    if (simpA.replace(/\s+/g, "") === simpB.replace(/\s+/g, "")) {
+      return {
+        equivalent: true,
+        simplifiedA: simpA,
+        simplifiedB: simpB,
+        methodUsed: "SYMBOLIC_EXACT",
+      };
+    }
+
+    const diffSimp = simplify(`(${normA}) - (${normB})`).toString().trim();
+    if (diffSimp === "0" || diffSimp === "0.0") {
+      return {
+        equivalent: true,
+        simplifiedA: simpA,
+        simplifiedB: simpB,
+        methodUsed: "SYMBOLIC_EXACT",
+      };
+    }
+  } catch {
+    // ننتقل للفحص العددي المتعدد النقط إذا تعذر التبسيط الرمزي المباشر
+  }
+
+  // الفحص العددي في 5 نقط اختبارية آمنة داخل حيز التعريف
+  const probePoints = [0.65, 1.35, 2.15, 2.85, 3.45];
+  let validProbes = 0;
+  let matchingProbes = 0;
+
+  for (const pt of probePoints) {
+    try {
+      const scope = {
+        x: pt,
+        n: Math.round(pt * 2),
+        t: pt,
+        a: 1.5,
+        b: 2.5,
+        e: Math.E,
+        pi: Math.PI,
+      };
+      const valA = evaluate(normA, scope);
+      const valB = evaluate(normB, scope);
+      if (
+        typeof valA === "number" &&
+        typeof valB === "number" &&
+        Number.isFinite(valA) &&
+        Number.isFinite(valB)
+      ) {
+        validProbes++;
+        if (Math.abs(valA - valB) <= 1e-5) {
+          matchingProbes++;
+        }
+      }
+    } catch {
+      // نقطة خارج حيز التعريف
+    }
+  }
+
+  if (validProbes >= 2 && matchingProbes === validProbes) {
+    return {
+      equivalent: true,
+      simplifiedA: simpA,
+      simplifiedB: simpB,
+      methodUsed: "NUMERICAL_PROBING",
+    };
+  }
+
+  return {
+    equivalent: false,
+    simplifiedA: simpA,
+    simplifiedB: simpB,
+    methodUsed: "MISMATCH",
+  };
+}
+
+/**
+ * فحص سلسلة الخطوات الجبرية للتلميذ خطوة بخطوة مع احتساب النقط الجزئية عند سلامة التمشي (Follow-Through Grading)
+ */
+export function verifyAlgebraicStepEquivalenceChain(params: {
+  referenceLatex: string;
+  studentStepsLatex: string[];
+  maxPoints: number;
+}): AlgebraicChainVerificationResult {
+  const { referenceLatex, studentStepsLatex, maxPoints } = params;
+  const cleanRef = stripEquationLhsForCas(referenceLatex);
+  const normRef = latexToMathJSExpression(cleanRef);
+  let referenceSimplified = normRef;
+  try {
+    referenceSimplified = simplify(parse(normRef)).toString();
+  } catch {
+    referenceSimplified = normRef;
+  }
+
+  const steps: AlgebraicStepTransitionReport[] = [];
+  let validTransitionsCount = 0;
+  let followThroughStepsCount = 0;
+  let slipsCount = 0;
+
+  studentStepsLatex.forEach((rawStep, idx) => {
+    const rhsStep = stripEquationLhsForCas(rawStep);
+    const normStep = latexToMathJSExpression(rhsStep);
+    let simpStep = normStep;
+    let parsable = true;
+    try {
+      simpStep = simplify(parse(normStep)).toString();
+    } catch {
+      parsable = false;
+    }
+
+    if (!parsable || !normStep) {
+      slipsCount++;
+      steps.push({
+        stepIndex: idx + 1,
+        rawStepLatex: rawStep,
+        normalizedMathJS: normStep,
+        simplifiedForm: simpStep,
+        isEquivalentToPrevious: false,
+        isEquivalentToReference: false,
+        status: "SYNTAX_UNPARSABLE",
+        diagnosticCommentAr: `السطر ${idx + 1}: صياغة جبرية غير مكتملة أو أقواس غير متوازنة.`,
+        diagnosticCommentFr: `Ligne ${idx + 1} : Expression algébrique incomplète.`,
+      });
+      return;
+    }
+
+    const eqRef = areTwoMathExpressionsEquivalent(rawStep, referenceLatex).equivalent;
+    const prevRaw = idx === 0 ? referenceLatex : studentStepsLatex[idx - 1];
+    const eqPrev = areTwoMathExpressionsEquivalent(rawStep, prevRaw).equivalent;
+
+    if (eqRef) {
+      validTransitionsCount++;
+      steps.push({
+        stepIndex: idx + 1,
+        rawStepLatex: rawStep,
+        normalizedMathJS: normStep,
+        simplifiedForm: simpStep,
+        isEquivalentToPrevious: eqPrev,
+        isEquivalentToReference: true,
+        status: "EQUIVALENT_TO_REF",
+        diagnosticCommentAr: `السطر ${idx + 1}: انتقال جبري سليم ومكافئ للحل المرجعي ✓`,
+        diagnosticCommentFr: `Ligne ${idx + 1} : Transformation algébrique exacte ✓`,
+      });
+    } else if (idx > 0 && eqPrev) {
+      followThroughStepsCount++;
+      steps.push({
+        stepIndex: idx + 1,
+        rawStepLatex: rawStep,
+        normalizedMathJS: normStep,
+        simplifiedForm: simpStep,
+        isEquivalentToPrevious: true,
+        isEquivalentToReference: false,
+        status: "FOLLOW_THROUGH_VALID",
+        diagnosticCommentAr: `السطر ${idx + 1}: استدلال منطقي متماسك مع السطر السابق (يستحق نقطة التمشي الجزئية رغم خطأ الإشارة/الحساب السابق).`,
+        diagnosticCommentFr: `Ligne ${idx + 1} : Démarche cohérente avec la ligne précédente (crédit partiel accordé).`,
+      });
+    } else {
+      slipsCount++;
+      steps.push({
+        stepIndex: idx + 1,
+        rawStepLatex: rawStep,
+        normalizedMathJS: normStep,
+        simplifiedForm: simpStep,
+        isEquivalentToPrevious: false,
+        isEquivalentToReference: false,
+        status: "ALGEBRAIC_SLIP",
+        diagnosticCommentAr: `السطر ${idx + 1}: انزلاق جبري (خطأ في النشر أو توحيد المقامات أو الإشارة) مقارنة بالسطر السابق.`,
+        diagnosticCommentFr: `Ligne ${idx + 1} : Erreur algébrique par rapport à l'étape précédente.`,
+      });
+    }
+  });
+
+  const totalSteps = Math.max(1, steps.length);
+  const finalStepMatchesReference =
+    steps.length > 0 && steps[steps.length - 1].isEquivalentToReference;
+
+  // حساب النقطة المقترحة وفق توجيهات المذكرة 142/08 (تثمين التمشي الاستدلالي السليم)
+  let ratio = 0;
+  if (finalStepMatchesReference && slipsCount === 0) {
+    ratio = 1.0;
+  } else {
+    const weightedValid =
+      validTransitionsCount * 1.0 + followThroughStepsCount * 0.75;
+    ratio = Math.min(0.9, weightedValid / totalSteps);
+    if (finalStepMatchesReference) {
+      ratio = Math.max(ratio, 0.85);
+    }
+  }
+
+  const recommendedAwardedPoints = Math.round(maxPoints * ratio * 4) / 4;
+
+  let reasoningVerdictAr = "برهان جبري متكامل وسليم في جميع خطواته (العلامة الكاملة).";
+  let reasoningVerdictFr = "Démonstration algébrique complète et rigoureuse (Note maximale).";
+  if (slipsCount > 0 && followThroughStepsCount > 0) {
+    reasoningVerdictAr = `تم رصد خطأ حسابي عابر (${slipsCount}) غير أن التمشي اللاحق متماسك منطقياً (${followThroughStepsCount} خطوات متابعة سليمة) — منح نقطة جزئية منصفة (${recommendedAwardedPoints}/${maxPoints}).`;
+    reasoningVerdictFr = `Erreur de calcul isolée mais démarche ultérieure cohérente — crédit partiel attribué (${recommendedAwardedPoints}/${maxPoints}).`;
+  } else if (slipsCount > 0 && validTransitionsCount > 0) {
+    reasoningVerdictAr = `بداية الاستدلال صحيحة (${validTransitionsCount} خطوات سليمة) متبوعة بتعثر في التبسيط النهائي (${recommendedAwardedPoints}/${maxPoints}).`;
+    reasoningVerdictFr = `Début de raisonnement correct suivi d'une erreur de simplification (${recommendedAwardedPoints}/${maxPoints}).`;
+  } else if (slipsCount > 0 && validTransitionsCount === 0) {
+    reasoningVerdictAr = `تعثر في تطبيق القاعدة الجبرية منذ الخطوة الأولى (${recommendedAwardedPoints}/${maxPoints}).`;
+    reasoningVerdictFr = `Erreur d'application de la règle algébrique dès la première étape (${recommendedAwardedPoints}/${maxPoints}).`;
+  }
+
+  return {
+    referenceLatex,
+    referenceSimplified,
+    steps,
+    validTransitionsCount,
+    followThroughStepsCount,
+    slipsCount,
+    finalStepMatchesReference,
+    recommendedAwardedPoints,
+    maxPoints,
+    reasoningVerdictAr,
+    reasoningVerdictFr,
+  };
+}
+
 
 

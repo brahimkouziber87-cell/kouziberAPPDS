@@ -24,9 +24,11 @@ import {
   Wand2,
   ZoomIn,
   ZoomOut,
+  Scissors,
 } from "lucide-react";
 import { EducationSystem, LessonItem } from "../data/curriculum";
 import { MathText } from "./MathRenderer";
+import { InteractivePdfSlideshowViewer } from "./InteractivePdfSlideshowViewer";
 
 // Configure pdfjs worker safely for Vite + fallback
 try {
@@ -281,6 +283,12 @@ export const PdfDocumentHighlighterStudio: React.FC<
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [pageTextItems, setPageTextItems] = useState<PdfTextItemBox[]>([]);
+  const [isSlideshowViewActive, setIsSlideshowViewActive] = useState<boolean>(false);
+  const [slideshowFilePayload, setSlideshowFilePayload] = useState<{
+    name: string;
+    base64?: string;
+    arrayBuffer?: ArrayBuffer;
+  } | null>(initialUploadedFile || null);
 
   // Canvas & Marquee Highlighting State
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -627,6 +635,7 @@ export const PdfDocumentHighlighterStudio: React.FC<
 
     const loadInitial = async () => {
       setDocName(initialUploadedFile.name);
+      setSlideshowFilePayload(initialUploadedFile);
       if (
         initialUploadedFile.mimeType === "application/pdf" ||
         initialUploadedFile.name.toLowerCase().endsWith(".pdf")
@@ -739,6 +748,10 @@ export const PdfDocumentHighlighterStudio: React.FC<
       setIsRenderingPage(true);
       try {
         const arrayBuf = await file.arrayBuffer();
+        setSlideshowFilePayload({
+          name: file.name,
+          arrayBuffer: arrayBuf.slice(0),
+        });
         const loadingTask = pdfjsLib.getDocument({
           data: new Uint8Array(arrayBuf),
         });
@@ -1040,6 +1053,24 @@ export const PdfDocumentHighlighterStudio: React.FC<
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsSlideshowViewActive((v) => !v)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition inline-flex items-center gap-1.5 shadow-md cursor-pointer border ${
+              isSlideshowViewActive
+                ? "bg-cyan-400 text-slate-950 border-cyan-300"
+                : "bg-gradient-to-l from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white border-cyan-400/50"
+            }`}
+            title="تقطيع صفحات ملف الـ PDF المرفق إلى شرائح منفصلة بأسلوب الدرس المحروس مع أزرار (التالي/السابق) ووضع ملء الشاشة وتعليقات نصية لكل شريحة"
+          >
+            <Scissors className="w-4 h-4" />
+            <span>
+              {isSlideshowViewActive
+                ? "العودة لوضع التظليل وتوليد التمارين"
+                : "تحويل الـ PDF المرفق إلى عرض شرائح تفاعلي (Slideshow)"}
+            </span>
+          </button>
+
           <label className="cursor-pointer px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 transition inline-flex items-center gap-1.5 shadow-sm">
             <FileUp className="w-4 h-4" />
             <span>رفع ملف PDF أو وثيقة للتظليل</span>
@@ -1059,6 +1090,7 @@ export const PdfDocumentHighlighterStudio: React.FC<
                 setDocName("Sujet_Officiel_Bac_2BAC_SM_PC.pdf");
                 setNumPages(BUILTIN_SAMPLE_PDF_PAGES.length);
                 setCurrentPage(1);
+                setSlideshowFilePayload(null);
               }}
               className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
             >
@@ -1068,8 +1100,17 @@ export const PdfDocumentHighlighterStudio: React.FC<
         </div>
       </div>
 
-      {/* الشبكة الرئيسية: يسار/يمين — عارض PDF التفاعلي (7 أعمدة) + محرك توليد التمارين من المقطع المظلل (5 أعمدة) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x xl:divide-x-reverse divide-slate-800">
+      {isSlideshowViewActive ? (
+        <div className="p-3 sm:p-4 bg-slate-950">
+          <InteractivePdfSlideshowViewer
+            initialPdfFile={slideshowFilePayload}
+            trackLabelAr={trackLabel}
+            onClose={() => setIsSlideshowViewActive(false)}
+          />
+        </div>
+      ) : (
+        /* الشبكة الرئيسية: يسار/يمين — عارض PDF التفاعلي (7 أعمدة) + محرك توليد التمارين من المقطع المظلل (5 أعمدة) */
+        <div className="grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x xl:divide-x-reverse divide-slate-800">
         {/* ====================================================================
             القسم الأول (7 أعمدة): عارض PDF التفاعلي مع طبقة التظليل بالماوس
            ==================================================================== */}
@@ -1620,6 +1661,7 @@ export const PdfDocumentHighlighterStudio: React.FC<
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

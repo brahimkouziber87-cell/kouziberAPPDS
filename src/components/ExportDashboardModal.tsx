@@ -20,189 +20,33 @@ import {
   Layers,
   Eye,
   ShieldCheck,
+  BookOpen,
+  Square,
+  CheckSquare,
+  Sliders,
+  Scissors,
+  FileCheck2,
+  FileStack,
 } from "lucide-react";
 import { TrackData, SemesterType, ModuleType, ExamModel } from "../data/curriculum";
+import {
+  EXPORT_HISTORY_STORAGE_KEY as STORAGE_KEY,
+  ExportFileCategory,
+  BatchPrintSharedConfig,
+  ExportHistoryEntry,
+  getInitialSeededExportHistory,
+  loadExportHistory,
+  recordExportHistoryEntry,
+} from "../utils/exportHistoryStorage";
 
-export type ExportFileCategory =
-  | "PDF"
-  | "OVERLEAF_ZIP"
-  | "LATEX_TYPST"
-  | "EXCEL_CSV"
-  | "HTML_JSON";
-
-export interface ExportHistoryEntry {
-  id: string;
-  fileName: string;
-  formatLabel: string;
-  category: ExportFileCategory;
-  trackCode: string;
-  trackLabelAr: string;
-  semester: SemesterType;
-  moduleType: ModuleType;
-  modelCode: ExamModel | string;
-  fileSizeKb: number;
-  createdAtIso: string;
-  status: "COMPLETED" | "GENERATING" | "READY";
-  dpiOrCompiler: string;
-  includedFiles?: string[];
-  includeAnswerWorkspace?: boolean;
-  includeDetailedSolutions?: boolean;
-  cachedContent?: string;
-}
-
-const STORAGE_KEY = "prof_math_export_dashboard_history_v1";
-
-export function getInitialSeededExportHistory(
-  track?: TrackData,
-  sem: SemesterType = "S1"
-): ExportHistoryEntry[] {
-  const now = Date.now();
-  const trackCode = track?.code || "2BAC_SM";
-  const trackLabelAr = track?.labelAr || "الثانية بكالوريا علوم رياضية (أ & ب)";
-
-  return [
-    {
-      id: "exp_overleaf_latest",
-      fileName: `Overleaf_${trackCode}_${sem}_DS1_Complet.zip`,
-      formatLabel: "Overleaf Project (.zip)",
-      category: "OVERLEAF_ZIP",
-      trackCode,
-      trackLabelAr,
-      semester: sem,
-      moduleType: "DS_142_08",
-      modelCode: "BOTH",
-      fileSizeKb: 48.6,
-      createdAtIso: new Date(now - 4 * 60 * 1000).toISOString(),
-      status: "COMPLETED",
-      dpiOrCompiler: "XeLaTeX · TeX Live 2025",
-      includedFiles: ["main.tex", "preamble.tex", "README_OVERLEAF.md"],
-      includeAnswerWorkspace: true,
-      includeDetailedSolutions: true,
-    },
-    {
-      id: "exp_pdf_latest",
-      fileName: `DS1_${trackCode}_${sem}_Cahier_Eleve_Et_Corrige.pdf`,
-      formatLabel: "PDF Vectoriel (A4)",
-      category: "PDF",
-      trackCode,
-      trackLabelAr,
-      semester: sem,
-      moduleType: "DS_142_08",
-      modelCode: "BOTH",
-      fileSizeKb: 312.4,
-      createdAtIso: new Date(now - 14 * 60 * 1000).toISOString(),
-      status: "COMPLETED",
-      dpiOrCompiler: "300 DPI · Vector Math",
-      includeAnswerWorkspace: true,
-      includeDetailedSolutions: true,
-    },
-    {
-      id: "exp_overleaf_serie",
-      fileName: `Overleaf_${trackCode}_${sem}_Serie_TD_Bac.zip`,
-      formatLabel: "Overleaf Project (.zip)",
-      category: "OVERLEAF_ZIP",
-      trackCode,
-      trackLabelAr,
-      semester: sem,
-      moduleType: "DM_SERIE",
-      modelCode: "A",
-      fileSizeKb: 42.1,
-      createdAtIso: new Date(now - 52 * 60 * 1000).toISOString(),
-      status: "COMPLETED",
-      dpiOrCompiler: "XeLaTeX · tcolorbox + TikZ",
-      includedFiles: ["main.tex", "preamble.tex", "README_OVERLEAF.md"],
-      includeAnswerWorkspace: true,
-      includeDetailedSolutions: true,
-    },
-    {
-      id: "exp_latex_source",
-      fileName: `${trackCode}_DS_142_08_${sem}_main.tex`,
-      formatLabel: "LaTeX (.tex)",
-      category: "LATEX_TYPST",
-      trackCode,
-      trackLabelAr,
-      semester: sem,
-      moduleType: "DS_142_08",
-      modelCode: "A",
-      fileSizeKb: 26.8,
-      createdAtIso: new Date(now - 2 * 3600 * 1000).toISOString(),
-      status: "COMPLETED",
-      dpiOrCompiler: "UTF-8 · Polyglossia / Babel",
-      includeAnswerWorkspace: true,
-      includeDetailedSolutions: true,
-    },
-    {
-      id: "exp_massar_bareme",
-      fileName: `Grille_Bareme_Massar_${trackCode}_${sem}.xls`,
-      formatLabel: "Excel / Massar (.xls)",
-      category: "EXCEL_CSV",
-      trackCode,
-      trackLabelAr,
-      semester: sem,
-      moduleType: "DS_142_08",
-      modelCode: "A",
-      fileSizeKb: 19.4,
-      createdAtIso: new Date(now - 5 * 3600 * 1000).toISOString(),
-      status: "COMPLETED",
-      dpiOrCompiler: "Note 142-08 · N1/N2/N3",
-    },
-  ];
-}
-
-export function loadExportHistory(
-  track?: TrackData,
-  sem: SemesterType = "S1"
-): ExportHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const seeded = getInitialSeededExportHistory(track, sem);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-      return seeded;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    const seeded = getInitialSeededExportHistory(track, sem);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-    return seeded;
-  } catch {
-    return getInitialSeededExportHistory(track, sem);
-  }
-}
-
-export function recordExportHistoryEntry(
-  entry: Omit<ExportHistoryEntry, "id" | "createdAtIso" | "status"> & {
-    id?: string;
-    createdAtIso?: string;
-    status?: "COMPLETED" | "GENERATING" | "READY";
-  }
-): ExportHistoryEntry[] {
-  try {
-    const current = loadExportHistory();
-    const newItem: ExportHistoryEntry = {
-      ...entry,
-      id: entry.id || `exp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      createdAtIso: entry.createdAtIso || new Date().toISOString(),
-      status: entry.status || "COMPLETED",
-    };
-    const updated = [newItem, ...current.filter((e) => e.fileName !== newItem.fileName)]
-      .slice(0, 25)
-      .map((item, idx) => {
-        // الاحتفاظ بالكود المصدري الكامل فقط لآخر 5 ملفات لتفادي امتلاء ذاكرة المتصفح (LocalStorage Quota)
-        if (idx >= 5 && item.cachedContent) {
-          const { cachedContent: _unused, ...rest } = item;
-          return rest;
-        }
-        return item;
-      });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    return updated;
-  } catch {
-    return [];
-  }
-}
+export {
+  type ExportFileCategory,
+  type BatchPrintSharedConfig,
+  type ExportHistoryEntry,
+  getInitialSeededExportHistory,
+  loadExportHistory,
+  recordExportHistoryEntry,
+};
 
 interface ExportDashboardModalProps {
   isOpen: boolean;
@@ -225,6 +69,7 @@ interface ExportDashboardModalProps {
   onTriggerDownloadHtml: () => void;
   onTriggerDownloadEvalExcel: () => void;
   onOpenExportCenter?: () => void;
+  onTriggerBatchPrintWithOptions?: (config: BatchPrintSharedConfig) => void;
 }
 
 export const ExportDashboardModal: React.FC<ExportDashboardModalProps> = ({
@@ -248,9 +93,24 @@ export const ExportDashboardModal: React.FC<ExportDashboardModalProps> = ({
   onTriggerDownloadHtml,
   onTriggerDownloadEvalExcel,
   onOpenExportCenter,
+  onTriggerBatchPrintWithOptions,
 }) => {
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"HISTORY_OVERLEAF" | "BATCH_PRINT">("HISTORY_OVERLEAF");
   const [selectedCategory, setSelectedCategory] = useState<"ALL" | ExportFileCategory>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [batchCopies, setBatchCopies] = useState<number>(35);
+  const [batchOrientation, setBatchOrientation] = useState<"PORTRAIT" | "LANDSCAPE" | "AUTO">("PORTRAIT");
+  const [batchPageRange, setBatchPageRange] = useState<"ALL" | "PAGE_1" | "PAGES_1_2" | "CUSTOM">("ALL");
+  const [batchCustomRange, setBatchCustomRange] = useState<string>("1-2");
+  const [batchPaperFormat, setBatchPaperFormat] = useState<"A4_STANDARD" | "A5_BOOKLET_FOLDED">("A4_STANDARD");
+  const [batchDuplex, setBatchDuplex] = useState<"DUPLEX_RECTO_VERSO" | "SIMPLEX_ONE_SIDED">("DUPLEX_RECTO_VERSO");
+  const [selectedBatchDocIds, setSelectedBatchDocIds] = useState<string[]>([
+    "doc_model_a",
+    "doc_model_b",
+    "doc_solutions_annex",
+  ]);
+  const [batchExecutedNotice, setBatchExecutedNotice] = useState<string | null>(null);
+
   const [pdfJobState, setPdfJobState] = useState<{
     status: "IDLE" | "GENERATING" | "READY";
     progress: number;
@@ -265,6 +125,160 @@ export const ExportDashboardModal: React.FC<ExportDashboardModalProps> = ({
   const [copiedBundleId, setCopiedBundleId] = useState<string | null>(null);
   const [previewEntry, setPreviewEntry] = useState<ExportHistoryEntry | null>(null);
   const [isExportingZipNow, setIsExportingZipNow] = useState(false);
+
+  const batchAvailableDocs = useMemo(
+    () => [
+      {
+        id: "doc_model_a",
+        titleAr: "النموذج (أ) — موضوع الفرض المحروس للمترشح (Sujet Modèle A)",
+        titleFr: "Sujet Modèle A (Format A4)",
+        badge: "Modèle A",
+        pagesEstimated: 2,
+        orientation: "PORTRAIT" as const,
+        descAr: "ورقة الفرض المحروس الرسمية النموذج A للتوزيع داخل القاعة.",
+      },
+      {
+        id: "doc_model_b",
+        titleAr: "النموذج (ب) — النسخة التوأمية الموازية لتفادي الغش (Sujet Modèle B)",
+        titleFr: "Sujet Isomorphe Modèle B",
+        badge: "Modèle B",
+        pagesEstimated: 2,
+        orientation: "PORTRAIT" as const,
+        descAr: "نسخة مكافئة بنفس المعايير والأوزان مع معطيات عددية مغايرة لمنع التواصل.",
+      },
+      {
+        id: "doc_solutions_annex",
+        titleAr: "الملحق الرسمي لعناصر الإجابة وسلم التنقيط المفصل (Corrigé & Barème)",
+        titleFr: "Corrigé Détaillé & Barème Officiel",
+        badge: "Corrigé",
+        pagesEstimated: 2,
+        orientation: "PORTRAIT" as const,
+        descAr: "عناصر الإجابة وسلم التنقيط الجزئي [ن] المفصل لكل سؤال للمصحح.",
+      },
+      {
+        id: "doc_eval_grid",
+        titleAr: "شبكة التقويم التوليفي وتفريغ نتائج مسار (Grille Massar)",
+        titleFr: "Grille d'Évaluation & Suivi des Compétences",
+        badge: "Massar",
+        pagesEstimated: 1,
+        orientation: "LANDSCAPE" as const,
+        descAr: "شبكة رصد نسب التحكم في الكفايات ومعدلات التلاميذ ومعدل القسم.",
+      },
+      {
+        id: "doc_remediation_sheet",
+        titleAr: "خطة الدعم البيداغوجي والمعالجة الفارقية (Fiche de Remédiation)",
+        titleFr: "Dispositif de Soutien & Remédiation Différenciée",
+        badge: "Remédiation",
+        pagesEstimated: 1,
+        orientation: "PORTRAIT" as const,
+        descAr: "تفييء المتعلمين إلى 3 مجموعات علاجية ورصد الأخطاء المتكررة.",
+      },
+      {
+        id: "doc_cover_cahier_textes",
+        titleAr: "البطاقة التقنية لملف الأستاذ ودفتر النصوص (Fiche Technique)",
+        titleFr: "Fiche Technique Officielle de l'Épreuve",
+        badge: "Dossier",
+        pagesEstimated: 1,
+        orientation: "PORTRAIT" as const,
+        descAr: "ورقة الغلاف الرسمية المعتمدة لدى المفتش التربوي وإدارة المؤسسة.",
+      },
+      {
+        id: "doc_formula_sheet",
+        titleAr: "تذكرة القوانين والصيغ المرجعية المركزة (Formulaire)",
+        titleFr: "Formulaire Mathématique & Rappels",
+        badge: "Formulaire",
+        pagesEstimated: 1,
+        orientation: "PORTRAIT" as const,
+        descAr: "ملحق اختياري بالقواعد الرسمية المعتمدة في الاشتقاق والمتتاليات.",
+      },
+    ],
+    []
+  );
+
+  const selectedBatchDocs = useMemo(
+    () => batchAvailableDocs.filter((d) => selectedBatchDocIds.includes(d.id)),
+    [batchAvailableDocs, selectedBatchDocIds]
+  );
+
+  const totalRawPagesPerSet = useMemo(() => {
+    const pages = selectedBatchDocs.reduce((sum, d) => {
+      if (batchPageRange === "PAGE_1") return sum + 1;
+      if (batchPageRange === "PAGES_1_2") return sum + Math.min(2, d.pagesEstimated);
+      return sum + d.pagesEstimated;
+    }, 0);
+    return Math.max(1, pages);
+  }, [selectedBatchDocs, batchPageRange]);
+
+  const physicalSheetsPerSet = useMemo(() => {
+    if (batchPaperFormat === "A5_BOOKLET_FOLDED") {
+      return Math.max(1, Math.ceil(totalRawPagesPerSet / 4));
+    }
+    if (batchDuplex === "DUPLEX_RECTO_VERSO") {
+      return Math.max(1, Math.ceil(totalRawPagesPerSet / 2));
+    }
+    return totalRawPagesPerSet;
+  }, [batchPaperFormat, batchDuplex, totalRawPagesPerSet]);
+
+  const totalPhysicalSheetsForClass = useMemo(() => {
+    return physicalSheetsPerSet * batchCopies;
+  }, [physicalSheetsPerSet, batchCopies]);
+
+  const paperSavingsPercent = useMemo(() => {
+    const baseline = totalRawPagesPerSet * batchCopies;
+    if (baseline <= 0) return 0;
+    const saved = baseline - totalPhysicalSheetsForClass;
+    return Math.max(0, Math.round((saved / baseline) * 100));
+  }, [totalRawPagesPerSet, batchCopies, totalPhysicalSheetsForClass]);
+
+  const handleToggleBatchDoc = (id: string) => {
+    setSelectedBatchDocIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllBatchDocs = (select: boolean) => {
+    setSelectedBatchDocIds(select ? batchAvailableDocs.map((d) => d.id) : []);
+  };
+
+  const handleExecuteSharedBatchPrint = () => {
+    if (selectedBatchDocIds.length === 0) return;
+    const config: BatchPrintSharedConfig = {
+      selectedDocIds: selectedBatchDocIds,
+      copies: batchCopies,
+      orientation: batchOrientation,
+      pageRange: batchPageRange,
+      customPageRange: batchCustomRange,
+      paperFormat: batchPaperFormat,
+      duplex: batchDuplex,
+    };
+
+    if (onTriggerBatchPrintWithOptions) {
+      onTriggerBatchPrintWithOptions(config);
+    } else {
+      onTriggerPrintPdf();
+    }
+
+    const updated = recordExportHistoryEntry({
+      fileName: `Batch_Print_${track.code}_${batchCopies}copies_${batchPaperFormat === "A5_BOOKLET_FOLDED" ? "A5_Booklet" : "A4"}.pdf`,
+      formatLabel: `طباعة مجمعة (${batchCopies} نسخة · ${selectedBatchDocs.length} وثائق)`,
+      category: "PDF",
+      trackCode: track.code,
+      trackLabelAr: track.labelAr,
+      semester: sem,
+      moduleType: activeModule,
+      modelCode: examModel,
+      fileSizeKb: Number((180 + totalPhysicalSheetsForClass * 1.5).toFixed(1)),
+      dpiOrCompiler: `${batchPaperFormat === "A5_BOOKLET_FOLDED" ? "A5 Booklet Folded" : "A4"} · ${batchOrientation} · ${batchCopies}x`,
+      includeAnswerWorkspace,
+      includeDetailedSolutions,
+    });
+    onUpdateExportHistory(updated);
+
+    setBatchExecutedNotice(
+      `✓ تم إرسال أمر الطباعة المجمعة بنجاح! تم تجهيز ${selectedBatchDocs.length} وثائق بـ (${batchCopies} نسخة) بإجمالي ${totalPhysicalSheetsForClass} ورقة فيزيائية (وفر ورقي: ${paperSavingsPercent}%).`
+    );
+    setTimeout(() => setBatchExecutedNotice(null), 5000);
+  };
 
   const overleafBundles = useMemo(
     () => exportHistory.filter((item) => item.category === "OVERLEAF_ZIP"),
@@ -459,10 +473,361 @@ export const ExportDashboardModal: React.FC<ExportDashboardModalProps> = ({
           </div>
         </div>
 
+        {/* شريط التبويب الرئيسي: أرشيف الملفات وحزم Overleaf مقابل الطباعة المجمعة للمستندات بإعدادات موحدة */}
+        <div className="bg-slate-950/90 px-5 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab("HISTORY_OVERLEAF")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer ${
+                activeDashboardTab === "HISTORY_OVERLEAF"
+                  ? "bg-gradient-to-l from-amber-500 to-orange-600 text-slate-950 shadow-md shadow-amber-500/20"
+                  : "bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
+              }`}
+            >
+              <FolderArchive className="w-4 h-4" />
+              <span>أرشيف التحميلات وحزم Overleaf ({exportHistory.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab("BATCH_PRINT")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer ${
+                activeDashboardTab === "BATCH_PRINT"
+                  ? "bg-gradient-to-l from-cyan-500 to-indigo-600 text-white shadow-md shadow-cyan-500/25"
+                  : "bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
+              }`}
+            >
+              <Printer className="w-4 h-4 text-cyan-300" />
+              <span>الطباعة المجمعة للمستندات بإعدادات موحدة (Batch Print Studio)</span>
+            </button>
+          </div>
+          {activeDashboardTab === "BATCH_PRINT" && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-cyan-300 font-bold bg-cyan-950/70 border border-cyan-800/60 px-2.5 py-0.5 rounded-full">
+                {selectedBatchDocs.length} وثائق مختارة · {batchCopies} نسخة
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* المحتوى الرئيسي القابل للتمرير */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 studio-scroll">
-          {/* 1. بطاقات المؤشرات السريعة + مراقب حالة توليد PDF المباشر */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {activeDashboardTab === "BATCH_PRINT" ? (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              {/* إشعار نجاح الطباعة */}
+              {batchExecutedNotice && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 shadow-lg animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <span>{batchExecutedNotice}</span>
+                </div>
+              )}
+
+              {/* 1. لوحة إعدادات الطابعة الموحدة (Shared Printer Settings) */}
+              <div className="bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-4 sm:p-5 space-y-4 shadow-inner">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-5 h-5 text-cyan-400" />
+                    <div>
+                      <h3 className="text-sm font-black text-white">
+                        إعدادات الطابعة الموحدة للحزمة (Shared Printer Settings)
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        تُطبق هذه الإعدادات المشتركة بدقة وتجانس على كافة الوثائق المحددة في أمر الطباعة المجمعة
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10.5px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30">
+                    Shared Print Profile
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* أ. عدد النسخ للقسم مع أزرار سريعة */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <FileStack className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>عدد النسخ (Copies):</span>
+                      </label>
+                      <span className="font-mono text-xs font-black text-cyan-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        {batchCopies}x
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={batchCopies}
+                        onChange={(e) =>
+                          setBatchCopies(
+                            Math.max(1, Math.min(100, parseInt(e.target.value) || 1))
+                          )
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono font-bold focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setBatchCopies(1)}
+                        className={`px-1.5 py-0.5 rounded border cursor-pointer ${
+                          batchCopies === 1
+                            ? "bg-cyan-500 text-slate-950 border-cyan-400 font-bold"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        1 (معاينة)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBatchCopies(25)}
+                        className={`px-1.5 py-0.5 rounded border cursor-pointer ${
+                          batchCopies === 25
+                            ? "bg-cyan-500 text-slate-950 border-cyan-400 font-bold"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        25 (فوج)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBatchCopies(35)}
+                        className={`px-1.5 py-0.5 rounded border cursor-pointer ${
+                          batchCopies === 35
+                            ? "bg-cyan-500 text-slate-950 border-cyan-400 font-bold"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        35 (قسم)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBatchCopies(40)}
+                        className={`px-1.5 py-0.5 rounded border cursor-pointer ${
+                          batchCopies === 40
+                            ? "bg-cyan-500 text-slate-950 border-cyan-400 font-bold"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        40 (كامل)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ب. نطاق الصفحات الموحد (Page Range) */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                      <span>نطاق الصفحات (Page Range):</span>
+                    </label>
+                    <select
+                      value={batchPageRange}
+                      onChange={(e) => setBatchPageRange(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                    >
+                      <option value="ALL">كل صفحات الوثائق (All Pages)</option>
+                      <option value="PAGE_1">الصفحة الأولى فقط (Page 1 Only)</option>
+                      <option value="PAGES_1_2">الصفحتان 1 و 2 فقط (Pages 1-2)</option>
+                      <option value="CUSTOM">نطاق مخصص (Custom Range)</option>
+                    </select>
+                    {batchPageRange === "CUSTOM" && (
+                      <input
+                        type="text"
+                        value={batchCustomRange}
+                        onChange={(e) => setBatchCustomRange(e.target.value)}
+                        placeholder="مثال: 1-2 أو 1,3"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-400"
+                      />
+                    )}
+                    <span className="text-[10px] text-slate-400 block">
+                      {batchPageRange === "ALL" && "طباعة كافة أوراق المواضيع والملاحق"}
+                      {batchPageRange === "PAGE_1" && "اقتصار الطباعة على ورقة الأسئلة الأولى"}
+                      {batchPageRange === "PAGES_1_2" && "طباعة ص 1 وص 2 وتجاوز ملاحق الدعم"}
+                      {batchPageRange === "CUSTOM" && `تطبيق النطاق المحدد (${batchCustomRange})`}
+                    </span>
+                  </div>
+
+                  {/* ج. الاتجاه المطبعي الموحد (Orientation) */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>الاتجاه المطبعي (Orientation):</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setBatchOrientation("PORTRAIT")}
+                        className={`px-1.5 py-1.5 rounded-lg text-[10.5px] font-bold border transition cursor-pointer text-center ${
+                          batchOrientation === "PORTRAIT"
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                            : "bg-slate-950 text-slate-300 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        عمودي (Portrait)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBatchOrientation("LANDSCAPE")}
+                        className={`px-1.5 py-1.5 rounded-lg text-[10.5px] font-bold border transition cursor-pointer text-center ${
+                          batchOrientation === "LANDSCAPE"
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                            : "bg-slate-950 text-slate-300 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        أفقي (Landscape)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBatchOrientation("AUTO")}
+                        className={`px-1.5 py-1.5 rounded-lg text-[10.5px] font-bold border transition cursor-pointer text-center ${
+                          batchOrientation === "AUTO"
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                            : "bg-slate-950 text-slate-300 border-slate-800 hover:text-white"
+                        }`}
+                      >
+                        تلقائي (Auto)
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">
+                      {batchOrientation === "PORTRAIT" && "توجيه عمودي موحد مناسب للفرض المدرسي"}
+                      {batchOrientation === "LANDSCAPE" && "توجيه أفقي لشبكات التنقيط والجداول"}
+                      {batchOrientation === "AUTO" && "ضبط الاتجاه ذكياً بحسب كل وثيقة"}
+                    </span>
+                  </div>
+
+                  {/* د. نمط الطي وحجم الورق والوجهين (Duplex & Folding) */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Scissors className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>تنسيق الورق والوجهين:</span>
+                    </label>
+                    <div className="space-y-1">
+                      <select
+                        value={batchPaperFormat}
+                        onChange={(e) => setBatchPaperFormat(e.target.value as any)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                      >
+                        <option value="A4_STANDARD">ورق A4 فردي قياسي</option>
+                        <option value="A5_BOOKLET_FOLDED">كتيب A5 مطوي (وفر 50% ورق)</option>
+                      </select>
+                      <select
+                        value={batchDuplex}
+                        onChange={(e) => setBatchDuplex(e.target.value as any)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                      >
+                        <option value="DUPLEX_RECTO_VERSO">وجهان (Recto-Verso)</option>
+                        <option value="SIMPLEX_ONE_SIDED">وجه واحد (Simplex)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* حاسبة استهلاك الورق والميزانية المباشرة */}
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/25 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-mono font-black text-sm">
+                      {totalPhysicalSheetsForClass}
+                    </div>
+                    <div>
+                      <div className="font-bold text-white">
+                        إجمالي الأوراق الفيزيائية المطلوبة: <span className="font-mono text-cyan-300">{totalPhysicalSheetsForClass} ورقة A4</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        لـ ({batchCopies} تلميذ) · {selectedBatchDocs.length} وثائق مختارة · {totalRawPagesPerSet} صفحة أصلية لكل مجموعة
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {paperSavingsPercent > 0 && (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold font-mono text-[11px]">
+                        وفر ورقي للمؤسسة: {paperSavingsPercent}% 🌱
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleExecuteSharedBatchPrint}
+                      disabled={selectedBatchDocIds.length === 0}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-l from-cyan-500 via-indigo-600 to-indigo-700 hover:from-cyan-400 hover:to-indigo-600 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 cursor-pointer transition disabled:opacity-50"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>بدء الطباعة المجمعة بالإعدادات الموحدة الآن</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. قائمة اختيار وثائق الفرض المجمعة (Document Selection Queue) */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <FileCheck2 className="w-4 h-4 text-amber-400" />
+                    <h4 className="text-xs font-bold text-white">
+                      حدد الوثائق المراد إدراجها في أمر الطباعة المجمعة:
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllBatchDocs(true)}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold cursor-pointer transition"
+                    >
+                      تحديد الكل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllBatchDocs(false)}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer transition"
+                    >
+                      إلغاء التحديد
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {batchAvailableDocs.map((doc) => {
+                    const isSelected = selectedBatchDocIds.includes(doc.id);
+                    return (
+                      <div
+                        key={doc.id}
+                        onClick={() => handleToggleBatchDoc(doc.id)}
+                        className={`p-3 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                          isSelected
+                            ? "bg-slate-900/90 border-cyan-500/50 shadow-sm"
+                            : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700 opacity-60"
+                        }`}
+                      >
+                        <div className="mt-0.5 text-cyan-400">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-cyan-400" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-white">
+                              {doc.titleAr}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                              ~{doc.pagesEstimated} ص · {doc.orientation === "PORTRAIT" ? "عمودي" : "أفقي"}
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-slate-400 leading-snug">
+                            {doc.descAr}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              {/* 1. بطاقات المؤشرات السريعة + مراقب حالة توليد PDF المباشر */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* مراقب حالة توليد الـ PDF والحزم (PDF Generation Status Monitor) */}
             <div className="lg:col-span-7 bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-4 space-y-3 shadow-inner">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -943,9 +1308,12 @@ export const ExportDashboardModal: React.FC<ExportDashboardModalProps> = ({
                 </tbody>
               </table>
             </div>
+            </div>
           </div>
+        )}
         </div>
       </div>
     </div>
   );
 };
+

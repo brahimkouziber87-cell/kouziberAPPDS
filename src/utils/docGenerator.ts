@@ -53,6 +53,26 @@ import {
 import { PythonAlgorithmPreset } from "../data/pythonAlgorithms";
 import { sanitizeAndValidateQuestionsList } from "./mathjsValidator";
 import { AppliedTitleCalligraphyConfig } from "../components/ArabicCalligraphySimulator";
+import {
+  PrintLayoutTemplateId,
+  getPrintLayoutTemplate,
+  SmartPageBreakConfig,
+  DEFAULT_SMART_PAGE_BREAK_CONFIG,
+  computeOptimizedPageBreakPlan,
+  generateSmartPageBreakLatexCommands,
+} from "./printLayoutTemplates";
+import {
+  ExerciseSolutionQrMap,
+  buildExerciseSolutionUrl,
+} from "./exerciseSolutionQrEngine";
+import {
+  buildHomeworkSolutionLink,
+  generateHomeworkAssignmentVerificationCode,
+} from "./qrCodeHelper";
+import {
+  decomposeQuestionIntoSubQuestions,
+  SubQuestionDecompositionMode,
+} from "./dsSupervisedExamEnhancements";
 
 export interface GeneratorParams {
   track: TrackData;
@@ -109,6 +129,7 @@ export interface GeneratorParams {
   include2DSpecMatrix?: boolean;
   includeAnswerWorkspace?: boolean;
   studentGridStyle?: StudentGridStyle;
+  seyesSpacingPreset?: "FR_STANDARD_8MM" | "BILINGUAL_10MM" | "ARABIC_COMFORT_12MM" | "COMPACT_EXAM_6_4MM";
   moroccanDMType?: MoroccanDMType;
   includeLessonMemo?: boolean;
   includeDMContract?: boolean;
@@ -125,6 +146,11 @@ export interface GeneratorParams {
     bottomMm: number;
     xMm: number;
   } | null;
+  variationSeed?: number;
+  printLayoutTemplateId?: PrintLayoutTemplateId;
+  exerciseSolutionQrs?: ExerciseSolutionQrMap;
+  smartPageBreakConfig?: SmartPageBreakConfig;
+  subQuestionDecompositionMode?: SubQuestionDecompositionMode;
 }
 
 function formatQuarterPoints(pts: number): string {
@@ -245,6 +271,7 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
     include2DSpecMatrix = true,
     includeAnswerWorkspace = false,
     studentGridStyle = "SEYES_FRENCH",
+    seyesSpacingPreset = "BILINGUAL_10MM",
     includeSelfEvalGrid = true,
     geoGebraResourcesMap = {},
     autoAttachGeoGebra = true,
@@ -256,7 +283,14 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
     qcmConfig,
     attachedPythonAlgorithms = [],
     pageMarginsMm = null,
+    variationSeed = 0,
+    printLayoutTemplateId = "STANDARD_ACADEMIC",
+    exerciseSolutionQrs,
+    smartPageBreakConfig = DEFAULT_SMART_PAGE_BREAK_CONFIG,
+    subQuestionDecompositionMode = "NONE",
   } = params;
+
+  const activeLayoutTpl = getPrintLayoutTemplate(printLayoutTemplateId);
 
   // تحديد هوامش الصفحة تلقائياً بناءً على نوع الوثيقة (فرض محروس: 16×15mm، سلسلة تمارين: 8×8mm، فرض منزلي: 12×12mm، رائز: 11×10mm، جذاذة: 10×9mm) أو التخصيص اليدوي
   const defaultMarginsMm =
@@ -271,9 +305,18 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
       : { topMm: 10, bottomMm: 10, xMm: 9 };
 
   const activeMarginsMm = pageMarginsMm || defaultMarginsMm;
-  const resolvedTopCm = (activeMarginsMm.topMm / 10).toFixed(1);
-  const resolvedBottomCm = (activeMarginsMm.bottomMm / 10).toFixed(1);
-  const resolvedXCm = (activeMarginsMm.xMm / 10).toFixed(1);
+  const resolvedTopCm = (
+    (smartPageBreakConfig?.marginTopMm ?? activeMarginsMm.topMm) / 10
+  ).toFixed(2);
+  const resolvedBottomCm = (
+    (smartPageBreakConfig?.marginBottomMm ?? activeMarginsMm.bottomMm) / 10
+  ).toFixed(2);
+  const resolvedLeftCm = (
+    (smartPageBreakConfig?.marginLeftMm ?? activeMarginsMm.xMm) / 10
+  ).toFixed(2);
+  const resolvedRightCm = (
+    (smartPageBreakConfig?.marginRightMm ?? activeMarginsMm.xMm) / 10
+  ).toFixed(2);
 
   const isMission =
     track.system === "MISSION_FRANCAISE" || params.system === "MISSION_FRANCAISE";
@@ -289,9 +332,19 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
   const isAr = docLang === "AR" && !isMission;
   const isPureFr = docLang === "FR" || isMission;
   const isDM = dmSubType === "DEVOIR_MAISON";
+  const seyesDimLabel =
+    seyesSpacingPreset === "FR_STANDARD_8MM"
+      ? "8mm/2mm"
+      : seyesSpacingPreset === "ARABIC_COMFORT_12MM"
+      ? "12mm/3mm"
+      : seyesSpacingPreset === "COMPACT_EXAM_6_4MM"
+      ? "6.4mm/1.6mm"
+      : "10mm/2.5mm";
   const gridStyleBadge =
-    studentGridStyle === "SEYES_FRENCH"
-      ? "Seyès"
+    studentGridStyle === "SEYES_HD_PRO"
+      ? `Seyès HD (${seyesDimLabel})`
+      : studentGridStyle === "SEYES_FRENCH"
+      ? `Seyès (${seyesDimLabel})`
       : studentGridStyle === "LINED_RULED"
       ? "Ligné"
       : studentGridStyle === "MILLIMETER_GRID"
@@ -610,7 +663,7 @@ ${orderedLessons
       l,
       m,
       shuffleQuestions,
-      0,
+      variationSeed,
       dsQuestionDensity
     );
     const questionsAr = sanitizeAndValidateQuestionsList(
@@ -668,6 +721,37 @@ ${orderedLessons
 ${activeQuestions
   .map((q, qIdx) => {
     const meta = qMetas[qIdx];
+    const parentPts = Number(meta?.points) || 1.0;
+    const parentLvl = (meta?.level || "N1") as "N1" | "N2" | "N3";
+    const decomp =
+      subQuestionDecompositionMode !== "NONE"
+        ? decomposeQuestionIntoSubQuestions({
+            questionAr: questionsAr[qIdx] || q,
+            questionFr: questionsFr[qIdx] || q,
+            parentPoints: parentPts,
+            parentLevel: parentLvl,
+            mode: subQuestionDecompositionMode,
+            questionIndex: qIdx,
+            lessonTitleAr: l.lessonAr,
+            lessonTitleFr: l.lessonFr,
+          })
+        : null;
+    const subItemsTypst =
+      decomp && decomp.isDecomposed && decomp.subQuestions.length > 1
+        ? "\n" +
+          decomp.subQuestions
+            .map(
+              (sq) =>
+                `  - *${isMission || isPureFr ? sq.labelFr : sq.labelAr})* ${
+                  isMission || isPureFr ? sq.textFr : sq.textAr
+                } ${
+                  showQuestionBareme
+                    ? `#h(1fr) *[${sq.points} ${isMission || isPureFr ? "pt" : "ن"} · ${sq.level}]*`
+                    : ""
+                }`
+            )
+            .join("\n")
+        : "";
     const baremeSuffix =
       showQuestionBareme && meta
         ? ` #h(1fr) *[${meta.points} ${isMission || isPureFr ? "pt" : "ن"} · ${meta.level}]*`
@@ -690,9 +774,15 @@ ${activeQuestions
           ? `_(Preuve guidée à trous)_ ${q}`
           : `_(برهان موجه بملء الفراغات)_ ${q}`
         : q
-    }${baremeSuffix}${workspaceTypst}`;
+    }${baremeSuffix}${subItemsTypst}${workspaceTypst}`;
   })
-  .join("\n")}${ggbTypst}`;
+  .join("\n")}${ggbTypst}${
+      exerciseSolutionQrs?.[`ex_${idx}`]?.enabled
+        ? `\n#block(fill: rgb("#f8fafc"), stroke: 0.5pt + rgb("#6366f1"), inset: 5pt, radius: 3pt, width: 100%)[*QR Solution (Ex.${idx + 1}) :* #text(size: 7.5pt)[${buildExerciseSolutionUrl(
+            exerciseSolutionQrs[`ex_${idx}`]
+          ).replace(/#/g, "\\#")}]]`
+        : ""
+    }`;
   })
   .join("\n\n#v(0.2cm)\n")}${synthTypst}`;
     };
@@ -846,6 +936,33 @@ ${qs.map((q) => `+ ${q}`).join("\n")}${
                 .join("\n\n#v(0.3cm)\n"))
         : "";
 
+      const hwQrTypstBlock = isDM
+        ? (() => {
+            const hwUrl = buildHomeworkSolutionLink({
+              homeworkId: `dm_${dmNumber.replace(/[^0-9A-Za-z]/g, "") || "1"}`,
+              dmNumber,
+              dueDate: dmDueDate,
+              trackCode: track.code,
+              semester: sem,
+              docLang: isAr ? "AR" : "FR",
+              variationSeed,
+            });
+            const hwPin = generateHomeworkAssignmentVerificationCode({
+              homeworkId: `dm_${dmNumber.replace(/[^0-9A-Za-z]/g, "") || "1"}`,
+              dmNumber,
+              dueDate: dmDueDate,
+              trackCode: track.code,
+              semester: sem,
+              variationSeed,
+            });
+            return `\n\n#v(0.35cm)\n#rect(width: 100%, stroke: 1.2pt + rgb("#065f46"), fill: rgb("#ecfdf5"), inset: 8pt, radius: 4pt)[\n  *${
+              isMission || isPureFr
+                ? `QR Code Unique — Page Corrigé du Devoir Maison (${dmNumber}) [PIN: ${hwPin}]`
+                : `رمز QR الفريد للولوج المباشر لصفحة حل الفرض المنزلي (${dmNumber}) [PIN: ${hwPin}]`
+            }*\n  #v(2pt)\n  #text(size: 8.5pt)[#link("${hwUrl}")[${hwUrl}]]\n]`;
+          })()
+        : "";
+
       return `// [SYNC_SECTION:HEADER]
 ${renderTypstHeader(isDM ? m : undefined)}
 
@@ -866,7 +983,7 @@ ${bodyContent}${
               )
               .join("\n")}\n)`
           : ""
-      }${solutionsTypst ? `\n// [SYNC_SECTION:SOLUTIONS]${solutionsTypst}` : ""}`;
+      }${hwQrTypstBlock}${solutionsTypst ? `\n// [SYNC_SECTION:SOLUTIONS]${solutionsTypst}` : ""}`;
     };
 
     return `// ============================================================================
@@ -876,7 +993,7 @@ ${bodyContent}${
 // النظام التعليمي: ${isMission ? "مدارس البعثة الفرنسية بالمغرب (AEFE / OSUI)" : "السلك الثانوي التأهيلي المغربي"}
 // ============================================================================
 
-#set page(paper: "a4", margin: (top: ${resolvedTopCm}cm, bottom: ${resolvedBottomCm}cm, x: ${resolvedXCm}cm))
+#set page(paper: "a4", margin: (top: ${resolvedTopCm}cm, bottom: ${resolvedBottomCm}cm, left: ${resolvedLeftCm}cm, right: ${resolvedRightCm}cm))
 #set text(font: "${isAr ? "Amiri" : "Linux Libertine"}", size: 11pt, lang: "${isAr ? "ar" : "fr"}", dir: ${isAr ? "rtl" : "ltr"})
 
 ${
@@ -983,7 +1100,7 @@ ${
                   l,
                   m,
                   shuffleQuestions,
-                  0,
+                  variationSeed,
                   dsQuestionDensity
                 );
                 const questionsAr = sanitizeAndValidateQuestionsList(
@@ -1249,27 +1366,40 @@ ${allLessons
       ? "Aref Ruqaa"
       : "Amiri";
 
+  const layoutTemplateLatexPreamble =
+    activeLayoutTpl.columnsCount === 2
+      ? `\n% --- قالب العمودين المكثف (${activeLayoutTpl.labelFr}) ---\n${activeLayoutTpl.latexEquivalentPreamble}`
+      : "";
+
+  const smartPageBreakLatexPreamble = smartPageBreakConfig?.enabled
+    ? `\n${generateSmartPageBreakLatexCommands(smartPageBreakConfig)}`
+    : "";
+
+  const latexPaperOption =
+    smartPageBreakConfig?.paperFormat === "LETTER" ? "letterpaper" : "a4paper";
+
   const preamble = isPureFr
-    ? `\\documentclass[11pt,a4paper]{article}
+    ? `\\documentclass[11pt,${latexPaperOption}]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
 \\usepackage[french]{babel}
 \\usepackage{amsmath,amssymb,amsfonts}
 \\usepackage{geometry,array,multirow,booktabs,fancyhdr,xcolor}
-\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedXCm}cm, right=${resolvedXCm}cm}
-${activeLatexPkgSnippet}`
+\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedLeftCm}cm, right=${resolvedRightCm}cm}
+${activeLatexPkgSnippet}${layoutTemplateLatexPreamble}${smartPageBreakLatexPreamble}`
     : `% ============================================================================
 % ملاحظة هامة: يُترجم هذا الملف باستخدام محرك XeLaTeX لدعم العربية والفرنسية معاً
 % الحزمة التنسيقية المختارة: ${selectedLatexPkg.packageCmd}
+% هيكل الطباعة المعتمد: ${activeLayoutTpl.labelAr} (${activeLayoutTpl.id})
 % قالب خط الترويسة المغربية: ${titleCalligraphyCfg?.fontId || "ANDALUSI_MAGHRIBI_SCRIPT"} (LetterSpace=${xeLatexLetterSpace})
 % ============================================================================
-\\documentclass[11pt,a4paper]{article}
+\\documentclass[11pt,${latexPaperOption}]{article}
 \\usepackage{amsmath,amssymb,amsfonts}
 \\usepackage{geometry,array,multirow,booktabs,fancyhdr,xcolor}
 \\usepackage{fontspec}
 \\usepackage{polyglossia}
-\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedXCm}cm, right=${resolvedXCm}cm}
-${activeLatexPkgSnippet}
+\\geometry{top=${resolvedTopCm}cm, bottom=${resolvedBottomCm}cm, left=${resolvedLeftCm}cm, right=${resolvedRightCm}cm}
+${activeLatexPkgSnippet}${layoutTemplateLatexPreamble}${smartPageBreakLatexPreamble}
 ${
   docLang === "AR"
     ? `\\setmainlanguage{arabic}\n\\setotherlanguage{french}\n\\newfontfamily\\arabicfont[Script=Arabic]{Amiri}\n\\newfontfamily\\maghribititlefont[Script=Arabic,LetterSpace=${xeLatexLetterSpace}]{${xeLatexFontFamilyName}}`
@@ -1463,6 +1593,16 @@ ${
         : `\n\n% [SYNC_SECTION:SYNTHESIS_PROBLEM]\n\\vspace{0.25cm}\n\\subsection*{${isMission || isPureFr ? synthesisProblem.titleFr : synthesisProblem.titleAr} (${synthesisProblem.totalPoints} pts)}\n${synthBody}`
       : "";
 
+    const smartBreakPlan = smartPageBreakConfig?.enabled
+      ? computeOptimizedPageBreakPlan(orderedLessons, smartPageBreakConfig, {
+          columnsCount: activeLayoutTpl.columnsCount,
+          includeAnswerWorkspace,
+          includeDetailedSolutions,
+          hasQcmBlock: Boolean(qcmBlock),
+          hasSynthesisProblem: Boolean(synthesisProblem),
+        })
+      : null;
+
     return `% [SYNC_SECTION:HEADER]
 ${renderLatexCartouche(m)}
 ${gradingStripLatex}
@@ -1474,14 +1614,16 @@ ${gradingStripLatex}
             docLang === "BILINGUAL" ? `(Bilingue : ${bilingualLayout})` : ""
           }`
     }}
-${qcmLatex}
+${qcmLatex}${
+      activeLayoutTpl.columnsCount === 2 ? "\n\\begin{multicols}{2}\n" : ""
+    }
 ${orderedLessons
   .map((l, idx) => {
     const rawVariantQs = getVariantQuestions(
       l,
       m,
       shuffleQuestions,
-      0,
+      variationSeed,
       dsQuestionDensity
     );
     const questionsAr = sanitizeAndValidateQuestionsList(
@@ -1535,10 +1677,53 @@ ${orderedLessons
       ? `${iconLatex}Exercice ${displayExNum} : ${l.lessonFr} (${ptsStr} points — ${scaledWeightPct}\\%)`
       : `${iconLatex}التمرين ${displayExNum} : ${l.lessonAr} (${ptsStr} نقط — ${scaledWeightPct}\\%)`;
 
+    const exQrConfig = exerciseSolutionQrs?.[`ex_${idx}`];
+    const exQrLatex =
+      exQrConfig && exQrConfig.enabled
+        ? `\n\\par\\vspace{0.15cm}\\noindent\\fbox{\\parbox{0.97\\linewidth}{\\footnotesize \\textbf{${
+            isMission || isPureFr
+              ? exQrConfig.customLabelFr || "Solution détaillée (QR Code) :"
+              : exQrConfig.customLabelAr || "الحل النموذجي المفصل (رمز QR) :"
+          }} \\texttt{${buildExerciseSolutionUrl(exQrConfig).replace(
+            /([%&#_])/g,
+            "\\$1"
+          )}}}}`
+        : "";
+
     const enumItems = `\\begin{enumerate}
 ${activeQs
   .map((q, qIdx) => {
     const meta = qMetas[qIdx];
+    const parentPts = Number(meta?.points) || 1.0;
+    const parentLvl = (meta?.level || "N1") as "N1" | "N2" | "N3";
+    const decomp =
+      subQuestionDecompositionMode !== "NONE"
+        ? decomposeQuestionIntoSubQuestions({
+            questionAr: questionsAr[qIdx] || q,
+            questionFr: questionsFr[qIdx] || q,
+            parentPoints: parentPts,
+            parentLevel: parentLvl,
+            mode: subQuestionDecompositionMode,
+            questionIndex: qIdx,
+            lessonTitleAr: l.lessonAr,
+            lessonTitleFr: l.lessonFr,
+          })
+        : null;
+    const subItemsLatex =
+      decomp && decomp.isDecomposed && decomp.subQuestions.length > 1
+        ? `\n  \\begin{itemize}\n${decomp.subQuestions
+            .map(
+              (sq) =>
+                `    \\item[\\textbf{${
+                  isMission || isPureFr ? sq.labelFr : sq.labelAr
+                })}] ${isMission || isPureFr ? sq.textFr : sq.textAr}${
+                  showQuestionBareme
+                    ? ` \\hfill \\textbf{[${sq.points} pt $\\cdot$ ${sq.level}]}`
+                    : ""
+                }`
+            )
+            .join("\n")}\n  \\end{itemize}`
+        : "";
     const baremeLatex =
       showQuestionBareme && meta
         ? ` \\hfill \\textbf{[${meta.points} pt $\\cdot$ ${meta.level}]}`
@@ -1559,21 +1744,28 @@ ${activeQs
       fillBlanks && idx === 0 && qIdx === 0
         ? `\\textit{(${isMission || isPureFr ? "Preuve guidée à trous" : "برهان موجه بملء الفراغات"})} ${q}`
         : q
-    }${baremeLatex}${workspaceLatex}`;
+    }${baremeLatex}${subItemsLatex}${workspaceLatex}`;
   })
   .join("\n")}
-\\end{enumerate}${ggbLatex}`;
+\\end{enumerate}${ggbLatex}${exQrLatex}`;
+
+    const smartPageBreakPrefix =
+      smartBreakPlan && smartBreakPlan.recommendedBreakIndices.includes(idx)
+        ? `\\newpage % [SMART_PAGE_BREAK_${smartPageBreakConfig.paperFormat}]\n`
+        : "";
 
     if (latexPackageTheme === "TCOLORBOX") {
-      return `\\begin{exoBox}{${exHeader}}
+      return `${smartPageBreakPrefix}\\begin{exoBox}{${exHeader}}
 ${enumItems}
 \\end{exoBox}`;
     }
 
-    return `\\subsection*{${exHeader}}
+    return `${smartPageBreakPrefix}\\subsection*{${exHeader}}
 ${enumItems}`;
   })
-  .join("\n\n\\vspace{0.25cm}\n")}${synthLatex}`;
+  .join("\n\n\\vspace{0.25cm}\n")}${
+      activeLayoutTpl.columnsCount === 2 ? "\n\\end{multicols}\n" : ""
+    }${synthLatex}`;
   };
 
   const renderLatexDMSerieModel = (m: "A" | "B") => {
@@ -1713,6 +1905,30 @@ ${(isMission || isPureFr ? b.questionsFr : b.questionsAr).map((q) => `  \\item $
               .join("\n\n\\vspace{0.3cm}\n"))
       : "";
 
+    const hwQrLatexBlock = isDM
+      ? (() => {
+          const hwUrl = buildHomeworkSolutionLink({
+            homeworkId: `dm_${dmNumber.replace(/[^0-9A-Za-z]/g, "") || "1"}`,
+            dmNumber,
+            dueDate: dmDueDate,
+            trackCode: track.code,
+            semester: sem,
+            docLang: isAr ? "AR" : "FR",
+            variationSeed,
+          });
+          const hwPin = generateHomeworkAssignmentVerificationCode({
+            homeworkId: `dm_${dmNumber.replace(/[^0-9A-Za-z]/g, "") || "1"}`,
+            dmNumber,
+            dueDate: dmDueDate,
+            trackCode: track.code,
+            semester: sem,
+            variationSeed,
+          });
+          const escapedUrl = hwUrl.replace(/([_%&#])/g, "\\$1");
+          return `\n\n\\vspace{0.35cm}\n\\noindent\\fbox{\\parbox{0.97\\textwidth}{\\small \\textbf{QR Code Unique — Page Corrigé du Devoir Maison (${dmNumber}) [PIN: \\texttt{${hwPin}}] :}\\\\ \\texttt{${escapedUrl}}}}\n`;
+        })()
+      : "";
+
     return `% [SYNC_SECTION:HEADER]
 ${renderLatexCartouche(isDM ? m : undefined)}
 
@@ -1727,7 +1943,7 @@ ${renderLatexCartouche(isDM ? m : undefined)}
         : `سلسلة التمارين التطبيقية والتوليفية (${dmNumber} - ${sem})`
     }}
 
-${bodyLatex}${dmSerieSolutionsLatex}`;
+${bodyLatex}${hwQrLatexBlock}${dmSerieSolutionsLatex}`;
   };
 
   return sanitizeLatexDocumentBody(`${preamble}
@@ -1857,7 +2073,7 @@ ${
                   l,
                   m,
                   shuffleQuestions,
-                  0,
+                  variationSeed,
                   dsQuestionDensity
                 );
                 const questionsAr = sanitizeAndValidateQuestionsList(

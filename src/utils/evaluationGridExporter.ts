@@ -539,17 +539,18 @@ export interface ExcelExportOptions {
   n1: number;
   n2: number;
   n3: number;
+  evalGridCustomConfig?: EvalGridCustomConfig142_08;
 }
 
 /**
  * يصدر شبكة التقويم المخصصة وشبكة تفريغ نقط القسم إلى ملف Excel رسمي (.xls SpreadsheetML)
  * يضم ورقتي عمل (2 Worksheets):
- * 1. شبكة التقويم التحليلية وسلم التنقيط حسب التمارين والأسئلة والقدرات
- * 2. شبكة تفريغ نقط التلاميذ مع المعادلات التلقائية (=SUM, =AVERAGE, =MAX, =MIN, =IF)
+ * 1. شبكة التقويم التحليلية وسلم التنقيط حسب التمارين والأسئلة والقدرات (متوافقة مع المذكرة 142-08 والقالب المختار)
+ * 2. استمارة تفريغ النتائج مع المعادلات التلقائية (=SUM, =AVERAGE, =MAX, =MIN, =IF)
  */
 export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
   const {
-    gridData,
+    gridData: rawGridData,
     school,
     prof,
     year,
@@ -563,22 +564,52 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
     n1,
     n2,
     n3,
+    evalGridCustomConfig,
   } = options;
+
+  const gridData = applyEvalGridCustomConfigToGridData(
+    rawGridData,
+    evalGridCustomConfig
+  );
 
   const isMission = system === "MISSION_FRANCAISE";
   const isFr = docLang === "FR" || isMission;
+
+  const masteryCheckboxText = formatMasteryScaleCheckboxText(
+    evalGridCustomConfig,
+    isFr
+  );
+
+  const customDirectiveText = isFr
+    ? evalGridCustomConfig?.pedagogicalDirectiveFr || ""
+    : evalGridCustomConfig?.pedagogicalDirectiveAr || "";
 
   const sheet1Name = isFr
     ? "1_Grille_Analytique_Bareme"
     : "1_شبكة_التقويم_وسلم_التنقيط";
   const sheet2Name = isFr
-    ? "2_Depouillement_Notes_Classe"
-    : "2_تفريغ_نقط_القسم_والإحصائيات";
+    ? "2_Depouillement_Resultats"
+    : "2_استمارة_تفريغ_النتائج";
 
-  // بناء صفوف الورقة الأولى: شبكة التقويم التحليلية حسب الأسئلة والقدرات
+  // بناء صفوف الورقة الأولى: شبكة التقويم التحليلية حسب الأسئلة والقدرات ومؤشرات الدعم
   const sheet1RowsXml = gridData.allQuestions
-    .map(
-      (q) => `
+    .map((q) => {
+      const qOverride = evalGridCustomConfig?.questionOverrides?.[q.questionCode];
+      const remNote =
+        qOverride?.remediationCriterionAr ||
+        (isFr
+          ? q.levelCode === "N1"
+            ? "Rappel de la propriété directe du cours"
+            : q.levelCode === "N2"
+            ? "Exercice guidé de remédiation ciblée"
+            : "Décomposition du problème en sous-questions"
+          : q.levelCode === "N1"
+          ? "تذكير بالخاصية المباشرة وتطبيق أولي"
+          : q.levelCode === "N2"
+          ? "تمرين دعم موجه لتثبيت منهجية الاستدلال"
+          : "تفكيك المسألة التوليفية إلى أسئلة مرحلية");
+
+      return `
       <Row ss:AutoFitHeight="1" ss:Height="24">
         <Cell ss:StyleID="CellCenterBold"><Data ss:Type="String">${escapeXml(
           isFr ? `Exercice ${q.exerciseNumber}` : `التمرين ${q.exerciseNumber}`
@@ -608,12 +639,17 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
         <Cell ss:StyleID="CellNumberBold"><Data ss:Type="Number">${
           q.points
         }</Data></Cell>
-        <Cell ss:StyleID="CellCenter"><Data ss:Type="String">[  ] A   [  ] EC   [  ] NA</Data></Cell>
-      </Row>`
-    )
+        <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXml(
+          masteryCheckboxText
+        )}</Data></Cell>
+        <Cell ss:StyleID="CellText"><Data ss:Type="String">${escapeXml(
+          remNote
+        )}</Data></Cell>
+      </Row>`;
+    })
     .join("");
 
-  // بناء أعمدة وصفوف الورقة الثانية: شبكة تفريغ نقط التلاميذ
+  // بناء أعمدة وصفوف الورقة الثانية: استمارة تفريغ النتائج
   const dynamicColumns =
     granularity === "BY_QUESTION"
       ? gridData.allQuestions.map((q) => ({
@@ -653,8 +689,8 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
     const studentName =
       customStudentNames[idx]?.trim() ||
       (isFr
-        ? `Élève ${String(sNum).padStart(2, "0")} — ................................`
-        : `التلميذ(ة) ${String(sNum).padStart(2, "0")} — ................................`);
+        ? `N° ${String(sNum).padStart(2, "0")} — ................................`
+        : `ر.ت ${String(sNum).padStart(2, "0")} — ................................`);
 
     const emptyScoreCells = dynamicColumns
       .map(() => `<Cell ss:StyleID="CellScoreInput"><Data ss:Type="Number">0</Data></Cell>`)
@@ -825,39 +861,49 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
   </Style>
  </Styles>
 
- <!-- الورقة الأولى: شبكة التقويم التحليلية وسلم التنقيط المفصل -->
+ <!-- الورقة الأولى: شبكة التقويم التحليلية وسلم التنقيط المفصل (المذكرة 142-08) -->
  <Worksheet ss:Name="${escapeXml(sheet1Name)}" ${
     isFr ? "" : 'ss:RightToLeft="1"'
   }>
   <Table>
    <Column ss:Width="90"/>
-   <Column ss:Width="170"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="240"/>
+   <Column ss:Width="165"/>
+   <Column ss:Width="105"/>
+   <Column ss:Width="75"/>
    <Column ss:Width="220"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="140"/>
+   <Column ss:Width="210"/>
+   <Column ss:Width="125"/>
+   <Column ss:Width="75"/>
+   <Column ss:Width="145"/>
+   <Column ss:Width="185"/>
    <Row ss:Height="28">
-    <Cell ss:MergeAcross="8" ss:StyleID="TitleBanner"><Data ss:Type="String">${escapeXml(
+    <Cell ss:MergeAcross="9" ss:StyleID="TitleBanner"><Data ss:Type="String">${escapeXml(
       isFr ? gridData.titleFr : gridData.titleAr
     )}</Data></Cell>
    </Row>
    <Row ss:Height="22">
-    <Cell ss:MergeAcross="8" ss:StyleID="SubBanner"><Data ss:Type="String">${escapeXml(
+    <Cell ss:MergeAcross="9" ss:StyleID="SubBanner"><Data ss:Type="String">${escapeXml(
       `${school} · ${prof} · ${year} · ${
         isFr ? gridData.subtitleFr : gridData.subtitleAr
       }`
     )}</Data></Cell>
    </Row>
    <Row ss:Height="20">
-    <Cell ss:MergeAcross="8" ss:StyleID="CellCenterBold"><Data ss:Type="String">${escapeXml(
+    <Cell ss:MergeAcross="9" ss:StyleID="CellCenterBold"><Data ss:Type="String">${escapeXml(
       isMission
         ? `Répartition Taxonomique : Niveau N1 (${n1}%) · Niveau N2 (${n2}%) · Niveau N3 (${n3}%)`
         : `${academy} · ${direction} · المستويات المهارية (مذكرة 142-08): N1=${n1}% | N2=${n2}% | N3=${n3}%`
     )}</Data></Cell>
    </Row>
+   ${
+     customDirectiveText
+       ? `<Row ss:Height="22">
+    <Cell ss:MergeAcross="9" ss:StyleID="CellText"><Data ss:Type="String">${escapeXml(
+      customDirectiveText
+    )}</Data></Cell>
+   </Row>`
+       : ""
+   }
    <Row ss:Height="26">
     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">${
       isFr ? "Exercice" : "التمرين"
@@ -886,6 +932,9 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">${
       isFr ? "Degré de maîtrise" : "درجة التحكم"
     }</Data></Cell>
+    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">${
+      isFr ? "Piste de remédiation" : "مؤشر الدعم والمعالجة"
+    }</Data></Cell>
    </Row>
    ${sheet1RowsXml}
    <Row ss:Height="25">
@@ -895,12 +944,12 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
     <Cell ss:StyleID="CellNumberBold" ss:Formula="=SUM(R[-${
       gridData.allQuestions.length
     }]C:R[-1]C)"><Data ss:Type="Number">${gridData.totalPoints}</Data></Cell>
-    <Cell ss:StyleID="CellCenterBold"><Data ss:Type="String">100%</Data></Cell>
+    <Cell ss:MergeAcross="1" ss:StyleID="CellCenterBold"><Data ss:Type="String">100% — Note 142-08</Data></Cell>
    </Row>
   </Table>
  </Worksheet>
 
- <!-- الورقة الثانية: شبكة تفريغ نقط القسم والإحصائيات التلقائية -->
+ <!-- الورقة الثانية: استمارة تفريغ النتائج والإحصائيات التلقائية -->
  <Worksheet ss:Name="${escapeXml(sheet2Name)}" ${
     isFr ? "" : 'ss:RightToLeft="1"'
   }>
@@ -915,8 +964,8 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
       numScoreCols + 3
     }" ss:StyleID="TitleBanner"><Data ss:Type="String">${escapeXml(
     isFr
-      ? `Grille de Dépouillement des Notes — ${gridData.titleFr}`
-      : `شبكة تفريغ نقط التلاميذ واستثمار النتائج — ${gridData.titleAr}`
+      ? `Fiche de Dépouillement des Résultats — ${gridData.titleFr}`
+      : `استمارة تفريغ النتائج واستثمارها الديداكتيكي — ${gridData.titleAr}`
   )}</Data></Cell>
    </Row>
    <Row ss:Height="22">
@@ -933,7 +982,7 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
       isFr ? "N°" : "ر.ت"
     }</Data></Cell>
     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">${
-      isFr ? "Nom et Prénom de l'élève" : "الاسم الكامل للتلميذ(ة)"
+      isFr ? "Identifiant / Copie N°" : "الرقم الترتيبي للورقة / التلميذ(ة)"
     }</Data></Cell>
     ${headerDynamicCellsXml}
     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">${
@@ -958,12 +1007,12 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
    ${studentRowsXml}
    <Row ss:Height="22">
     <Cell ss:MergeAcross="1" ss:StyleID="StatCell"><Data ss:Type="String">${
-      isFr ? "Moyenne de la classe" : "معدل القسم في كل تمرين/سؤال"
+      isFr ? "Moyenne par exercice / question" : "متوسط التحصيل في كل تمرين/سؤال"
     }</Data></Cell>
     ${avgCellsXml}
     <Cell ss:StyleID="StatCell" ss:Formula="=AVERAGE(R[-${totalStudents}]C:R[-1]C)"><Data ss:Type="Number">0</Data></Cell>
     <Cell ss:StyleID="StatCell"><Data ss:Type="String">${
-      isFr ? "Moyenne Générale" : "المعدل العام للقسم"
+      isFr ? "Moyenne Générale" : "المعدل العام"
     }</Data></Cell>
    </Row>
    <Row ss:Height="22">
@@ -996,11 +1045,11 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  const safeTrack = options.gridData.subtitleFr
+  const safeTrack = gridData.subtitleFr
     .split("·")[0]
     .trim()
     .replace(/[^a-zA-Z0-9_-]/g, "_");
-  link.download = `Grille_Evaluation_${safeTrack}_${granularity}.xls`;
+  link.download = `Grille_Evaluation_142_08_${safeTrack}_${granularity}.xls`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -1008,18 +1057,49 @@ export function exportEvaluationGridToExcel(options: ExcelExportOptions): void {
 }
 
 /**
- * يصدر شبكة التقويم وتفريغ النقط بصيغة CSV متوافقة مع Excel و LibreOffice (مع UTF-8 BOM لدعم العربية والفرنسية)
+ * يصدر وثيقة شبكة التقويم وتفريغ النقط بصيغة CSV متوافقة مع Excel و LibreOffice (مع UTF-8 BOM لدعم العربية والفرنسية)
  */
 export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
-  const { gridData, school, prof, year, docLang, system, granularity, studentCount } =
-    options;
+  const {
+    gridData: rawGridData,
+    school,
+    prof,
+    year,
+    docLang,
+    system,
+    granularity,
+    studentCount,
+    evalGridCustomConfig,
+  } = options;
+  const gridData = applyEvalGridCustomConfigToGridData(
+    rawGridData,
+    evalGridCustomConfig
+  );
   const isFr = docLang === "FR" || system === "MISSION_FRANCAISE";
+  const masteryCheckboxText = formatMasteryScaleCheckboxText(
+    evalGridCustomConfig,
+    isFr
+  );
 
   const lines: string[] = [];
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 
   lines.push([esc(isFr ? gridData.titleFr : gridData.titleAr)].join(";"));
   lines.push([esc(`${school} - ${prof} - ${year}`)].join(";"));
+  if (
+    evalGridCustomConfig?.pedagogicalDirectiveAr ||
+    evalGridCustomConfig?.pedagogicalDirectiveFr
+  ) {
+    lines.push(
+      [
+        esc(
+          isFr
+            ? evalGridCustomConfig.pedagogicalDirectiveFr
+            : evalGridCustomConfig.pedagogicalDirectiveAr
+        ),
+      ].join(";")
+    );
+  }
   lines.push("");
 
   // القسم الأول: شبكة التقويم التحليلية
@@ -1031,10 +1111,14 @@ export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
       esc(isFr ? "Capacité ciblée" : "القدرة المستهدفة"),
       esc(isFr ? "Niveau" : "المستوى المهاري"),
       esc(isFr ? "Barème (pts)" : "التنقيط"),
+      esc(isFr ? "Degré de maîtrise" : "مؤشرات التمكن"),
+      esc(isFr ? "Piste de remédiation" : "مؤشر الدعم والمعالجة"),
     ].join(";")
   );
 
   gridData.allQuestions.forEach((q) => {
+    const qOverride = evalGridCustomConfig?.questionOverrides?.[q.questionCode];
+    const remNote = qOverride?.remediationCriterionAr || "";
     lines.push(
       [
         esc(isFr ? `Ex ${q.exerciseNumber}` : `ت ${q.exerciseNumber}`),
@@ -1043,12 +1127,14 @@ export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
         esc(isFr ? q.capacityFr : q.capacityAr),
         esc(isFr ? q.levelLabelFr : q.levelLabelAr),
         esc(q.points),
+        esc(masteryCheckboxText),
+        esc(remNote),
       ].join(";")
     );
   });
 
   lines.push("");
-  // القسم الثاني: جدول تفريغ النقط
+  // القسم الثاني: استمارة تفريغ النقط المطبوعة
   const cols =
     granularity === "BY_QUESTION"
       ? gridData.allQuestions.map((q) => `${q.questionCode} (/${q.points})`)
@@ -1059,10 +1145,10 @@ export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
   lines.push(
     [
       esc("N°"),
-      esc(isFr ? "Nom & Prénom" : "الاسم والنسب"),
+      esc(isFr ? "Identifiant / Copie N°" : "الرقم الترتيبي للورقة"),
       ...cols.map(esc),
       esc(isFr ? "Total /20" : "المجموع /20"),
-      esc(isFr ? "Observation" : "الملاحظة وقرار الدعم"),
+      esc(isFr ? "Observation & Remédiation" : "الملاحظة وقرار الدعم"),
     ].join(";")
   );
 
@@ -1070,7 +1156,7 @@ export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
     lines.push(
       [
         esc(i),
-        esc(isFr ? `Élève ${i}` : `التلميذ(ة) ${i}`),
+        esc(isFr ? `Copie N° ${String(i).padStart(2, "0")}` : `ورقة رقم ${String(i).padStart(2, "0")}`),
         ...cols.map(() => ""),
         esc(""),
         esc(""),
@@ -1083,7 +1169,7 @@ export function exportEvaluationGridToCSV(options: ExcelExportOptions): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Grille_Depouillement_${granularity}.csv`;
+  a.download = `Grille_Evaluation_142_08_${granularity}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1681,4 +1767,426 @@ export const BAC_CERTIFIED_CURVE_PRESETS: BacCertifiedCurvePreset[] = [
 \\end{tikzpicture}`,
   },
 ];
+
+// ============================================================================
+// 4. مكتبة القوالب الجاهزة لشبكات التقويم المتوافقة مع المذكرة 142-08 (قابلة للتعديل المباشر)
+// ============================================================================
+
+export type EvalGridTemplateId =
+  | "ANALYTIC_142_08_OFFICIAL"
+  | "BAC_CADRE_REFERENCE_GRID"
+  | "SYNTHETIC_DOMAIN_GRID"
+  | "DIAGNOSTIC_ERROR_TAXONOMY_GRID"
+  | "COMPETENCY_SCIENTIFIC_COMMUNICATION_GRID"
+  | "DEVOIR_MAISON_AUTONOMY_GRID";
+
+export type EvalGridMasteryScaleType =
+  | "A_EC_NA"
+  | "NUMERIC_THRESHOLDS"
+  | "ERROR_TYPE_CODES"
+  | "FOUR_LEVELS_ABCD";
+
+export interface EvalGridQuestionOverride {
+  capacityAr?: string;
+  capacityFr?: string;
+  levelCode?: "N1" | "N2" | "N3";
+  points?: number;
+  remediationCriterionAr?: string;
+}
+
+export interface EvalGridCustomConfig142_08 {
+  templateId: EvalGridTemplateId;
+  customTitleAr: string;
+  customTitleFr: string;
+  officialReferenceAr: string;
+  officialReferenceFr: string;
+  pedagogicalDirectiveAr: string;
+  pedagogicalDirectiveFr: string;
+  granularity: GridGranularity;
+  recommendedN1: number;
+  recommendedN2: number;
+  recommendedN3: number;
+  masteryScaleType: EvalGridMasteryScaleType;
+  masteryLabelsAr: [string, string, string];
+  masteryLabelsFr: [string, string, string];
+  showCapacityColumn: boolean;
+  showSkillLevelColumn: boolean;
+  showMasteryColumn: boolean;
+  showRemediationColumn: boolean;
+  showTaxonomicSummaryBanner: boolean;
+  showInspectorVisaFooter: boolean;
+  printableMatrixRowsCount: number;
+  questionOverrides: Record<string, EvalGridQuestionOverride>;
+}
+
+export interface EvalGridTemplatePreset142_08 {
+  id: EvalGridTemplateId;
+  badgeAr: string;
+  badgeFr: string;
+  nameAr: string;
+  nameFr: string;
+  shortDescAr: string;
+  shortDescFr: string;
+  officialReferenceAr: string;
+  officialReferenceFr: string;
+  defaultConfig: Omit<EvalGridCustomConfig142_08, "questionOverrides">;
+}
+
+export const EVAL_GRID_TEMPLATES_142_08: EvalGridTemplatePreset142_08[] = [
+  {
+    id: "ANALYTIC_142_08_OFFICIAL",
+    badgeAr: "مذكرة 142-08 · تحليلي",
+    badgeFr: "Note 142-08 · Analytique",
+    nameAr: "1. الشبكة التحليلية الرسمية (المذكرة 142-08 — الأسئلة والقدرات والمستويات)",
+    nameFr: "1. Grille Analytique Officielle (Note 142-08 — Questions, Capacités & N1/N2/N3)",
+    shortDescAr:
+      "تفصيل دقيق لكل سؤال مع القدرة المنتظرة، المستوى المهاري (N1: 45% / N2: 40% / N3: 15%)، ومؤشر التحكم (أ / ج / د).",
+    shortDescFr:
+      "Détail analytique par question avec capacité attendue, niveau taxonomique (N1/N2/N3) et degré de maîtrise (A / EC / NA).",
+    officialReferenceAr: "المذكرة الوزارية رقم 142-08 والتوجيهات التربوية لمادة الرياضيات",
+    officialReferenceFr: "Note Ministérielle N° 142-08 & Orientations Pédagogiques",
+    defaultConfig: {
+      templateId: "ANALYTIC_142_08_OFFICIAL",
+      customTitleAr: "شبكة التقويم التحليلية الرسمية للفرض المحروس (المذكرة 142-08)",
+      customTitleFr: "Grille Analytique Officielle d'Évaluation du Devoir Surveillé (Note 142-08)",
+      officialReferenceAr: "المذكرة الوزارية رقم 142-08 — التقويم التربوي بالسلك الثانوي التأهيلي",
+      officialReferenceFr: "Note Ministérielle N° 142-08 — Évaluation Pédagogique au Secondaire Qualifiant",
+      pedagogicalDirectiveAr:
+        "تُستثمر هذه الشبكة لتوثيق سلم التنقيط المفصل ورصد درجة تملك القدرات المنتظرة حسب المستويات المهارية الثلاثة (N1، N2، N3).",
+      pedagogicalDirectiveFr:
+        "Cette grille documente le barème détaillé et le degré de maîtrise des capacités attendues selon les niveaux N1, N2 et N3.",
+      granularity: "BY_QUESTION",
+      recommendedN1: 45,
+      recommendedN2: 40,
+      recommendedN3: 15,
+      masteryScaleType: "A_EC_NA",
+      masteryLabelsAr: ["متحكم (A)", "في طور التحكم (EC)", "غير متحكم (NA)"],
+      masteryLabelsFr: ["Acquis (A)", "En cours (EC)", "Non acquis (NA)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: true,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 20,
+    },
+  },
+  {
+    id: "BAC_CADRE_REFERENCE_GRID",
+    badgeAr: "الأطر المرجعية · البكالوريا",
+    badgeFr: "Cadre de Référence · Bac",
+    nameAr: "2. شبكة الأطر المرجعية الوطنية للبكالوريا (تجزئة خطوات الاستدلال والنتيجة)",
+    nameFr: "2. Grille des Cadres de Référence du Baccalauréat (Barème fractionné & Rigueur)",
+    shortDescAr:
+      "مطابقة للأطر المرجعية المحينة (35% N1 / 45% N2 / 20% N3) مع توزيع النقطة بين سلامة البرهان ودقة النتيجة.",
+    shortDescFr:
+      "Conforme aux cadres de référence du Bac (35% N1 / 45% N2 / 20% N3) distinguant démarche et résultat final.",
+    officialReferenceAr: "الأطر المرجعية المحينة للامتحان الوطني الموحد للبكالوريا + المذكرة 142-08",
+    officialReferenceFr: "Cadres de Référence Révisés du Baccalauréat National + Note 142-08",
+    defaultConfig: {
+      templateId: "BAC_CADRE_REFERENCE_GRID",
+      customTitleAr: "شبكة التنقيط والتقويم المعيارية وفق الإطار المرجعي للبكالوريا",
+      customTitleFr: "Grille Standardisée de Barème et d'Évaluation — Cadre de Référence Bac",
+      officialReferenceAr: "الأطر المرجعية للامتحان الوطني الموحد للبكالوريا والمذكرة 142-08",
+      officialReferenceFr: "Cadres de Référence de l'Examen National du Baccalauréat & Note 142-08",
+      pedagogicalDirectiveAr:
+        "تُمنح 75% من نقطة كل سؤال لسلامة الطريقة والتعليل الرياضي، و25% لدقة التطبيق العددي والنتيجة النهائية (منع العقوبة المزدوجة).",
+      pedagogicalDirectiveFr:
+        "75% de la note est attribuée à la rigueur du raisonnement et 25% au résultat numérique (absence de double pénalité).",
+      granularity: "BY_QUESTION",
+      recommendedN1: 35,
+      recommendedN2: 45,
+      recommendedN3: 20,
+      masteryScaleType: "NUMERIC_THRESHOLDS",
+      masteryLabelsAr: ["تمكن جيد (≥75%)", "تمكن متوسط (50-74%)", "تعثر (<50%)"],
+      masteryLabelsFr: ["Maîtrise élevée (≥75%)", "Maîtrise moyenne (50-74%)", "Fragile (<50%)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: true,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 25,
+    },
+  },
+  {
+    id: "SYNTHETIC_DOMAIN_GRID",
+    badgeAr: "شبكة مدمجة · حسب التمارين",
+    badgeFr: "Synthétique · Par Exercice",
+    nameAr: "3. الشبكة الإجمالية المدمجة حسب التمارين والمجالات الرياضياتية (صفحة A4 واحدة)",
+    nameFr: "3. Grille Synthétique par Exercice et Domaine Mathématique (Compacte 1 page A4)",
+    shortDescAr:
+      "شبكة مختصرة ومثالية للإرفاق المباشر مع موضوع الفرض أو دفتر النصوص، تعرض حصيلة كل تمرين والمهارات المستهدفة.",
+    shortDescFr:
+      "Grille synthétique idéale pour le cahier de textes et le dossier d'examen, résumant chaque exercice et ses capacités.",
+    officialReferenceAr: "المذكرة 142-08 — بطاقة التقويم الإجمالية المرفقة بملف الفرض المحروس",
+    officialReferenceFr: "Note 142-08 — Fiche Synthétique d'Évaluation du Dossier d'Examen",
+    defaultConfig: {
+      templateId: "SYNTHETIC_DOMAIN_GRID",
+      customTitleAr: "شبكة التقويم الإجمالية حسب التمارين والمجالات الرياضياتية (142-08)",
+      customTitleFr: "Grille d'Évaluation Synthétique par Exercice et Domaine Mathématique (142-08)",
+      officialReferenceAr: "المذكرة الوزارية رقم 142-08 — التوثيق البيداغوجي بدفتر النصوص",
+      officialReferenceFr: "Note Ministérielle N° 142-08 — Documentation du Cahier de Textes",
+      pedagogicalDirectiveAr:
+        "تُلخص هذه الوثيقة الأوزان النسبية للتمارين وتوزيع النقط على فروع المادة (التحليل، الجبر، الهندسة، الاحتمالات).",
+      pedagogicalDirectiveFr:
+        "Ce document synthétise la pondération des exercices et la répartition des points par domaine mathématique.",
+      granularity: "BY_EXERCISE",
+      recommendedN1: 45,
+      recommendedN2: 40,
+      recommendedN3: 15,
+      masteryScaleType: "A_EC_NA",
+      masteryLabelsAr: ["متحكم (A)", "في طور التحكم (EC)", "غير متحكم (NA)"],
+      masteryLabelsFr: ["Acquis (A)", "En cours (EC)", "Non acquis (NA)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: false,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 18,
+    },
+  },
+  {
+    id: "DIAGNOSTIC_ERROR_TAXONOMY_GRID",
+    badgeAr: "تشخيص الأخطاء · وثائق الدعم",
+    badgeFr: "Diagnostic · Remédiation",
+    nameAr: "4. شبكة تشخيص التعثرات وتصنيف الأخطاء لإنتاج وثائق الدعم الفارقي (142-08)",
+    nameFr: "4. Grille de Diagnostic et Typologie des Erreurs pour Fiches de Remédiation",
+    shortDescAr:
+      "تصنف تعثرات المتعلمين إلى أخطاء مفاهيمية (C) أو حسابية/جبرية (A) أو استدلالية (R) لتوجيه بناء مطبوع الدعم.",
+    shortDescFr:
+      "Catégorise les erreurs (Conceptuelle C, Algébrique A, Raisonnement R) pour cibler la production des fiches de soutien.",
+    officialReferenceAr: "المذكرة 142-08 — استثمار نتائج الفروض في بناء خطط ووثائق الدعم التربوي",
+    officialReferenceFr: "Note 142-08 — Exploitation des Devoirs pour la Production des Fiches de Soutien",
+    defaultConfig: {
+      templateId: "DIAGNOSTIC_ERROR_TAXONOMY_GRID",
+      customTitleAr: "شبكة تشخيص الصعوبات وتصنيف الأخطاء لإعداد وثائق الدعم والمعالجة",
+      customTitleFr: "Grille de Diagnostic des Difficultés et Typologie des Erreurs (Remédiation)",
+      officialReferenceAr: "المذكرة 142-08 — محطة الاستثمار الديداكتيكي وبناء وثائق المعالجة",
+      officialReferenceFr: "Note 142-08 — Dispositif de Diagnostic Didactique et Fiches de Remédiation",
+      pedagogicalDirectiveAr:
+        "ترميز تشخيص الأخطاء في الشبكة: [C] خطأ مفاهيمي في استيعاب الخاصية · [A] خطأ تقني/حسابي جبري · [R] خلل في صياغة الاستدلال والبرهان.",
+      pedagogicalDirectiveFr:
+        "Codage diagnostique : [C] Erreur conceptuelle · [A] Erreur algébrique/calculatoire · [R] Raisonnement incomplet.",
+      granularity: "BY_QUESTION",
+      recommendedN1: 50,
+      recommendedN2: 35,
+      recommendedN3: 15,
+      masteryScaleType: "ERROR_TYPE_CODES",
+      masteryLabelsAr: ["خطأ مفاهيمي (C)", "خطأ حسابي (A)", "خطأ استدلالي (R)"],
+      masteryLabelsFr: ["Conceptuel (C)", "Algébrique (A)", "Raisonnement (R)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: true,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 20,
+    },
+  },
+  {
+    id: "COMPETENCY_SCIENTIFIC_COMMUNICATION_GRID",
+    badgeAr: "الكفايات المنهجية · OP 2007",
+    badgeFr: "Compétences · OP 2007",
+    nameAr: "5. شبكة تقويم الكفايات المنهجية والبرهان والتواصل الرياضي (OP 2007 & 142-08)",
+    nameFr: "5. Grille d'Évaluation par Compétences, Raisonnement et Communication (OP 2007)",
+    shortDescAr:
+      "تركز على البحث، النمذجة، الاستدلال المنطقي، وجودة التعبير الرمزي والمبياني وفق التوجيهات التربوية 2007.",
+    shortDescFr:
+      "Évalue la recherche, la modélisation, la rigueur déductive et la communication mathématique écrite et graphique.",
+    officialReferenceAr: "التوجيهات التربوية والبرامج الخاصة بتدريس الرياضيات (2007) والمذكرة 142-08",
+    officialReferenceFr: "Orientations Pédagogiques (OP 2007) & Note Ministérielle N° 142-08",
+    defaultConfig: {
+      templateId: "COMPETENCY_SCIENTIFIC_COMMUNICATION_GRID",
+      customTitleAr: "شبكة تقويم الكفايات المنهجية والاستدلال والتواصل الرياضي",
+      customTitleFr: "Grille d'Évaluation des Compétences Méthodologiques et de la Rigueur Mathématique",
+      officialReferenceAr: "التوجيهات التربوية الرسمية (2007) والمذكرة الوزارية 142-08",
+      officialReferenceFr: "Orientations Pédagogiques Officielles (2007) & Note 142-08",
+      pedagogicalDirectiveAr:
+        "تُقوّم هذه الشبكة مدى قدرة المتعلم على ترييض الوضعيات، توظيف الاستلزام والتكافؤ السليم، وتأويل النتائج مبيانياً.",
+      pedagogicalDirectiveFr:
+        "Évalue la capacité à modéliser, conduire un raisonnement déductif rigoureux et interpréter graphiquement.",
+      granularity: "BY_QUESTION",
+      recommendedN1: 40,
+      recommendedN2: 40,
+      recommendedN3: 20,
+      masteryScaleType: "FOUR_LEVELS_ABCD",
+      masteryLabelsAr: ["امتياز (A)", "تحكم مقبول (B)", "تحكم جزئي (C) / تعثر (D)"],
+      masteryLabelsFr: ["Expert (A)", "Satisfaisant (B)", "Partiel (C) / Fragile (D)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: true,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 20,
+    },
+  },
+  {
+    id: "DEVOIR_MAISON_AUTONOMY_GRID",
+    badgeAr: "الفرض المنزلي · DM 142-08",
+    badgeFr: "Devoir Maison · DM",
+    nameAr: "6. شبكة تقويم الفرض المنزلي والبحث الذاتي وجودة التحرير (DM 142-08)",
+    nameFr: "6. Grille d'Évaluation du Devoir Maison, Initiative & Qualité de Rédaction",
+    shortDescAr:
+      "مخصصة للفروض المنزلية وسلاسل البحث، تدمج معايير تنظيم الورقة، المبادرة في المسائل المفتوحة، والمناقشة المبيانية.",
+    shortDescFr:
+      "Dédiée aux Devoirs Maison (DM), intégrant le soin de la rédaction, la prise d'initiative et la recherche autonome.",
+    officialReferenceAr: "المذكرة الوزارية رقم 142-08 — ضوابط الفروض المنزلية واستثمارها البيداغوجي",
+    officialReferenceFr: "Note Ministérielle N° 142-08 — Encadrement et Évaluation des Devoirs Maison",
+    defaultConfig: {
+      templateId: "DEVOIR_MAISON_AUTONOMY_GRID",
+      customTitleAr: "شبكة تقويم الفرض المنزلي ومؤشرات البحث الذاتي وجودة التحرير الرياضي",
+      customTitleFr: "Grille d'Évaluation du Devoir Maison (DM) — Recherche & Qualité de Rédaction",
+      officialReferenceAr: "المذكرة الوزارية رقم 142-08 — تأطير الفروض المنزلية والمشاريع الفردية",
+      officialReferenceFr: "Note Ministérielle N° 142-08 — Évaluation des Devoirs à la Maison",
+      pedagogicalDirectiveAr:
+        "يُراعى في تقويم الفرض المنزلي وضوح التعليل، دقة الرسوم المبيانية، والأمانة العلمية في تحرير خطوات الحل.",
+      pedagogicalDirectiveFr:
+        "L'évaluation du DM valorise la clarté des justifications, le soin des graphiques et l'autonomie de la recherche.",
+      granularity: "BY_EXERCISE",
+      recommendedN1: 30,
+      recommendedN2: 45,
+      recommendedN3: 25,
+      masteryScaleType: "A_EC_NA",
+      masteryLabelsAr: ["تحرير متقن (A)", "تحرير مقبول (EC)", "يحتاج لتعميق (NA)"],
+      masteryLabelsFr: ["Rédaction soignée (A)", "Acceptable (EC)", "À approfondir (NA)"],
+      showCapacityColumn: true,
+      showSkillLevelColumn: true,
+      showMasteryColumn: true,
+      showRemediationColumn: true,
+      showTaxonomicSummaryBanner: true,
+      showInspectorVisaFooter: true,
+      printableMatrixRowsCount: 20,
+    },
+  },
+];
+
+export function getEvalGridTemplateById(
+  id: EvalGridTemplateId
+): EvalGridTemplatePreset142_08 {
+  return (
+    EVAL_GRID_TEMPLATES_142_08.find((t) => t.id === id) ||
+    EVAL_GRID_TEMPLATES_142_08[0]
+  );
+}
+
+export function createCustomConfigFromTemplate(
+  id: EvalGridTemplateId,
+  existingOverrides: Record<string, EvalGridQuestionOverride> = {}
+): EvalGridCustomConfig142_08 {
+  const tpl = getEvalGridTemplateById(id);
+  return {
+    ...tpl.defaultConfig,
+    masteryLabelsAr: [...tpl.defaultConfig.masteryLabelsAr] as [string, string, string],
+    masteryLabelsFr: [...tpl.defaultConfig.masteryLabelsFr] as [string, string, string],
+    questionOverrides: { ...existingOverrides },
+  };
+}
+
+export function formatMasteryScaleCheckboxText(
+  config?: EvalGridCustomConfig142_08,
+  isFr: boolean = false
+): string {
+  if (!config) {
+    return isFr
+      ? "[ ] Acquis (A)   [ ] En cours (EC)   [ ] Non acquis (NA)"
+      : "[ ] متحكم (A)   [ ] في طور التحكم (EC)   [ ] غير متحكم (NA)";
+  }
+  const labels = isFr ? config.masteryLabelsFr : config.masteryLabelsAr;
+  return `[ ] ${labels[0]}   [ ] ${labels[1]}   [ ] ${labels[2]}`;
+}
+
+export function getLevelLabelsForCode(levelCode: "N1" | "N2" | "N3"): {
+  levelLabelAr: string;
+  levelLabelFr: string;
+} {
+  if (levelCode === "N1") {
+    return {
+      levelLabelAr: "تطبيق مباشر (N1)",
+      levelLabelFr: "Application directe (N1)",
+    };
+  }
+  if (levelCode === "N3") {
+    return {
+      levelLabelAr: "توليف ومبادرة (N3)",
+      levelLabelFr: "Synthèse & Initiative (N3)",
+    };
+  }
+  return {
+    levelLabelAr: "تعبئة واستدلال (N2)",
+    levelLabelFr: "Mobilisation & Raisonnement (N2)",
+  };
+}
+
+/**
+ * يدمج التعديلات المباشرة التي أجراها الأستاذ في لوحة إعدادات التقويم مع بيانات شبكة التقويم
+ */
+export function applyEvalGridCustomConfigToGridData(
+  baseGrid: CustomEvaluationGridData,
+  config?: EvalGridCustomConfig142_08
+): CustomEvaluationGridData {
+  if (!config) return baseGrid;
+
+  const updatedAllQuestions: EvaluationQuestionRow[] = [];
+  const updatedExercises: EvaluationExerciseSummary[] = baseGrid.exercises.map(
+    (ex) => {
+      const updatedQuestions = ex.questions.map((q) => {
+        const ov = config.questionOverrides[q.questionCode];
+        if (!ov) {
+          updatedAllQuestions.push(q);
+          return q;
+        }
+        const nextLevel = ov.levelCode || q.levelCode;
+        const levelLabels = getLevelLabelsForCode(nextLevel);
+        const nextPts =
+          typeof ov.points === "number" && !Number.isNaN(ov.points) && ov.points >= 0
+            ? Number(ov.points.toFixed(2))
+            : q.points;
+        const nextRow: EvaluationQuestionRow = {
+          ...q,
+          capacityAr: ov.capacityAr?.trim() ? ov.capacityAr.trim() : q.capacityAr,
+          capacityFr: ov.capacityFr?.trim() ? ov.capacityFr.trim() : q.capacityFr,
+          levelCode: nextLevel,
+          levelLabelAr: levelLabels.levelLabelAr,
+          levelLabelFr: levelLabels.levelLabelFr,
+          points: nextPts,
+        };
+        updatedAllQuestions.push(nextRow);
+        return nextRow;
+      });
+
+      const exTotal = Number(
+        updatedQuestions.reduce((acc, item) => acc + item.points, 0).toFixed(2)
+      );
+
+      return {
+        ...ex,
+        totalPoints: exTotal,
+        questions: updatedQuestions,
+      };
+    }
+  );
+
+  const totalPts = Number(
+    updatedAllQuestions.reduce((acc, q) => acc + q.points, 0).toFixed(2)
+  );
+
+  return {
+    ...baseGrid,
+    titleAr: config.customTitleAr?.trim() || baseGrid.titleAr,
+    titleFr: config.customTitleFr?.trim() || baseGrid.titleFr,
+    subtitleAr: config.officialReferenceAr?.trim()
+      ? `${config.officialReferenceAr.trim()} · ${baseGrid.subtitleAr}`
+      : baseGrid.subtitleAr,
+    subtitleFr: config.officialReferenceFr?.trim()
+      ? `${config.officialReferenceFr.trim()} · ${baseGrid.subtitleFr}`
+      : baseGrid.subtitleFr,
+    exercises: updatedExercises,
+    allQuestions: updatedAllQuestions,
+    totalPoints: totalPts,
+  };
+}
+
 

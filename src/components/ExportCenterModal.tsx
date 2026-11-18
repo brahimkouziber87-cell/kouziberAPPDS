@@ -21,6 +21,8 @@ import {
   exportStandaloneHTML,
   exportEditableWordDoc,
   exportPreviewToPDF,
+  exportInstitutionalFoldedA5PDF,
+  InstitutionalA5LayoutMode,
   PrintMarginPreset,
   PrintColorMode,
   PrintDpiQuality,
@@ -59,6 +61,7 @@ export interface ExportCenterModalProps {
   interactiveExamUrl?: string;
   includeInteractiveQrFooter?: boolean;
   onOpenExportDashboard?: () => void;
+  onOpenLmsExport?: () => void;
   onFileExported?: (
     fileName: string,
     category: "PDF" | "OVERLEAF_ZIP" | "LATEX_TYPST" | "EXCEL_CSV" | "HTML_JSON",
@@ -97,10 +100,18 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
   interactiveExamUrl,
   includeInteractiveQrFooter = true,
   onOpenExportDashboard,
+  onOpenLmsExport,
   onFileExported,
 }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingOverleafZip, setIsExportingOverleafZip] = useState(false);
+  const [isExportingInstitutionalA5, setIsExportingInstitutionalA5] = useState(false);
+  const [institutionalA5Mode, setInstitutionalA5Mode] =
+    useState<InstitutionalA5LayoutMode>("AUTO_ECO_50");
+  const [institutionalBindingEdge, setInstitutionalBindingEdge] = useState<
+    "RTL_RIGHT" | "LTR_LEFT"
+  >("RTL_RIGHT");
+  const [institutionalFoldGuides, setInstitutionalFoldGuides] = useState(true);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
   const [includeFooterQrCode, setIncludeFooterQrCode] = useState(includeInteractiveQrFooter);
   const [autoAdjustA4Layout, setAutoAdjustA4Layout] = useState(true);
@@ -111,7 +122,7 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
   // حالة شريط التقدم ومؤشر التوليد التفاعلي
   const [generatingStatus, setGeneratingStatus] = useState<{
     active: boolean;
-    type: "PDF" | "ZIP" | null;
+    type: "PDF" | "ZIP" | "A5_ECO" | null;
     progress: number;
     stageTitle: string;
     stageDetail: string;
@@ -320,6 +331,83 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
       onNotify("info", "تم فتح نافذة حفظ PDF المباشرة للمتصفح.");
     } finally {
       setIsExportingPDF(false);
+      setGeneratingStatus({
+        active: false,
+        type: null,
+        progress: 0,
+        stageTitle: "",
+        stageDetail: "",
+      });
+    }
+  };
+
+  // تصدير خيار «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي لتقليل استهلاك الورق بنسبة 50%
+  const handleExportInstitutionalFoldedA5 = async () => {
+    if (isExportingInstitutionalA5 || generatingStatus.active) return;
+    setIsExportingInstitutionalA5(true);
+    setGeneratingStatus({
+      active: true,
+      type: "A5_ECO",
+      progress: 22,
+      stageTitle: "تهيئة تخطيط الطباعة المجمعة للمؤسسات (A5 مطوي -50% ورق)...",
+      stageDetail: "تحجيم صفحات الفرض بدقة متجهية لتناسب نصفي ورقة A4 الأفقية (2×A5)",
+    });
+    onNotify(
+      "info",
+      "جاري توليد ملف الطباعة المجمعة للمؤسسات بتنسيق A5 مطوي لتقليل استهلاك الورق بنسبة 50%..."
+    );
+
+    try {
+      await sleep(350);
+      setGeneratingStatus((prev) => ({
+        ...prev,
+        progress: 58,
+        stageTitle: "ترتيب الصفحات المتقابلة وإدراج خط الطي والقص الوسطي (✂)...",
+        stageDetail: "ضبط الهوامش المدرسية المزدوجة وتأمين الترويسة والتذييل لكل نصف A5",
+      }));
+
+      const foldedFileName = `${baseFileName}_A5_Plie_Eco50.pdf`;
+      const res = await exportInstitutionalFoldedA5PDF({
+        elementId: "printable-document-sheet",
+        fileName: foldedFileName,
+        layoutMode: institutionalA5Mode,
+        bindingEdge: institutionalBindingEdge,
+        addFoldGuides: institutionalFoldGuides,
+        docTitle: documentFileTag,
+        headerMeta: `${school} · ${year}`,
+        colorMode,
+        interactiveQuizUrl: interactiveExamUrl,
+        includeFooterQrCode,
+      });
+
+      setGeneratingStatus({
+        active: true,
+        type: "A5_ECO",
+        progress: 100,
+        stageTitle: "اكتمل تصدير الفرض بتنسيق A5 المطوي للمؤسسات!",
+        stageDetail: `تم تقليص استهلاك الورق بنسبة ${res.paperSavedPercent}% (${res.physicalA4Sheets} ورقة A4 لـ ${res.a5PanelsCount} صفحات A5).`,
+      });
+      await sleep(400);
+
+      onFileExported?.(
+        res.fileName,
+        "PDF",
+        `الطباعة المجمعة للمؤسسات A5 مطوي (-50% ورق · ${res.physicalA4Sheets} أوراق A4)`,
+        295.0
+      );
+      onNotify(
+        "success",
+        `✓ تم تصدير الفرض بنمط «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي (${res.fileName}) — توفير 50% من استهلاك الورق (${res.physicalA4Sheets} أوراق A4 بدلاً من ${res.a5PanelsCount})!`
+      );
+      onClose();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "تعذر توليد ملف الطباعة المجمعة للمؤسسات بتنسيق A5 مطوي.";
+      onNotify("error", msg);
+    } finally {
+      setIsExportingInstitutionalA5(false);
       setGeneratingStatus({
         active: false,
         type: null,
@@ -684,6 +772,115 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
             </button>
           </div>
 
+          {/* 1. ب- الطباعة المجمعة للمؤسسات بتنسيق A5 مطوي لتقليل استهلاك الورق بنسبة 50% */}
+          <div
+            className={`p-4 rounded-2xl border-2 border-emerald-600/80 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/50 transition shadow-xs hover:shadow-md space-y-3 ${
+              generatingStatus.active ? "opacity-60 pointer-events-none" : ""
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-black text-sm text-slate-950">
+                      الطباعة المجمعة للمؤسسات (تنسيق A5 مطوي — توفير 50% من الورق)
+                    </h4>
+                    <span className="text-[10px] font-mono text-emerald-900 bg-emerald-100 border border-emerald-300 font-black px-2 py-0.5 rounded-md">
+                      -50% استهلاك الورق · A4 → 2×A5
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    تصدير الفروض بتنسيق <strong>A5 مطوي</strong> على أوراق A4 أفقية (صفحتان A5 في كل ورقة A4 مع خط الطي والقص الوسطي ✂) لتقليص استهلاك الورق في المؤسسات التعليمية بنسبة <strong>50%</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={generatingStatus.active}
+                onClick={() => handleExportInstitutionalFoldedA5()}
+                className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs shrink-0 shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>
+                  {generatingStatus.type === "A5_ECO"
+                    ? "جاري التوليد..."
+                    : "تصدير A5 مطوي (-50% ورق)"}
+                </span>
+              </button>
+            </div>
+
+            {/* شريط الضبط السريع لنمط طي A5 للمؤسسات */}
+            <div className="pt-2.5 border-t border-emerald-200/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-black text-emerald-950">نمط التجميع A5:</span>
+                <button
+                  type="button"
+                  onClick={() => setInstitutionalA5Mode("AUTO_ECO_50")}
+                  className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
+                    institutionalA5Mode === "AUTO_ECO_50"
+                      ? "bg-emerald-800 text-white border-emerald-900 shadow-2xs"
+                      : "bg-white text-slate-700 border-slate-300 hover:bg-emerald-50"
+                  }`}
+                >
+                  تلقائي ذكي (طي A5 / 2-Up -50%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstitutionalA5Mode("DUAL_COPY_2UP")}
+                  className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
+                    institutionalA5Mode === "DUAL_COPY_2UP"
+                      ? "bg-emerald-800 text-white border-emerald-900 shadow-2xs"
+                      : "bg-white text-slate-700 border-slate-300 hover:bg-emerald-50"
+                  }`}
+                >
+                  نسختان متجاورتان في ورقة A4 (لقسم كامل)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstitutionalA5Mode("BOOKLET_FOLDED_A5")}
+                  className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
+                    institutionalA5Mode === "BOOKLET_FOLDED_A5"
+                      ? "bg-emerald-800 text-white border-emerald-900 shadow-2xs"
+                      : "bg-white text-slate-700 border-slate-300 hover:bg-emerald-50"
+                  }`}
+                >
+                  كتيب A5 مطوي مركزي (Saddle-Stitch)
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setInstitutionalBindingEdge((prev) =>
+                      prev === "RTL_RIGHT" ? "LTR_LEFT" : "RTL_RIGHT"
+                    )
+                  }
+                  className="px-2 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold hover:bg-emerald-50 transition cursor-pointer"
+                  title="تغيير اتجاه طي الصفحات بين العربي (RTL) والفرنسي الدولي (LTR)"
+                >
+                  {institutionalBindingEdge === "RTL_RIGHT"
+                    ? "اتجاه الطي: عربي (RTL)"
+                    : "اتجاه الطي: فرنسي (LTR)"}
+                </button>
+
+                <label className="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={institutionalFoldGuides}
+                    onChange={(e) => setInstitutionalFoldGuides(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-emerald-700 accent-emerald-700"
+                  />
+                  <span>خط الطي والقص الوسطي (✂)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* 2. طباعة PDF المتجهي النقي عبر المتصفح */}
           <div
             onClick={() => {
@@ -855,9 +1052,17 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
             </div>
           </div>
 
-          {/* تصدير بنك الأسئلة الموحد لمنصة تلميذ تيس ومودل Moodle XML */}
+          {/* تصدير التقييم الرقمي التفاعلي لأنظمة LMS (Moodle / Google Classroom / IMS QTI) */}
           <div
-            onClick={() => !generatingStatus.active && handleExportMoodleXml()}
+            onClick={() => {
+              if (generatingStatus.active) return;
+              if (onOpenLmsExport) {
+                onClose();
+                onOpenLmsExport();
+              } else {
+                handleExportMoodleXml();
+              }
+            }}
             className={`p-4 rounded-2xl border-2 border-amber-600/70 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/30 transition shadow-2xs hover:shadow-md flex items-center justify-between gap-4 group ${
               generatingStatus.active
                 ? "opacity-60 cursor-not-allowed"
@@ -865,31 +1070,51 @@ export const ExportCenterModal: React.FC<ExportCenterModalProps> = ({
             }`}
           >
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition font-black text-sm">
-                XML
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition font-black text-xs">
+                LMS
               </div>
               <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h4 className="font-black text-sm text-slate-950">
-                    تصدير بنك الأسئلة لمنصة تلميذ تيس ومودل (Moodle XML)
+                    التصدير التفاعلي لأنظمة LMS (Moodle · Google Classroom · IMS QTI)
                   </h4>
                   <span className="text-[10px] font-mono text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded border border-amber-300">
-                    TelmidTICE / Moodle LMS
+                    Moodle XML · GIFT · Classroom Quiz &amp; Rubric
                   </span>
                 </div>
                 <p className="text-xs text-slate-600">
-                  تصدير الفرض بكامل أسئلته وعناصره وسلم النقط بصيغة Moodle XML المعيارية للاستيراد المباشر في المنصات الافتراضية للوزارة.
+                  تصدير الفرض بتنسيق تفاعلي مع تصحيح آلي لأسئلة QCM وشبكة تقويم Google Classroom CSV وحزمة Moodle/TelmidTICE.
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled={generatingStatus.active}
-              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shrink-0 transition shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              تحميل .xml
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onOpenLmsExport && (
+                <button
+                  type="button"
+                  disabled={generatingStatus.active}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                    onOpenLmsExport();
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  فتح أستوديو LMS
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={generatingStatus.active}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleExportMoodleXml();
+                }}
+                className="px-3 py-2 rounded-xl bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs transition shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                Moodle .xml
+              </button>
+            </div>
           </div>
 
           {/* 4. تصدير كود Typst الحديث (.typ) */}

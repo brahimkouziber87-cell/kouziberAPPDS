@@ -4,6 +4,10 @@ import {
   LessonItem,
   SerieExerciseBlock,
 } from "../data/curriculum";
+import {
+  decomposeQuestionIntoSubQuestions,
+  SubQuestionDecompositionMode,
+} from "./dsSupervisedExamEnhancements";
 
 export interface QuestionSolution {
   questionNumber: string;
@@ -919,3 +923,77 @@ export function generateConfiguredSerieCorrection(
   };
 }
 
+/**
+ * المرحلة 5 من خارطة الطريق:
+ * توليد عناصر الإجابة وسلم التنقيط المتطابق سطراً بسطر مع الأسئلة الفرعية (أ، ب، ج / a, b, c) بدقة 0.25 نقطة
+ */
+export function generateSubQuestionAlignedCorrection(params: {
+  lesson: LessonItem;
+  exerciseIndex: number;
+  model?: "A" | "B" | string;
+  questionsAr?: string[];
+  questionsFr?: string[];
+  decompositionMode?: SubQuestionDecompositionMode;
+}): ExerciseCorrection {
+  const {
+    lesson,
+    exerciseIndex,
+    model = "A",
+    questionsAr = [],
+    questionsFr = [],
+    decompositionMode = "STRUCTURED_ABC_ALL",
+  } = params;
+
+  const baseCorrection = generateExerciseCorrection(
+    lesson,
+    exerciseIndex,
+    model,
+    questionsAr,
+    questionsFr
+  );
+
+  if (decompositionMode === "NONE") {
+    return baseCorrection;
+  }
+
+  const alignedSolutions: QuestionSolution[] = baseCorrection.solutions.map((sol, idx) => {
+    const rawPts = parseFloat(String(sol.bareme).replace(/[^\d.]/g, "")) || 1.5;
+    const qTextAr = questionsAr[idx] || sol.questionText;
+    const qTextFr = questionsFr[idx] || sol.questionText;
+
+    const decomp = decomposeQuestionIntoSubQuestions({
+      questionAr: qTextAr,
+      questionFr: qTextFr,
+      parentPoints: rawPts,
+      parentLevel: "N2",
+      mode: decompositionMode,
+      questionIndex: idx,
+      lessonTitleAr: lesson.lessonAr,
+      lessonTitleFr: lesson.lessonFr,
+    });
+
+    const subBreakdownAr = decomp.subQuestions.map(
+      (sq, sIdx) =>
+        `${sq.labelAr}) [${sq.points.toFixed(2)} ن · ${sq.level}]: ${
+          sol.baremeBreakdownAr[sIdx] || sq.textAr
+        }`
+    );
+    const subBreakdownFr = decomp.subQuestions.map(
+      (sq, sIdx) =>
+        `${sq.labelFr}) [${sq.points.toFixed(2)} pt · ${sq.level}]: ${
+          sol.baremeBreakdownFr[sIdx] || sq.textFr
+        }`
+    );
+
+    return {
+      ...sol,
+      baremeBreakdownAr: subBreakdownAr,
+      baremeBreakdownFr: subBreakdownFr,
+    };
+  });
+
+  return {
+    ...baseCorrection,
+    solutions: alignedSolutions,
+  };
+}

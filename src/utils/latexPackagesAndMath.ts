@@ -12,11 +12,15 @@ export type PaperSurfaceTexture =
   | "ACADEMIC_IVORY";
 
 export type StudentGridStyle =
+  | "SEYES_HD_PRO"
   | "SEYES_FRENCH"
   | "LINED_RULED"
   | "MILLIMETER_GRID"
   | "DOTTED_BOX"
   | "PLAIN_BOX";
+
+export type { SeyesSpacingPreset } from "./latexImporterAndSeyesEngine";
+export { SEYES_SPACING_OPTIONS } from "./latexImporterAndSeyesEngine";
 
 export interface LatexPackageOption {
   id: LatexPackageTheme;

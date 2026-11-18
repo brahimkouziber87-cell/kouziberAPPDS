@@ -286,6 +286,21 @@
   line-height: 1.82 !important;
 }
 
+/* 9. خط مخصص مرفوع من جهاز المستخدم (.ttf / .otf) للترويسة والعناوين */
+.calligraphy-title-custom-uploaded,
+.doc-font-academic .calligraphy-title-custom-uploaded,
+.doc-font-modern .calligraphy-title-custom-uploaded,
+.doc-font-official .calligraphy-title-custom-uploaded,
+.doc-font-handwritten .calligraphy-title-custom-uploaded,
+.doc-font-notebook .calligraphy-title-custom-uploaded,
+.doc-font-maghribi .calligraphy-title-custom-uploaded,
+.doc-font-board .calligraphy-title-custom-uploaded {
+  font-family: var(--custom-uploaded-title-font, 'Amiri', 'Cairo', serif) !important;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "kern" 1 !important;
+  letter-spacing: var(--title-letter-spacing, 0.015em) !important;
+  line-height: 1.75 !important;
+}
+
 /* إطار وزخرفة الترويسة المغربية الرسمية عند اعتماد الخط الأندلسي المغربي */
 .andalusi-maghribi-official-header {
   border-color: #78350f !important;
@@ -419,12 +434,11 @@
 }
 
 .paper-surface-seyes {
-  background-color: #fdfefe;
-  background-image:
-    linear-gradient(to bottom, rgba(99, 102, 241, 0.18) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-    linear-gradient(to right, rgba(99, 102, 241, 0.14) 1px, transparent 1px);
-  background-size: 100% 32px, 100% 8px, 32px 100%;
+  background-color: #fdfdff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36' shape-rendering='crispEdges'><line x1='0' y1='9' x2='36' y2='9' stroke='%230284c7' stroke-opacity='0.18' stroke-width='0.7'/><line x1='0' y1='18' x2='36' y2='18' stroke='%230284c7' stroke-opacity='0.18' stroke-width='0.7'/><line x1='0' y1='27' x2='36' y2='27' stroke='%230284c7' stroke-opacity='0.18' stroke-width='0.7'/><line x1='0' y1='36' x2='36' y2='36' stroke='%236d28d9' stroke-opacity='0.28' stroke-width='1.05'/><line x1='36' y1='0' x2='36' y2='36' stroke='%236d28d9' stroke-opacity='0.22' stroke-width='0.95'/></svg>");
+  background-size: 36px 36px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .paper-surface-ivory {
@@ -637,6 +651,31 @@
     max-height: none !important;
     height: auto !important;
     padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* عزل ورقة الإجابة القياسية A4 (OMR) عند طباعتها مباشرة من الماسح الضوئي */
+  body.printing-omr-sheet .print-sheet,
+  body.printing-omr-sheet header,
+  body.printing-omr-sheet aside {
+    display: none !important;
+  }
+
+  body.printing-omr-sheet .omr-modal-root {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  body.printing-omr-sheet .omr-modal-card {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
     background: #ffffff !important;
   }
 }

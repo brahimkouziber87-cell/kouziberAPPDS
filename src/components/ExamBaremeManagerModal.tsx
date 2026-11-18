@@ -19,6 +19,11 @@ import {
   getVariantQuestions,
 } from "../data/curriculum";
 import { validateCustomQuestionWithMathJS } from "../utils/mathjsValidator";
+import {
+  decomposeQuestionIntoSubQuestions,
+  serializeSubQuestionsToQuestionText,
+  SubQuestionDecompositionMode,
+} from "../utils/dsSupervisedExamEnhancements";
 
 export interface ExamBaremeManagerModalProps {
   isOpen: boolean;
@@ -46,6 +51,8 @@ export interface ExamBaremeManagerModalProps {
   dsQuestionDensity?: DSQuestionDensity;
   dsStructureMode?: MoroccanDSStructureMode;
   isMission?: boolean;
+  subQuestionDecompositionMode?: SubQuestionDecompositionMode;
+  onChangeSubQuestionDecompositionMode?: (mode: SubQuestionDecompositionMode) => void;
 }
 
 export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
@@ -70,6 +77,8 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
   dsQuestionDensity = "STANDARD",
   dsStructureMode = "STANDARD_142_08",
   isMission = false,
+  subQuestionDecompositionMode = "STRUCTURED_ABC_ALL",
+  onChangeSubQuestionDecompositionMode,
 }) => {
   const [editingQuestionKey, setEditingQuestionKey] = useState<string | null>(null);
   const [draftAr, setDraftAr] = useState("");
@@ -413,6 +422,49 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* شريط التحكم في تجزئة الأسئلة إلى أسئلة فرعية (أ، ب، ج / a, b, c) */}
+          <div className="bg-indigo-950 text-white p-2.5 rounded-xl border border-indigo-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="bg-cyan-400 text-slate-950 font-mono font-black px-2 py-0.5 rounded text-[10.5px]">
+                أ · ب · ج / a · b · c
+              </span>
+              <span className="font-extrabold text-cyan-100">
+                نظام تجزئة الأسئلة الرئيسية إلى أسئلة فرعية متدرجة بسلم تنقيط جزئي :
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  {
+                    id: "STRUCTURED_ABC_ALL" as const,
+                    label: "تجزئة شاملة (أ، ب، ج) لكل سؤال",
+                  },
+                  {
+                    id: "AUTO_DETECT_ONLY" as const,
+                    label: "تجزئة الأسئلة المركبة فقط",
+                  },
+                  {
+                    id: "NONE" as const,
+                    label: "سؤال موحد بدون فروع",
+                  },
+                ]
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onChangeSubQuestionDecompositionMode?.(opt.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                    subQuestionDecompositionMode === opt.id
+                      ? "bg-cyan-400 text-slate-950 font-black shadow-2xs"
+                      : "bg-indigo-900/80 text-indigo-200 hover:bg-indigo-800 border border-indigo-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* محتوى التمارين وتجزئة الأسئلة وتحريرها التفاعلي */}
@@ -540,6 +592,47 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                             <button
                               type="button"
                               onClick={() => {
+                                const decomp = decomposeQuestionIntoSubQuestions({
+                                  questionAr: qTextAr,
+                                  questionFr: qTextFr,
+                                  parentPoints: currentPt,
+                                  parentLevel: meta.level,
+                                  mode: "STRUCTURED_ABC_ALL",
+                                  questionIndex: qIdx,
+                                  lessonTitleAr: ex.lesson.lessonAr,
+                                  lessonTitleFr: ex.lesson.lessonFr,
+                                });
+                                const nextQAr = serializeSubQuestionsToQuestionText(
+                                  decomp.stemAr,
+                                  decomp.subQuestions.map((s) => ({
+                                    label: s.labelAr,
+                                    text: s.textAr,
+                                  }))
+                                );
+                                const nextQFr = serializeSubQuestionsToQuestionText(
+                                  decomp.stemFr,
+                                  decomp.subQuestions.map((s) => ({
+                                    label: s.labelFr,
+                                    text: s.textFr,
+                                  }))
+                                );
+                                const nextArList = [...ex.questionsAr];
+                                const nextFrList = [...ex.questionsFr];
+                                nextArList[qIdx] = `${qIdx + 1}. ${nextQAr}`;
+                                nextFrList[qIdx] = `${qIdx + 1}. ${nextQFr}`;
+                                onUpdateCustomQuestions(ex.lessonKey, nextArList, nextFrList);
+                              }}
+                              title="تجزئة هذا السؤال فورياً إلى شطور فرعية (أ، ب، ج / a, b, c) مع توزيع النقطة"
+                              className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-mono font-bold text-[10px] transition cursor-pointer"
+                            >
+                              تجزئة (أ/ب/ج)
+                            </button>
+                          )}
+
+                          {onUpdateCustomQuestions && (
+                            <button
+                              type="button"
+                              onClick={() => {
                                 if (isEditingThis) {
                                   setEditingQuestionKey(null);
                                 } else {
@@ -630,6 +723,51 @@ export const ExamBaremeManagerModal: React.FC<ExamBaremeManagerModalProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* معاينة الشطور الفرعية (أ، ب، ج / a, b, c) وتوزيع النقطة الفرعية لكل شطر */}
+                      {(() => {
+                        const decomp = decomposeQuestionIntoSubQuestions({
+                          questionAr: qTextAr,
+                          questionFr: qTextFr,
+                          parentPoints: currentPt,
+                          parentLevel: meta.level,
+                          mode: subQuestionDecompositionMode,
+                          questionIndex: qIdx,
+                          lessonTitleAr: ex.lesson.lessonAr,
+                          lessonTitleFr: ex.lesson.lessonFr,
+                        });
+                        if (!decomp.isDecomposed || decomp.subQuestions.length === 0) {
+                          return null;
+                        }
+                        return (
+                          <div className="mt-1.5 pr-4 border-r-2 border-indigo-300 space-y-1 bg-white/85 rounded-lg p-2">
+                            {decomp.stemAr && (
+                              <div className="text-[11px] font-bold text-indigo-950 pb-0.5">
+                                {isFr ? decomp.stemFr : decomp.stemAr}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-1 gap-1">
+                              {decomp.subQuestions.map((sub) => (
+                                <div
+                                  key={sub.id}
+                                  className="flex items-center justify-between gap-2 text-[11px] bg-indigo-50/50 border border-indigo-100 rounded px-2 py-1"
+                                >
+                                  <div className="flex items-start gap-1.5 text-slate-800">
+                                    <span className="font-mono font-black text-indigo-900 shrink-0">
+                                      {isFr ? `${sub.labelFr})` : `${sub.labelAr})`}
+                                    </span>
+                                    <span>{isFr ? sub.textFr : sub.textAr}</span>
+                                  </div>
+                                  <span className="font-mono text-[10px] font-extrabold text-indigo-950 bg-white px-1.5 py-0.5 rounded border border-indigo-200 shrink-0 tabular-nums">
+                                    [{sub.pointsFormatted} {isFr ? "pt" : "ن"} · {sub.level} · ~{sub.estimatedMinutes}
+                                    {isFr ? "min" : "د"}]
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* منطقة تحرير نص السؤال عند تفعيل زر التعديل مع مدقق MathJS الفوري */}
                       {isEditingThis && (() => {

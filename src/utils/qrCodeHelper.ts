@@ -57,6 +57,80 @@ export function buildInteractiveQuizLinkForDocument(
   return `${baseOrigin.replace(/\/$/, "")}/?${searchParams.toString()}`;
 }
 
+export interface HomeworkSolutionLinkParams {
+  origin?: string;
+  homeworkId?: string;
+  dmNumber?: string;
+  titleAr?: string;
+  dueDate?: string;
+  system?: string;
+  trackCode?: string;
+  semester?: string;
+  moroccanDMType?: string;
+  docLang?: string;
+  variationSeed?: number;
+  lessonIndices?: number[];
+}
+
+/**
+ * توليد رمز تحقق مرجعي فريد (Verification Code) لكل فرض منزلي مستقل
+ */
+export function generateHomeworkAssignmentVerificationCode(
+  params: HomeworkSolutionLinkParams = {}
+): string {
+  const hwId = params.homeworkId || "dm_doc_1";
+  const dmNumClean = String(params.dmNumber || "1").replace(/[^0-9A-Za-z]/g, "") || "1";
+  const track = (params.trackCode || "2BAC_PC").replace(/[^0-9A-Za-z]/g, "").slice(0, 6);
+  const sem = params.semester === "S2" ? "S2" : "S1";
+  const rawPayload = `${hwId}|${params.dmNumber || "N° 1"}|${params.dueDate || ""}|${params.trackCode || "2BAC_PC"}|${sem}|${params.moroccanDMType || "RECHERCHE_SYNTHESE"}|${params.variationSeed || 0}|${(params.lessonIndices || []).join(",")}`;
+
+  let hash = 2166136261;
+  for (let i = 0; i < rawPayload.length; i++) {
+    hash ^= rawPayload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const hex = (hash >>> 0).toString(16).toUpperCase().padStart(6, "0").slice(0, 6);
+  return `DM${dmNumClean}-${track}-${sem}-${hex}`;
+}
+
+/**
+ * بناء رابط رمز الاستجابة السريعة (QR Code) الفريد الخاص بكل فرض منزلي
+ * يوجه مباشرة إلى صفحة الحل النموذجي المفصل وسلم التنقيط الخاصة بذلك الفرض المنزلي
+ */
+export function buildHomeworkSolutionLink(
+  params: HomeworkSolutionLinkParams = {}
+): string {
+  const baseOrigin =
+    params.origin ||
+    (typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://ais-pre-rsw3xd2wr4jevx5kl4om4d-251237406585.europe-west2.run.app");
+
+  const verificationPin = generateHomeworkAssignmentVerificationCode(params);
+  const searchParams = new URLSearchParams();
+  searchParams.set("dm_solution", "1");
+  searchParams.set("hw_id", params.homeworkId || "dm_doc_1");
+  searchParams.set("dm", params.dmNumber || "N° 1");
+  searchParams.set("pin", verificationPin);
+  searchParams.set("sys", params.system || "MAROC_NATIONAL");
+  searchParams.set("track", params.trackCode || "2BAC_PC");
+  searchParams.set("sem", params.semester === "S2" ? "S2" : "S1");
+  searchParams.set("lang", params.docLang === "AR" ? "AR" : "FR");
+  if (params.dueDate) searchParams.set("due", params.dueDate);
+  if (params.moroccanDMType) searchParams.set("dm_type", params.moroccanDMType);
+  if (typeof params.variationSeed === "number") {
+    searchParams.set("seed", String(params.variationSeed));
+  }
+  if (Array.isArray(params.lessonIndices) && params.lessonIndices.length > 0) {
+    searchParams.set("lessons", params.lessonIndices.join(","));
+  }
+  if (params.titleAr?.trim()) {
+    searchParams.set("title", params.titleAr.trim());
+  }
+
+  return `${baseOrigin.replace(/\/$/, "")}/?${searchParams.toString()}#homework-solution-sheet`;
+}
+
 export function generateDeterministicQrMatrix(text: string, size = 25): boolean[][] {
   const matrix: boolean[][] = Array.from({ length: size }, () =>
     Array(size).fill(false)
@@ -108,15 +182,23 @@ export function generateDeterministicQrMatrix(text: string, size = 25): boolean[
   return matrix;
 }
 
+const ISO_QR_MATRIX_CACHE = new Map<string, boolean[][]>();
+const QR_SVG_CACHE = new Map<string, string>();
+
 /**
  * توليد مصفوفة QR معيارية حقيقية (ISO/IEC 18004) قابلة للمسح الضوئي الفوري بكاميرا الهاتف
- * مع احتياطي حتمي مضمون في جميع البيئات
+ * مع احتياطي حتمي مضمون في جميع البيئات وذاكرة تخزين مؤقت (O(1) Cache)
  */
 export function generateIsoQrMatrix(
   text: string,
   errorCorrectionLevel: "L" | "M" | "Q" | "H" = "M"
 ): boolean[][] {
   const safeText = (text || "").trim() || "https://math-pedagogy.ma/?quiz=1";
+  const cacheKey = `${errorCorrectionLevel}:${safeText}`;
+  const cached = ISO_QR_MATRIX_CACHE.get(cacheKey);
+  if (cached) return cached;
+
+  let resolvedMatrix: boolean[][] | null = null;
   try {
     const qr = QRCode.create(safeText, { errorCorrectionLevel });
     const size = qr.modules.size;
@@ -130,12 +212,21 @@ export function generateIsoQrMatrix(
       matrix.push(row);
     }
     if (matrix.length >= 21) {
-      return matrix;
+      resolvedMatrix = matrix;
     }
   } catch {
     // fallback to deterministic matrix
   }
-  return generateDeterministicQrMatrix(safeText, 25);
+
+  if (!resolvedMatrix) {
+    resolvedMatrix = generateDeterministicQrMatrix(safeText, 25);
+  }
+
+  if (ISO_QR_MATRIX_CACHE.size >= 250) {
+    ISO_QR_MATRIX_CACHE.clear();
+  }
+  ISO_QR_MATRIX_CACHE.set(cacheKey, resolvedMatrix);
+  return resolvedMatrix;
 }
 
 export function renderQrSvgString(
@@ -144,6 +235,10 @@ export function renderQrSvgString(
   darkColor = "#0f172a",
   lightColor = "#ffffff"
 ): string {
+  const svgCacheKey = `${text}|${pixelSize}|${darkColor}|${lightColor}`;
+  const cachedSvg = QR_SVG_CACHE.get(svgCacheKey);
+  if (cachedSvg) return cachedSvg;
+
   const matrix = generateIsoQrMatrix(text, "M");
   const size = matrix.length;
   const quietZoneModules = 2;
@@ -162,9 +257,15 @@ export function renderQrSvgString(
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pixelSize} ${pixelSize}" width="${pixelSize}" height="${pixelSize}" shape-rendering="crispEdges">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pixelSize} ${pixelSize}" width="${pixelSize}" height="${pixelSize}" shape-rendering="crispEdges">
     <rect width="${pixelSize}" height="${pixelSize}" fill="${lightColor}" rx="6" />
     ${rects}
   </svg>`;
+
+  if (QR_SVG_CACHE.size >= 250) {
+    QR_SVG_CACHE.clear();
+  }
+  QR_SVG_CACHE.set(svgCacheKey, svg);
+  return svg;
 }
 

@@ -221,6 +221,37 @@ export interface FullPedagogicalFiche {
     homeworkAssignmentsAr: string[];
     homeworkAssignmentsFr: string[];
   };
+
+  // المرحلة 2 من خارطة الطريق: أنماط الجذاذة التخصصية الأربعة + الامتدادات التخصصية STEM + مخطط السبورة الثلاثية ودفتر النصوص
+  ficheFormat?: FichePedagogicalFormat;
+  stemExtensions?: FicheStemExtensionItem[];
+  blackboardPlansPerSession?: FicheBlackboardPlanItem[];
+}
+
+export type FichePedagogicalFormat =
+  | "COURSE_BUILD"
+  | "TD_REMEDIATION"
+  | "TICE_LAB"
+  | "BLACKBOARD_CAHIER";
+
+export interface FicheStemExtensionItem {
+  disciplineAr: string;
+  disciplineFr: string;
+  applicationTitleAr: string;
+  applicationTitleFr: string;
+  mathematicalModelLatex: string;
+  didacticLinkAr: string;
+  didacticLinkFr: string;
+}
+
+export interface FicheBlackboardPlanItem {
+  sessionNum: number;
+  sessionTitleAr: string;
+  rightWingActivitiesAr: string;
+  centerWingCourseAr: string;
+  leftWingExercisesAr: string;
+  cahierDeTexteEntryAr: string;
+  cahierDeTexteEntryFr: string;
 }
 
 /**
@@ -230,7 +261,8 @@ export interface FullPedagogicalFiche {
  */
 export function generateFullMoroccanPedagogicalFiche(
   lesson: LessonItem,
-  track: TrackData
+  track: TrackData,
+  ficheFormat: FichePedagogicalFormat = "COURSE_BUILD"
 ): FullPedagogicalFiche {
   const lessonAr = lesson.lessonAr;
   const lessonFr = lesson.lessonFr;
@@ -326,6 +358,14 @@ export function generateFullMoroccanPedagogicalFiche(
   // توليد محتوى التقويم التكويني
   const formativeEvaluation = buildFormativeEvaluation(lesson);
 
+  // توليد الامتدادات التخصصية STEM ومخططات السبورة الثلاثية ودفتر النصوص
+  const stemExtensions = buildLessonStemExtensions(lesson);
+  const blackboardPlansPerSession = buildBlackboardPlansPerSession(
+    lesson,
+    globalPlanningSessions,
+    fullCourseContent
+  );
+
   return {
     lessonTitleAr: lessonAr,
     lessonTitleFr: lessonFr,
@@ -369,6 +409,9 @@ export function generateFullMoroccanPedagogicalFiche(
     detailedSessionScenarios,
     ticeIntegration,
     formativeEvaluation,
+    ficheFormat,
+    stemExtensions,
+    blackboardPlansPerSession,
   };
 }
 
@@ -1813,65 +1856,460 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
     ];
   }
 
-  // 5. قالب عام مفصل لباقي الدروس (أعداد عقدية، حساب تكاملي، هندسة فضائية، احتمالات...)
+  const titleFr = lesson.lessonFr.toLowerCase();
+
+  // 5. درس الأعداد العقدية والتحويلات النقطية (Nombres Complexes)
+  if (title.includes("عقدي") || titleFr.includes("complexe")) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الكتابة الجبرية، المرافق، المعيار والعمدة لعدد عقدي غير منعدم",
+        titleFr: "I. Forme algébrique, conjugué, module et argument d'un nombre complexe",
+        axisSummaryAr: "بناء مجموعة الأعداد العقدية C والربط بين الحساب الجبري والتمثيل الهندسي في المستوى العقدي المنسوب لمعلم متعامد ممنظم مباشر.",
+        axisSummaryFr: "Construction de C, conjugaison, module et interprétation géométrique des distances et angles orientés.",
+        definitions: [
+          {
+            termAr: "الشكل الجبري والمرافق والمعيار",
+            termFr: "Forme algébrique, conjugué et module",
+            contentAr: "كل عدد عقدي z يكتب بصفة وحيدة على الشكل الجبري z = a + ib حيث (a,b) ∈ ℝ² و i² = -1. مرافقه هو z̄ = a - ib ومعياره هو المسافة |z| = √(z·z̄) = √(a² + b²).",
+            contentFr: "Tout complexe z s'écrit de manière unique z = a + ib avec (a,b) ∈ ℝ² et i² = -1. Son conjugué est z̄ = a - ib et son module est |z| = √(a² + b²).",
+            notationMath: "z = a + ib, \\quad \\overline{z} = a - ib, \\quad |z| = \\sqrt{z\\overline{z}} = \\sqrt{a^2 + b^2}",
+          },
+          {
+            termAr: "الشكل المثلثي والترميز الأسي (صيغة أولير وموافر)",
+            termFr: "Forme trigonométrique et notation exponentielle",
+            contentAr: "لكل عدد عقدي غير منعدم z معياره r = |z| وعمدته θ ≡ arg(z) [2π]، نكتب: z = r(cos θ + i sin θ) = r e^{iθ}.",
+            contentFr: "Pour tout z ∈ ℂ*, de module r = |z| et d'argument θ ≡ arg(z) [2π], on a z = r(cos θ + i sin θ) = r e^{iθ}.",
+            notationMath: "z = r(\\cos\\theta + i\\sin\\theta) = r e^{i\\theta}, \\quad (e^{i\\theta})^n = e^{in\\theta} \\text{ (Moivre)}",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "التأويل الهندسي للمعيار والعمدة واستقامية وتداور النقط",
+            nameFr: "Interprétation géométrique du module et de l'argument",
+            statementAr: "لتكن A(z_A) و B(z_B) و C(z_C) نقطاً من المستوى العقدي (A ≠ B و A ≠ C). المسافة AB = |z_B - z_A|، وقياس الزاوية الموجهة (AB, AC) ≡ arg((z_C - z_A)/(z_B - z_A)) [2π].",
+            statementFr: "Soient A(z_A), B(z_B) et C(z_C) avec A ≠ B et A ≠ C. Alors AB = |z_B - z_A| et (AB, AC) ≡ arg((z_C - z_A)/(z_B - z_A)) [2π].",
+            conditionsAr: ["النقطتان A و B مختلفتان (z_B ≠ z_A)", "المعلم (O, u, v) متعامد ممنظم ومباشر"],
+            conditionsFr: ["Points A et B distincts (z_B ≠ z_A)", "Repère orthonormé direct (O, u, v)"],
+            proofAr: "نضع z_B - z_A = r₁ e^{iθ₁} و z_C - z_A = r₂ e^{iθ₂}. خارج العددين هو (r₂/r₁) e^{i(θ₂ - θ₁)}، ومنه معياره هو AC/AB وعمدته هي θ₂ - θ₁ ≡ (u, AC) - (u, AB) ≡ (AB, AC) [2π].",
+            proofFr: "En posant z_B - z_A = r₁ e^{iθ₁} et z_C - z_A = r₂ e^{iθ₂}, le quotient vaut (r₂/r₁) e^{i(θ₂ - θ₁)}, d'où le module AC/AB et l'argument (AB, AC) [2π].",
+          },
+          {
+            nameAr: "التمثيل العقدي للإزاحة والتحاكي والدوران",
+            nameFr: "Écriture complexe de la translation, l'homothétie et la rotation",
+            statementAr: "صورة نقطة M(z) بالدوران R الذي مركزه Ω(ω) وزاويته α هي النقطة M'(z') حيث: z' - ω = e^{iα}(z - ω).",
+            statementFr: "L'image de M(z) par la rotation R de centre Ω(ω) et d'angle α est M'(z') telle que z' - ω = e^{iα}(z - ω).",
+            proofAr: "الدوران يحافظ على المسافات والزوايا الموجهة: M' = R(M) ⇔ ΩM' = ΩM و (ΩM, ΩM') ≡ α [2π] ⇔ |(z' - ω)/(z - ω)| = 1 و arg((z' - ω)/(z - ω)) ≡ α [2π] ⇔ (z' - ω)/(z - ω) = e^{iα}.",
+            proofFr: "M' = R(M) ⇔ |z' - ω| = |z - ω| et arg((z' - ω)/(z - ω)) ≡ α [2π] ⇔ z' - ω = e^{iα}(z - ω).",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): طبيعة مثلث والتمثيل العقدي للدوران",
+            titleFr: "Exemple résolu (N2) : Nature d'un triangle et rotation complexe",
+            statementAr: "في المستوى العقدي نعتبر النقط A(1 + i) و B(3 + i) و C(2 + (1 + √3)i).\n1) أحسب (z_C - z_A)/(z_B - z_A) واكتبه على الشكل الأسي.\n2) استنتج طبيعة المثلث ABC.",
+            statementFr: "Dans le plan complexe, on donne A(1 + i), B(3 + i) et C(2 + (1 + √3)i).\n1) Calculer (z_C - z_A)/(z_B - z_A) sous forme exponentielle.\n2) En déduire la nature exacte du triangle ABC.",
+            solutionStepsAr: [
+              "1. نحسب الفروق: z_B - z_A = 2 و z_C - z_A = 1 + i√3.",
+              "2. نحسب النسبة: (z_C - z_A)/(z_B - z_A) = (1 + i√3)/2 = 1/2 + i(√3/2) = cos(π/3) + i sin(π/3) = e^{iπ/3}.",
+              "3. نستخلص المعيار والعمدة: AC/AB = |e^{iπ/3}| = 1 ومنه AC = AB، و (AB, AC) ≡ π/3 [2π].",
+              "4. استنتاج: المثلث ABC متساوي الأضلاع ومباشر، والنقطة C هي صورة B بالدوران الذي مركزه A وزاويته π/3.",
+            ],
+            solutionStepsFr: [
+              "1. Différences d'affixes : z_B - z_A = 2 et z_C - z_A = 1 + i√3.",
+              "2. Quotient : (z_C - z_A)/(z_B - z_A) = 1/2 + i√3/2 = e^{iπ/3}.",
+              "3. Module = 1 ⇒ AC = AB ; Argument ≡ π/3 [2π] ⇒ (AB, AC) ≡ π/3 [2π].",
+              "4. Conclusion : Le triangle ABC est équilatéral direct.",
+            ],
+            pedagogicalNoteAr: "تأكد دائماً من أن العدد r في الكتابة r(cos θ + i sin θ) موجب قطعا (r > 0) قبل استنتاج المعيار والعمدة.",
+            pedagogicalNoteFr: "Toujours vérifier que r > 0 dans l'écriture r(cos θ + i sin θ) avant de lire le module et l'argument.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "اعتبار العدد -2(cos θ + i sin θ) شكلاً مثلثياً بمعيار -2 (المعيار موجب دائماً!).",
+          "الخلط بين ترتيب المتجهتين في الزاوية: arg((z_C - z_A)/(z_B - z_A)) يعطي الزاوية (AB, AC) وليس (AC, AB).",
+        ],
+        commonMistakesFr: [
+          "Lire un module négatif sur une forme -r(cos θ + i sin θ) au lieu de transformer par π + θ.",
+          "Inverser l'ordre des vecteurs dans l'angle orienté : arg((z_C - z_A)/(z_B - z_A)) ≡ (AB, AC) [2π].",
+        ],
+      },
+    ];
+  }
+
+  // 6. درس الدوال الأصلية والحساب التكاملي والمعادلات التفاضلية (Primitives, Intégrales & Éq. Diff.)
+  if (
+    title.includes("تكامل") ||
+    title.includes("أصلية") ||
+    title.includes("تفاضلية") ||
+    titleFr.includes("intégral") ||
+    titleFr.includes("primitive") ||
+    titleFr.includes("différentielle")
+  ) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الدوال الأصلية، تكامل ريمان، المكاملة بالأجزاء وحساب المساحات والحجوم",
+        titleFr: "I. Primitives, intégrale d'une fonction continue, IPP et calcul d'aires/volumes",
+        axisSummaryAr: "الربط بين عملية الاشتقاق وعملية المكاملة، وتوظيف خطية التكامل والمكاملة بالأجزاء لحساب المساحات الهندسية وحجوم المجسمات الدورانية.",
+        axisSummaryFr: "Théorème fondamental de l'analyse, intégration par parties et interprétation géométrique des aires et volumes.",
+        definitions: [
+          {
+            termAr: "الدالة الأصلية والتكامل المحدد",
+            termFr: "Primitive et intégrale définie sur [a, b]",
+            contentAr: "لتكن f دالة متصلة على مجال I. نسمي دالة أصلية لـ f على I كل دالة F قابلة للاشتقاق على I تحقق F'(x) = f(x). تكامل f من a إلى b هو العدد الحقيقي: ∫_a^b f(x)dx = [F(x)]_a^b = F(b) - F(a).",
+            contentFr: "Soit f continue sur I. Une primitive F vérifie F' = f sur I. L'intégrale de a à b est le réel ∫_a^b f(x)dx = F(b) - F(a).",
+            notationMath: "\\int_a^b f(x)\\,dx = \\Big[F(x)\\Big]_a^b = F(b) - F(a)",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "مبرهنة المكاملة بالأجزاء (Intégration par parties — IPP)",
+            nameFr: "Théorème d'intégration par parties (IPP)",
+            statementAr: "لتكن u و v دالتين قابلتين للاشتقاق على مجال [a, b] بحيث مشتقتاهما u' و v' متصلتان على [a, b]. لدينا الصيغة الأساسية: ∫_a^b u'(x)v(x)dx = [u(x)v(x)]_a^b - ∫_a^b u(x)v'(x)dx.",
+            statementFr: "Si u et v sont de classe C¹ sur [a, b], alors ∫_a^b u'(x)v(x)dx = [u(x)v(x)]_a^b - ∫_a^b u(x)v'(x)dx.",
+            conditionsAr: ["u و v قابلتان للاشتقاق على [a, b]", "u' و v' متصلتان على [a, b]"],
+            conditionsFr: ["u et v dérivables sur [a, b]", "u' et v' continues sur [a, b]"],
+            proofAr: "لدينا لكل x من [a, b]: (u·v)'(x) = u'(x)v(x) + u(x)v'(x)، ومنه u'(x)v(x) = (u·v)'(x) - u(x)v'(x). وبإدخال التكامل الخطي على الطرفين نحصل على النتيجة المطلوبة.",
+            proofFr: "Comme (uv)' = u'v + uv', par linéarité de l'intégrale de fonctions continues sur [a, b], ∫_a^b (uv)' = [uv]_a^b = ∫_a^b u'v + ∫_a^b uv'.",
+          },
+          {
+            nameAr: "حساب مساحة حيز مستوٍ وحجم مجسم دوراني",
+            nameFr: "Calcul d'aire plane et de volume de révolution",
+            statementAr: "مساحة الحيز المحصور بين منحنيي f و g والمستقيمين x=a و x=b هي: A = (∫_a^b |f(x) - g(x)| dx) × ‖i‖·‖j‖. وحجم المجسم المولد بدوران منحنى f حول محور الأفاصيل هو V = (π ∫_a^b (f(x))² dx) × ‖i‖³.",
+            statementFr: "L'aire entre C_f et C_g sur [a, b] vaut A = (∫_a^b |f(x) - g(x)| dx) u.a. Le volume de révolution vaut V = (π ∫_a^b f(x)² dx) u.v.",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): حساب تكامل بالمكاملة بالأجزاء واستنتاج مساحة",
+            titleFr: "Exemple résolu (N2) : Calcul d'intégrale par IPP et aire géométrique",
+            statementAr: "أحسب باستعمال المكاملة بالأجزاء التكامل: I = ∫_1^e x ln(x) dx، ثم استنتج بـ cm² مساحة الحيز المحصور بين منحنى f(x) = x ln(x) ومحور الأفاصيل والمستقيمين x=1 و x=e علماً أن ‖i‖ = ‖j‖ = 2 cm.",
+            statementFr: "Calculer par IPP l'intégrale I = ∫_1^e x ln(x) dx, puis en déduire en cm² l'aire du domaine délimité par C_f, l'axe (Ox), x=1 et x=e (unité : 2 cm).",
+            solutionStepsAr: [
+              "1. نضع u(x) = ln(x) و v'(x) = x، فيكون u'(x) = 1/x و v(x) = x²/2.",
+              "2. نطبق صيغة المكاملة بالأجزاء: I = [(x²/2) ln(x)]_1^e - ∫_1^e (x²/2)·(1/x) dx.",
+              "3. نبسط: I = (e²/2) - (1/2) ∫_1^e x dx = e²/2 - [x²/4]_1^e = e²/2 - (e² - 1)/4 = (e² + 1)/4.",
+              "4. على [1, e] لدينا x ln(x) ≥ 0، ووحدة المساحة هي u.a = 2 × 2 = 4 cm²، إذن A = I × 4 cm² = (e² + 1) cm².",
+            ],
+            solutionStepsFr: [
+              "1. Posons u(x) = ln(x) ⇒ u'(x) = 1/x, et v'(x) = x ⇒ v(x) = x²/2.",
+              "2. Par IPP : I = [x²/2 ln(x)]_1^e - ∫_1^e x/2 dx = e²/2 - [x²/4]_1^e = (e² + 1)/4.",
+              "3. Sur [1, e], x ln(x) ≥ 0 et 1 u.a = 2 × 2 = 4 cm², donc A = 4 × I = (e² + 1) cm².",
+            ],
+            pedagogicalNoteAr: "طبق قاعدة ALPES لاختيار الدالة التي نشتقها u(x) في المكاملة بالأجزاء (اللوغاريتم يشتق دائماً قبل الحدودية).",
+            pedagogicalNoteFr: "Utiliser la règle ALPES pour choisir u(x) à dériver (Logarithme avant Polynôme et Exponentielle).",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "نسيان ضرب التكامل في وحدة المساحة u.a = ‖i‖ × ‖j‖ عند التحويل إلى cm².",
+          "إغفال القيمة المطلقة |f(x) - g(x)| عندما يكون المنحنى تحت محور الأفاصيل أو تحت المستقيم المقارب.",
+        ],
+        commonMistakesFr: [
+          "Oublier de multiplier par l'unité d'aire u.a = ‖i‖ × ‖j‖ en cm².",
+          "Omettre la valeur absolue |f(x) - g(x)| lorsque la courbe est située sous l'axe ou sous l'asymptote.",
+        ],
+      },
+    ];
+  }
+
+  // 7. درس الهندسة الفضائية: الجداء السلمي، الفلكة، والجداء المتجهي (Géométrie dans l'Espace)
+  if (
+    title.includes("فضاء") ||
+    title.includes("فلكة") ||
+    title.includes("متجهي") ||
+    titleFr.includes("espace") ||
+    titleFr.includes("sphère") ||
+    titleFr.includes("vectoriel")
+  ) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الجداء السلمي والجداء المتجهي في الفضاء، الفلكة، والأوضاع النسبية",
+        titleFr: "I. Produit scalaire, produit vectoriel, sphère et positions relatives dans l'espace",
+        axisSummaryAr: "التحليل الديكارتي للمستقيمات والمستويات والفلكات في معلم متعامد ممنظم مباشر، وحساب المسافات والمساحات.",
+        axisSummaryFr: "Géométrie analytique dans un repère orthonormé direct (O, i, j, k) : plans, sphères, distances et produit vectoriel.",
+        definitions: [
+          {
+            termAr: "المعادلة الديكارتية لمستوى وفلكة ومسافة نقطة عن مستوى",
+            termFr: "Équation cartésienne d'un plan, d'une sphère et distance point-plan",
+            contentAr: "المستوى (P) المار من A والمنظمي على n(a,b,c) معادلته ax + by + cz + d = 0. مسافة النقطة Ω عن (P) هي d(Ω, (P)) = |ax_Ω + by_Ω + cz_Ω + d| / √(a² + b² + c²).",
+            contentFr: "Le plan de vecteur normal n(a,b,c) a pour équation ax + by + cz + d = 0 et d(Ω, (P)) = |ax_Ω + by_Ω + cz_Ω + d| / √(a² + b² + c²).",
+            notationMath: "d(\\Omega, (P)) = \\frac{|ax_\\Omega + by_\\Omega + cz_\\Omega + d|}{\\sqrt{a^2+b^2+c^2}}, \\quad \\vec{u}\\wedge\\vec{v} = \\begin{vmatrix} y & y' \\\\ z & z' \\end{vmatrix}\\vec{i} - \\begin{vmatrix} x & x' \\\\ z & z' \\end{vmatrix}\\vec{j} + \\begin{vmatrix} x & x' \\\\ y & y' \\end{vmatrix}\\vec{k}",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "الأوضاع النسبية لفلكة S(Ω, R) ومستوى (P)",
+            nameFr: "Positions relatives d'une sphère S(Ω, R) et d'un plan (P)",
+            statementAr: "نضع d = d(Ω, (P)). إذا كان d > R فالتقاطع فارغ. إذا كان d = R فالمستوى مماس للفلكة في المسقط العمودي H. إذا كان d < R فالتقاطع دائرة مركزها H وشعاعها r = √(R² - d²).",
+            statementFr: "Soit d = d(Ω, (P)). Si d = R, (P) est tangent à (S) en H. Si d < R, (P) coupe (S) suivant un cercle de centre H et de rayon r = √(R² - d²).",
+            proofAr: "لكل نقطة M من المستوى (P)، المسقط العمودي لـ Ω على (P) هو H، والمثلث ΩHM قائم الزاوية في H. حسب مبرهنة فيثاغورس: M ∈ (S) ∩ (P) ⇔ ΩM² = R² ⇔ ΩH² + HM² = R² ⇔ HM² = R² - d².",
+            proofFr: "Par le théorème de Pythagore dans le triangle rectangle ΩHM en H : ΩM² = R² ⇔ d² + HM² = R² ⇔ HM = √(R² - d²).",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): تقاطع فلكة ومستوى وتحديد مركز وشعاع الدائرة",
+            titleFr: "Exemple résolu (N2) : Intersection d'une sphère et d'un plan",
+            statementAr: "نعتبر الفلكة (S) التي مركزها Ω(1, -1, 2) وشعاعها R = 3، والمستوى (P) ذا المعادلة: x - 2y + 2z - 1 = 0.\n1) أحسب المسافة d(Ω, (P)) واستنتج أن (P) يقطع (S) وفق دائرة (C) محدداً شعاعها r.\n2) حدد مثلث إحداثيات النقطة H مركز الدائرة (C).",
+            statementFr: "Soit la sphère (S) de centre Ω(1, -1, 2) et de rayon R = 3, et le plan (P) : x - 2y + 2z - 1 = 0.\n1) Calculer d(Ω, (P)) et montrer que (P) coupe (S) selon un cercle (C) de rayon r.\n2) Déterminer les coordonnées du centre H de (C).",
+            solutionStepsAr: [
+              "1. حساب المسافة: d(Ω, (P)) = |1(1) - 2(-1) + 2(2) - 1| / √(1² + (-2)² + 2²) = |1 + 2 + 4 - 1| / √9 = 6/3 = 2.",
+              "2. بما أن d = 2 < R = 3، فإن المستوى (P) يقطع الفلكة (S) وفق دائرة (C) شعاعها r = √(R² - d²) = √(9 - 4) = √5.",
+              "3. النقطة H هي تقاطع (P) والمستقيم (Δ) المار من Ω والعمودي على (P) ذي التمثيل البارامتري: x = 1 + t, y = -1 - 2t, z = 2 + 2t (t ∈ ℝ).",
+              "4. نعوض في معادلة (P): (1 + t) - 2(-1 - 2t) + 2(2 + 2t) - 1 = 0 ⇔ 9t + 6 = 0 ⇔ t = -2/3، ومنه H(1/3, 1/3, 2/3).",
+            ],
+            solutionStepsFr: [
+              "1. Distance : d(Ω, (P)) = |1 + 2 + 4 - 1| / √(1 + 4 + 4) = 6/3 = 2 < R = 3.",
+              "2. Rayon du cercle : r = √(R² - d²) = √(9 - 4) = √5.",
+              "3. Droite normale (Δ) passant par Ω : x = 1 + t, y = -1 - 2t, z = 2 + 2t.",
+              "4. Substitution dans (P) : 9t + 6 = 0 ⇒ t = -2/3 ⇒ H(1/3, 1/3, 2/3).",
+            ],
+            pedagogicalNoteAr: "احرص على مراجعة إشارة المركبة الوسطى (ناقص محدد الرتبة الثانية) عند حساب الجداء المتجهي u ∧ v.",
+            pedagogicalNoteFr: "Attention au signe moins devant le deuxième déterminant lors du calcul de u ∧ v.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "الخطأ في إشارة الإحداثية الثانية (أرتوب المتجهة) عند حساب الجداء المتجهي u ∧ v.",
+          "الخلط بين متجهة منظمية على مستوى ومتجهة موجهة لمستقيم عند كتابة التمثيل البارامتري.",
+        ],
+        commonMistakesFr: [
+          "Erreur de signe sur la deuxième composante du produit vectoriel u ∧ v.",
+          "Confusion entre vecteur normal à un plan et vecteur directeur d'une droite.",
+        ],
+      },
+    ];
+  }
+
+  // 8. درس التعداد وحساب الاحتمالات والإحصاء (Dénombrement, Probabilités & Statistique)
+  if (
+    title.includes("احتمال") ||
+    title.includes("تعداد") ||
+    title.includes("إحصاء") ||
+    titleFr.includes("probabilit") ||
+    titleFr.includes("dénombrement") ||
+    titleFr.includes("statistique")
+  ) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. التعداد، تساوي الاحتمالات، الاحتمال الشرطي والمتغيرات العشوائية والحدانية",
+        titleFr: "I. Dénombrement, équiprobabilité, probabilité conditionnelle et loi binomiale",
+        axisSummaryAr: "نمذجة التجارب العشوائية، التمييز بين السحب بالتتابع وبدون إحلال وفي آن واحد، وحساب الأمل الرياضي والمغايرة.",
+        axisSummaryFr: "Modélisation des tirages (simultané, successif avec/sans remise), formule des probabilités totales et loi binomiale B(n, p).",
+        definitions: [
+          {
+            termAr: "الاحتمال الشرطي واستقلالية حدثين والقانون الحداني",
+            termFr: "Probabilité conditionnelle, indépendance et loi binomiale",
+            contentAr: "احتمال وقوع الحدث B علماً أن A قد تحقق (حيث P(A) ≠ 0) هو P_A(B) = P(A ∩ B)/P(A). إذا تكررت تجربة برنولي n مرة بصفة مستقلة وباحتمال نجاح p، فإن P(X = k) = C_n^k p^k (1 - p)^{n-k}.",
+            contentFr: "Pour P(A) ≠ 0, P_A(B) = P(A ∩ B)/P(A). Si X ~ B(n, p), alors P(X = k) = C_n^k p^k (1 - p)^{n-k}, E(X) = np et V(X) = np(1 - p).",
+            notationMath: "P_A(B) = \\frac{P(A \\cap B)}{P(A)}, \\quad P(X = k) = C_n^k p^k (1-p)^{n-k}, \\quad E(X) = np",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "صيغة الاحتمالات الكلية (Formule des probabilités totales)",
+            nameFr: "Formule des probabilités totales",
+            statementAr: "إذا كانت الأحداث A₁, A₂, ..., A_n تشكل تجزيئاً للكون Ω (غير منعدمة الاحتمال ومثنى مثنى غير منسجمة واتحادها Ω)، فإنه لكل حدث B لدينا: P(B) = ∑ P(A_i ∩ B) = ∑ P(A_i) · P_{A_i}(B).",
+            statementFr: "Si (A₁, ..., A_n) forme un système complet d'événements de Ω, alors pour tout événement B : P(B) = ∑ P(A_i) · P_{A_i}(B).",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): السحب من الصندوق والمتغير العشوائي",
+            titleFr: "Exemple résolu (N2) : Tirages dans une urne et variable aléatoire",
+            statementAr: "يحتوي صندوق على 5 كرات بيضاء و 3 كرات سوداء لا يمكن التمييز بينها باللمس. نسحب عشوائياً وفي آن واحد 3 كرات من الصندوق.\n1) أحسب احتمال الحدث A: «سحب كرتين بيضاوين وكرة سوداء».\n2) ليكن X المتغير العشوائي الذي يربط كل سحبة بعدد الكرات السوداء المسحوبة. حدد قانون احتمال X وأحسب أمله الرياضي E(X).",
+            statementFr: "Une urne contient 5 boules blanches et 3 boules noires indiscernables au toucher. On tire simultanément 3 boules.\n1) Calculer P(A) : « Obtenir 2 boules blanches et 1 noire ».\n2) Soit X le nombre de boules noires tirées. Déterminer la loi de probabilité de X et calculer E(X).",
+            solutionStepsAr: [
+              "1. السحب في آن واحد لـ 3 كرات من أصل 8 يعني توظيف التأليفات: Card(Ω) = C_8^3 = (8×7×6)/6 = 56.",
+              "2. احتمال الحدث A: P(A) = (C_5^2 × C_3^1) / C_8^3 = (10 × 3) / 56 = 30/56 = 15/28.",
+              "3. القيم الممكنة للمتغير X هي X(Ω) = {0, 1, 2, 3}. نحسب: P(X=0) = C_5^3/56 = 10/56، و P(X=1) = 30/56، و P(X=2) = (C_5^1×C_3^2)/56 = 15/56، و P(X=3) = C_3^3/56 = 1/56.",
+              "4. التحقق: ∑ P(X=k) = (10 + 30 + 15 + 1)/56 = 56/56 = 1. الأمل الرياضي: E(X) = (0×10 + 1×30 + 2×15 + 3×1)/56 = 63/56 = 9/8.",
+            ],
+            solutionStepsFr: [
+              "1. Tirage simultané de 3 boules parmi 8 : Card(Ω) = C_8^3 = 56.",
+              "2. P(A) = (C_5^2 × C_3^1) / 56 = 30/56 = 15/28.",
+              "3. X(Ω) = {0, 1, 2, 3} avec P(X=0)=10/56, P(X=1)=30/56, P(X=2)=15/56, P(X=3)=1/56 (Somme = 1).",
+              "4. Espérance : E(X) = (30 + 30 + 3)/56 = 63/56 = 9/8.",
+            ],
+            pedagogicalNoteAr: "تحقق دائماً من أن مجموع احتمالات جميع قيم المتغير العشوائي يساوي 1 بالضبط قبل حساب الأمل الرياضي E(X).",
+            pedagogicalNoteFr: "Toujours vérifier que la somme des probabilités ∑ P(X = x_i) est exactement égale à 1.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "الخلط بين السحب في آن واحد (تأليفات C_n^p) والسحب بالتتابع وبدون إحلال (ترتيبات A_n^p) وبإحلال (n^p).",
+          "نسيان معامل الترتيب (عدد الحالات المواتية للترتيب) عند السحب بالتتابع.",
+        ],
+        commonMistakesFr: [
+          "Confondre tirage simultané (C_n^p), successif sans remise (A_n^p) et successif avec remise (n^p).",
+          "Oublier le coefficient d'ordre lors d'un tirage successif de boules de couleurs différentes.",
+        ],
+      },
+    ];
+  }
+
+  // 9. درس الحسابيات في Z، البنيات الجبرية، ومبادئ في المنطق (Arithmétique, Algèbre & Logique)
+  if (
+    title.includes("حسابيات") ||
+    title.includes("منطق") ||
+    title.includes("بنيات") ||
+    title.includes("زمرة") ||
+    titleFr.includes("arithmétique") ||
+    titleFr.includes("logique") ||
+    titleFr.includes("structure")
+  ) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الاستدلالات المنطقية، القسمة الإقليدية، الموافقات ومبرهنتا بيزو وكوص",
+        titleFr: "I. Raisonnements logiques, congruences modulo n et théorèmes de Bézout et Gauss",
+        axisSummaryAr: "إرساء قواعد البرهان الرياضي الصارم (الترجع، الخلف، فصل الحالات) وتوظيف مبرهنات الحسابيات في Z والبنيات الجبرية.",
+        axisSummaryFr: "Rigueur du raisonnement formel, arithmétique dans ℤ (PGCD, PPCM, Bézout, Gauss, Fermat) et structures algébriques.",
+        definitions: [
+          {
+            termAr: "الموافقة بترديد n ومبرهنة بيزو (Bézout)",
+            termFr: "Congruence modulo n et théorème de Bézout",
+            contentAr: "نقول إن a ≡ b [n] إذا وفقط إذا كان n يقسم الفرق (a - b). يكون العددان الصحيحان a و b أوليين فيما بينهما (a ∧ b = 1) إذا وفقط إذا وجد عددان صحيحان (u, v) ∈ ℤ² بحيث au + bv = 1.",
+            contentFr: "a ≡ b [n] ⇔ n | (a - b). Par le théorème de Bézout : a ∧ b = 1 ⇔ ∃ (u, v) ∈ ℤ², au + bv = 1.",
+            notationMath: "a \\equiv b \\pmod n \\iff n \\mid (a - b), \\quad a \\wedge b = 1 \\iff \\exists (u,v)\\in\\mathbb{Z}^2,\\; au + bv = 1",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "مبرهنة كوص (Théorème de Gauss) ومبرهنة فيرما الصغرى",
+            nameFr: "Théorème de Gauss et petit théorème de Fermat",
+            statementAr: "مبرهنة كوص: إذا كان a يقسم الجداء b·c وكان a أولياً مع b (أي a ∧ b = 1)، فإن a يقسم c. مبرهنة فيرما: إذا كان p عدداً أولياً لا يقسم a، فإن a^{p-1} ≡ 1 [p].",
+            statementFr: "Gauss : Si a | bc et a ∧ b = 1, alors a | c. Petit théorème de Fermat : Si p est premier et ne divise pas a, alors a^{p-1} ≡ 1 [p].",
+            proofAr: "البرهان على كوص: بما أن a ∧ b = 1، حسب بيزو يوجد (u,v) ∈ ℤ² بحيث au + bv = 1. نضرب في c فنحصل على acu + bcv = c. بما أن a يقسم acu و a يقسم bc (إذن يقسم bcv)، فإن a يقسم مجموعهما c.",
+            proofFr: "Par Bézout, ∃ (u,v) ∈ ℤ², au + bv = 1 ⇒ acu + bcv = c. Comme a | acu et a | bc, a divise leur somme c.",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2/N3): حل معادلة ديوفانتية ax + by = c في Z²",
+            titleFr: "Exemple résolu (N2/N3) : Résolution d'une équation diophantienne dans ℤ²",
+            statementAr: "نعتبر في ℤ² المعادلة (E) : 17x - 11y = 3.\n1) تحقق أن الزوج (2, 3) حل خاص للمعادلة (E).\n2) حل في ℤ² المعادلة (E) باستعمال مبرهنة كوص.",
+            statementFr: "On considère dans ℤ² l'équation (E) : 17x - 11y = 3.\n1) Vérifier que le couple (2, 3) est une solution particulière.\n2) Résoudre dans ℤ² l'équation (E).",
+            solutionStepsAr: [
+              "1. التحقق: 17(2) - 11(3) = 34 - 33 = 1 ≠ 3، نضرب في 3 فنحصل على الحل الخاص (x₀, y₀) = (6, 9) لأن 17(6) - 11(9) = 102 - 99 = 3.",
+              "2. بطرح المعادلتين طرفاً بطرف: 17(x - 6) = 11(y - 9).",
+              "3. العدد 11 يقسم 17(x - 6) وبما أن 11 ∧ 17 = 1، فحسب مبرهنة كوص 11 يقسم (x - 6)، أي يوجد k ∈ ℤ بحيث x = 6 + 11k.",
+              "4. بالتعويض نجد y = 9 + 17k، وعكسياً كل زوج (6 + 11k, 9 + 17k) يحقق المعادلة. إذن S = {(6 + 11k, 9 + 17k) / k ∈ ℤ}.",
+            ],
+            solutionStepsFr: [
+              "1. Comme 17(2) - 11(3) = 1, en multipliant par 3 le couple (6, 9) est solution particulière de (E).",
+              "2. Par soustraction : 17(x - 6) = 11(y - 9).",
+              "3. 11 divise 17(x - 6) et 11 ∧ 17 = 1. D'après le théorème de Gauss, 11 divise (x - 6), soit x = 6 + 11k (k ∈ ℤ).",
+              "4. En remplaçant, y = 9 + 17k. Réciproquement vérifié : S = {(6 + 11k, 9 + 17k) ; k ∈ ℤ}.",
+            ],
+            pedagogicalNoteAr: "لا تنسَ مرحلة الاستلزام العكسي (التحقق من أن الأزواج المحصل عليها تحقق فعلاً المعادلة الأصلية) لضمان التكافؤ المنطقي الكامل.",
+            pedagogicalNoteFr: "Ne jamais oublier la réciproque lors de la résolution d'une équation diophantienne par le théorème de Gauss.",
+            difficultyLevel: "N3",
+          },
+        ],
+        commonMistakesAr: [
+          "تطبيق مبرهنة كوص دون التصريح الصريح بشرط الأولية فيما بينهما (a ∧ b = 1).",
+          "القسمة المباشرة في الموافقات بترديد n دون التحقق من أن العدد المقسوم عليه أولي مع الترديد n.",
+        ],
+        commonMistakesFr: [
+          "Appliquer le théorème de Gauss sans mentionner explicitement la condition a ∧ b = 1.",
+          "Simplifier une congruence ac ≡ bc [n] par c sans vérifier que c ∧ n = 1.",
+        ],
+      },
+    ];
+  }
+
+  // 10. قالب ديداكتيكي غني لباقي الدروس يعتمد التمارين والقدرات الحقيقية للدرس
+  const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
+  const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
+  const cap2Ar = lesson.capacitiesAr[2] || cap1Ar;
+  const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;
+  const cap1Fr = lesson.capacitiesFr[1] || cap0Fr;
+  const cap2Fr = lesson.capacitiesFr[2] || cap1Fr;
+  const sampleEx0Ar =
+    lesson.sampleExerciseAr?.[0] ||
+    `أنجز التطبيق المباشر المرتبط بـ « ${cap0Ar} » مع تعليل جميع المراحل.`;
+  const sampleEx1Ar =
+    lesson.sampleExerciseAr?.[1] ||
+    `وظف خاصيات « ${cap1Ar} » لاستنتاج النتيجة المطلوبة.`;
+  const sampleEx0Fr =
+    lesson.sampleExerciseFr?.[0] ||
+    `Traiter l'application directe relative à « ${cap0Fr} » en justifiant chaque étape.`;
+  const sampleEx1Fr =
+    lesson.sampleExerciseFr?.[1] ||
+    `Mobiliser les propriétés de « ${cap1Fr} » pour établir le résultat.`;
+
+  const mainFormulaNotation = `\\text{Capacités cibles : } ${cap0Fr} \\;\\cdot\\; ${cap1Fr}`;
+
   return [
     {
       sectionNum: 1,
       titleAr: `I. المفاهيم المؤسسة والتعاريف الرياضية لدرس « ${lesson.lessonAr} »`,
       titleFr: `I. Concepts cardinaux et définitions formelles de « ${lesson.lessonFr} »`,
-      axisSummaryAr: `البناء المفاهيمي والاصطلاحي لمحور ${lesson.lessonAr} وفق الإطار المرجعي والتوجيهات التربوية الرسمية.`,
-      axisSummaryFr: `Cadre formel et définitions constitutives de ${lesson.lessonFr} selon les prescriptions ministérielles.`,
+      axisSummaryAr: `البناء المفاهيمي والاصطلاحي لمحور ${lesson.lessonAr} (${cap0Ar} · ${cap1Ar}) وفق الإطار المرجعي والتوجيهات التربوية الرسمية.`,
+      axisSummaryFr: `Cadre formel et définitions constitutives de ${lesson.lessonFr} (${cap0Fr} · ${cap1Fr}) selon les prescriptions ministérielles.`,
       definitions: [
         {
-          termAr: `التعريف المحوري لـ ${lesson.lessonAr}`,
-          termFr: `Définition fondamentale de ${lesson.lessonFr}`,
-          contentAr: `لكل عنصر ينتمي إلى البنية المدروسة، يتحقق التوصيف الرياضي الصارم للعلاقات والترميزات المعتمدة رسمياً في الإطار المرجعي مع احترام شروط الوجود والحدود.`,
-          contentFr: `Définition formelle des éléments constitutifs de ${lesson.lessonFr} avec formalisme rigoureux et domaine de validité.`,
-          notationMath: "\\forall x \\in \\mathcal{E}, \\quad \\mathcal{P}(x) \\iff x \\in \\mathcal{S}",
+          termAr: `التعريف المحوري: ${cap0Ar}`,
+          termFr: `Définition fondamentale : ${cap0Fr}`,
+          contentAr: `ضبط المفهوم الرياضي المرتبط بـ « ${cap0Ar} » وتحديد الترميزات الرسمية المعتمدة وشروط الصلاحية قبل الانتقال إلى « ${cap1Ar} ».`,
+          contentFr: `Définition formelle relative à « ${cap0Fr} » avec formalisme rigoureux et domaine de validité menant à « ${cap1Fr} ».`,
+          notationMath: mainFormulaNotation,
         },
       ],
       theorems: [
         {
-          nameAr: `المبرهنة الأساسية والقواعد التأسيسية لـ ${lesson.lessonAr}`,
-          nameFr: `Théorème cardinal et propriétés caractéristiques`,
-          statementAr: `تحقق العناصر المدروسة الخصائص الجبرية والتحليلية والهندسية اللازمة، مع وجوب التحقق من الفرضيات القبلية قبل إجراء أي تطبيق حسابي.`,
-          statementFr: `Propriétés opératoires fondamentales et conditions suffisantes garantissant l'exactitude des résultats.`,
-          conditionsAr: ["احترام مجموعة التعريف والشروط الحدودية", "التحقق من الرتابة أو الاستقلال الخطي حسب السياق"],
-          conditionsFr: ["Cohérence des ensembles de départ et d'arrivée", "Vérification stricte des hypothèses préalables"],
-          proofAr: "يتم البرهان بالاعتماد على التكافؤات المنطقية المتسلسلة والمكتسبات القبلية المقررة في المناهج الرسمية.",
-          proofFr: "La preuve repose sur une chaîne d'équivalences logiques et l'application des théorèmes fondateurs.",
+          nameAr: `المبرهنة الأساسية والقواعد الإجرائية لـ ${lesson.lessonAr}`,
+          nameFr: `Théorème cardinal et propriétés caractéristiques (${lesson.lessonFr})`,
+          statementAr: `تمكن الخاصيات المميزة لـ « ${cap1Ar} » و « ${cap2Ar} » من الانتقال من الصياغة التعريفية إلى الحساب الجبري والتأويل الهندسي المضبوط.`,
+          statementFr: `Les propriétés caractéristiques de « ${cap1Fr} » et « ${cap2Fr} » permettent de résoudre les configurations algébriques et géométriques associées.`,
+          conditionsAr: [
+            `التحقق من شروط تطبيق « ${cap0Ar} »`,
+            `الربط المنطقي السليم مع « ${cap1Ar} »`,
+          ],
+          conditionsFr: [
+            `Vérification préalable des conditions de « ${cap0Fr} »`,
+            `Articulation logique avec « ${cap1Fr} »`,
+          ],
+          proofAr: `يعتمد البرهان على التكافؤات المنطقية المتسلسلة انطلاقاً من التعريف الرسمي لـ ${lesson.lessonAr} وصولاً إلى صيغة ${cap1Ar}.`,
+          proofFr: `La démonstration s'appuie sur la définition formelle de ${lesson.lessonFr} et les propriétés de ${cap1Fr}.`,
         },
       ],
       solvedExamples: [
         {
-          titleAr: `مثال تطبيقي نموذجي محلول خطوة بخطوة في ${lesson.lessonAr}`,
-          titleFr: `Exemple d'application résolu méthodiquement`,
-          statementAr: `تطبيق مباشر للخاصية المحورية لـ « ${lesson.lessonAr} » على وضعية عددية أو هندسية نمطية.`,
-          statementFr: `Application directe de la règle essentielle de « ${lesson.lessonFr} » avec justification complète.`,
+          titleAr: `مثال تطبيقي محلول (N1/N2) من صميم درس ${lesson.lessonAr}`,
+          titleFr: `Exemple d'application résolu (N1/N2) — ${lesson.lessonFr}`,
+          statementAr: `${sampleEx0Ar}\n${sampleEx1Ar}`,
+          statementFr: `${sampleEx0Fr}\n${sampleEx1Fr}`,
           solutionStepsAr: [
-            "1. تحديد المعطيات واستحضار الخاصية أو المبرهنة المناسبة للسياق.",
-            "2. التحقق من توفر جميع الشروط والفرضيات اللازمة لتطبيق القاعدة.",
-            "3. إجراء العمليات الحسابية بدقة متناهية وترتيب الخطوات الاستدلالية.",
-            "4. تأطير النتيجة النهائية وتقديم التأويل الهندسي أو التحليلي المناسب.",
+            `1. استحضار القاعدة المرجعية المرتبطة بـ « ${cap0Ar} » وتحديد المعطيات العددية في السؤال الأول.`,
+            `2. إنجاز الحساب الجبري والاختزال للإجابة عن: « ${sampleEx0Ar} ».`,
+            `3. توظيف النتيجة السابقة والخاصية المميزة لـ « ${cap1Ar} » لمعالجة السؤال الثاني: « ${sampleEx1Ar} ».`,
+            `4. تأطير النتيجة النهائية وتقديم الاستنتاج أو التأويل المناسب وفق الإطار المرجعي.`,
           ],
           solutionStepsFr: [
-            "1. Identifier les données et la propriété applicable.",
-            "2. Vérifier scrupuleusement les conditions d'application.",
-            "3. Mener le calcul de manière structurée et justifiée.",
-            "4. Encadrer le résultat final et donner l'interprétation mathématique.",
+            `1. Mobiliser la propriété de référence liée à « ${cap0Fr} » et identifier les données.`,
+            `2. Effectuer le calcul algébrique structuré pour : « ${sampleEx0Fr} ».`,
+            `3. Exploiter le résultat précédent et la propriété « ${cap1Fr} » pour : « ${sampleEx1Fr} ».`,
+            `4. Encadrer le résultat final et formuler la conclusion attendue.`,
           ],
-          pedagogicalNoteAr: "الحرص على عدم القفز على المراحل الاستدلالية وتبرير كل خطوة بالمبرهنة المناسبة.",
-          pedagogicalNoteFr: "Exiger une rédaction sans faille avec citation explicite des théorèmes mobilisés.",
-          difficultyLevel: "N1",
+          pedagogicalNoteAr: `الحرص على تبرير كل انتقال حسابي بالخاصية المناسبة من « ${cap0Ar} » وعدم الاكتفاء بالنتيجة النهائية.`,
+          pedagogicalNoteFr: `Exiger la citation explicite des propriétés relatives à « ${cap0Fr} » à chaque étape du raisonnement.`,
+          difficultyLevel: "N2",
         },
       ],
       commonMistakesAr: [
-        "الاستعمال الآلي للقواعد دون التحقق من صلاحية الشروط الأولية.",
-        "الارتباك في الرموز والترميزات الرياضية الرسمية.",
+        `التطبيق الآلي لقواعد « ${cap0Ar} » دون التحقق من الشروط الأولية.`,
+        `الخلط بين الصيغ الجبرية والتأويل الهندسي في أسئلة « ${cap1Ar} ».`,
       ],
       commonMistakesFr: [
-        "Application mécanique sans vérification des conditions préalables.",
-        "Confusions de notation et raccourcis non justifiés.",
+        `Application mécanique de « ${cap0Fr} » sans vérifier les hypothèses.`,
+        `Confusion entre écriture algébrique et interprétation dans « ${cap1Fr} ».`,
       ],
     },
   ];
@@ -1997,65 +2435,171 @@ print(f"Nombre d'itérations : {nb_pas}")`,
 }
 
 /**
- * بناء محتوى التقويم التكويني والدعم الفوري
+ * بناء محتوى التقويم التكويني والدعم الفوري بالاعتماد على الأسئلة والقدرات الفعلية للدرس
  */
 function buildFormativeEvaluation(lesson: LessonItem) {
-  const title = lesson.lessonAr.toLowerCase();
+  const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
+  const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
+  const cap2Ar = lesson.capacitiesAr[2] || cap1Ar;
+  const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;
+  const cap1Fr = lesson.capacitiesFr[1] || cap0Fr;
+  const cap2Fr = lesson.capacitiesFr[2] || cap1Fr;
+
+  const q1Ar =
+    lesson.sampleExerciseAr?.[0] ||
+    `1. أنجز التطبيق المباشر المرتبط بـ « ${cap0Ar} » وبسط النتيجة.`;
+  const q2Ar =
+    lesson.sampleExerciseAr?.[1] ||
+    `2. وظف خاصيات « ${cap1Ar} » لحل السؤال أو إثبات العلاقة المطلوبة.`;
+  const q3Ar =
+    lesson.sampleExerciseAr?.[2] ||
+    `3. استنتج التأويل أو النتيجة النهائية المرتبطة بـ « ${cap2Ar} ».`;
+
+  const q1Fr =
+    lesson.sampleExerciseFr?.[0] ||
+    `1. Traiter l'application directe liée à « ${cap0Fr} » et simplifier.`;
+  const q2Fr =
+    lesson.sampleExerciseFr?.[1] ||
+    `2. Mobiliser les propriétés de « ${cap1Fr} » pour démontrer la relation.`;
+  const q3Fr =
+    lesson.sampleExerciseFr?.[2] ||
+    `3. En déduire l'interprétation ou la conclusion relative à « ${cap2Fr} ».`;
 
   return {
     titleAr: `تقويم تكويني وجيز: التحقق من القدرات والمهارات الأساسية لـ « ${lesson.lessonAr} »`,
     titleFr: `Évaluation formative : Contrôle des capacités fondamentales de « ${lesson.lessonFr} »`,
     testExerciseAr: {
-      statement: `تطبيق كتابي فردي (المدة: 20 دقيقة): نعتبر الدالة أو البنية المعرفة في سياق ${lesson.lessonAr}. أجب عن الأسئلة التالية بتعليل رياضي دقيق.`,
-      questions: [
-        "1. أحسب النهاية أو المقدار المميز الأساسي وبسط النتيجة إلى أقصى حد.",
-        "2. أدرس قابلية الاشتقاق أو الاتصال عند النقطة المحددة وأعط تأويلاً هندسياً.",
-        "3. طبق المبرهنة الأساسية لإثبات وجود الحل أو الخاصية المطلوبة.",
-        "4. اكتب معادلة المماس أو التعبير الرمزي الدقيق وأطره بعناية.",
-      ],
+      statement: `تطبيق كتابي فردي (المدة: 20 دقيقة — 5 نقط): في سياق درس « ${lesson.lessonAr} »، أجب عن الأسئلة المتدرجة التالية بتعليل رياضي دقيق:`,
+      questions: [q1Ar, q2Ar, q3Ar],
       answers: [
-        "1. النتيجة المحسوبة بعد التعميل والاختزال هي قيمة عددية منتهية مضبوطة.",
-        "2. الدالة متصلة لأن النهاية تساوي الصورة، وتقبل نصف مماس أفقي أو مائل.",
-        "3. التحقق من الشروط الثلاثة: الاتصال، الرتابة، وتغير الإشارة ثم تطبيق المبرهنة.",
-        "4. المعادلة المستنتجة مطابقة للصيغة الرسمية y = f'(x₀)(x - x₀) + f(x₀).",
+        `1. تطبيق القاعدة المرجعية لـ « ${cap0Ar} » والتعويض السليم للوصول إلى النتيجة المضبوطة.`,
+        `2. استحضار شروط « ${cap1Ar} » وإنجاز الاستدلال الجبري أو الهندسي خطوة بخطوة.`,
+        `3. ربط النتيجة بالسياق العام لـ « ${cap2Ar} » وتأطير الصيغة النهائية.`,
       ],
-      markingScheme: ["1.0 pt", "1.5 pt", "1.5 pt", "1.0 pt"],
+      markingScheme: ["1.5 pt", "2.0 pts", "1.5 pt"],
     },
     testExerciseFr: {
-      statement: `Test formatif individuel (Durée : 20 min) : Soit la configuration associée à « ${lesson.lessonFr} ». Traiter les questions avec justification rigoureuse.`,
-      questions: [
-        "1. Calculer la limite ou la grandeur caractéristique et simplifier au maximum.",
-        "2. Étudier la continuité ou la dérivabilité en un point et donner l'interprétation géométrique.",
-        "3. Appliquer le théorème fondamental pour démontrer l'existence ou la propriété voulue.",
-        "4. Déterminer l'équation de la tangente ou l'expression finale et encadrer.",
-      ],
+      statement: `Test formatif individuel (Durée : 20 min — 5 pts) : Dans le cadre de « ${lesson.lessonFr} », traiter les questions suivantes avec justification rigoureuse :`,
+      questions: [q1Fr, q2Fr, q3Fr],
       answers: [
-        "1. Valeur finie obtenue après factorisation et simplification.",
-        "2. Continuité validée car limite égale image ; demi-tangente caractérisée.",
-        "3. Vérification des 3 hypothèses du TVI puis conclusion formelle.",
-        "4. Équation de tangente conforme à la formule officielle.",
+        `1. Application directe de la propriété « ${cap0Fr} » et simplification exacte.`,
+        `2. Vérification des hypothèses de « ${cap1Fr} » et rédaction complète de la preuve.`,
+        `3. Déduction finale et interprétation dans le cadre de « ${cap2Fr} ».`,
       ],
-      markingScheme: ["1.0 pt", "1.5 pt", "1.5 pt", "1.0 pt"],
+      markingScheme: ["1.5 pt", "2.0 pts", "1.5 pt"],
     },
     remediationStrategiesAr: [
-      "معالجة عائق الأشكال غير المحددة (0/0): تنظيم ورشة تدريبية على تقنيات التعميل، الضرب في المرافق، واستعمال العدد المشتق.",
-      "معالجة النسيان لشروط المبرهنات: إعداد بطاقة جيب مرجعية (Fiche Mémo) تلخص الفرضيات الواجب ذكرها قبل كل تطبيق.",
-      "تنمية مهارة التحرير الرياضي: اعتماد سلم تنقيط تحليلي يمنح نصف النقطة على كتابة الفرضيات والاستدلال السليم.",
+      `معالجة التعثرات في « ${cap0Ar} »: تنظيم ورشة تصحيح فوري على السبورة مع تذكير بالصيغ الأساسية.`,
+      `معالجة نسيان شروط المبرهنات في « ${cap1Ar} »: اعتماد بطاقة ملخصة (Fiche Mémo) للفرضيات القبلية اللازمة.`,
+      "تنمية مهارة التحرير الرياضي: تخصيص 0.25 نقطة لكل تعليل منطقي سليم داخل سلم التنقيط.",
     ],
     remediationStrategiesFr: [
-      "Remédiation sur les formes indéterminées : atelier ciblé sur factorisation et expression conjuguée.",
-      "Mémorisation des hypothèses : création d'une fiche réflexe synthétisant les conditions préalables.",
-      "Rigueur de rédaction : barème analytique valorisant la formulation des hypothèses et justifications.",
+      `Remédiation ciblée sur « ${cap0Fr} » : exercice flash guidé au tableau avec rappel des formules.`,
+      `Consolidation des hypothèses de « ${cap1Fr} » : fiche réflexe synthétisant les conditions préalables.`,
+      "Rigueur de rédaction : barème analytique au 0.25 pt valorisant chaque justification logique.",
     ],
     homeworkAssignmentsAr: [
-      "حل التمارين التطبيقية والتوليفية من سلسلة التمارين الموزعة (المستويات N1 و N2).",
-      "إنجاز الفرض المنزلي رقم 1 (Devoir Maison) في ورقة مزدوجة منظمة تسلم بعد أسبوع.",
-      "إجراء بحث وجيز حول الامتدادات الفيزيائية لمفهوم الدرس ومحاكاته بـ GeoGebra في المنزل.",
+      `حل التمارين التطبيقية والتوليفية من سلسلة التمارين الموزعة حول « ${lesson.lessonAr} » (المستويات N1 و N2).`,
+      "إنجاز الفرض المنزلي (Devoir Maison) في ورقة مزدوجة منظمة تسلم في الحصة المحددة.",
+      "التحقق من النتائج والتخمينات باستعمال برمجية GeoGebra أو خوارزمية Python المرفقة.",
     ],
     homeworkAssignmentsFr: [
-      "Résoudre les exercices d'entraînement de la série (niveaux N1 et N2).",
-      "Rédiger le Devoir Maison n° 1 sur feuille double soignée pour la semaine prochaine.",
-      "Recherche documentaire et simulation personnelle sur GeoGebra.",
+      `Résoudre les exercices d'entraînement de la série sur « ${lesson.lessonFr} » (niveaux N1 et N2).`,
+      "Rédiger le Devoir Maison sur feuille double soignée.",
+      "Vérifier les conjectures à l'aide de GeoGebra ou du script Python associé.",
     ],
   };
 }
+
+/**
+ * بناء الامتدادات التخصصية المتقاطعة (STEM Links: الفيزياء، علوم المهندس، الاقتصاد والمعلوميات)
+ */
+function buildLessonStemExtensions(lesson: LessonItem): FicheStemExtensionItem[] {
+  const title = lesson.lessonAr.toLowerCase();
+  const titleFr = lesson.lessonFr.toLowerCase();
+
+  if (
+    title.includes("تكامل") ||
+    title.includes("تفاضلية") ||
+    title.includes("أسية") ||
+    titleFr.includes("intégral") ||
+    titleFr.includes("exp")
+  ) {
+    return [
+      {
+        disciplineAr: "الفيزياء والكيمياء (الكهرباء والتحولات النووية)",
+        disciplineFr: "Sciences Physiques (Dipôles RC/RL & Radioactivité)",
+        applicationTitleAr: "معادلة شحن المكثف وتناقص النشاط الإشعاعي وحساب الطاقة المخزونة",
+        applicationTitleFr: "Charge d'un condensateur, décroissance radioactive et énergie emmagasinée",
+        mathematicalModelLatex:
+          "RC\\frac{du_C}{dt} + u_C = E \\implies u_C(t) = E(1 - e^{-t/\\tau}), \\quad E_e = \\int_0^t u_C(t)i(t)\\,dt",
+        didacticLinkAr:
+          "توظيف الدالة الأسية والمعادلات التفاضلية من الرتبة الأولى وحساب التكامل لتحديد الطاقة الكهربائية.",
+        didacticLinkFr:
+          "Mobilisation directe de la fonction exponentielle et du calcul intégral pour le bilan énergétique.",
+      },
+      {
+        disciplineAr: "علوم الاقتصاد والتدبير المالي",
+        disciplineFr: "Sciences Économiques & Finance Quantitative",
+        applicationTitleAr: "الفائدة المتصلة وفائض المستهلك والمنتج بالتكامل",
+        applicationTitleFr: "Actualisation continue et calcul du surplus du consommateur",
+        mathematicalModelLatex:
+          "V(t) = V_0 e^{rt}, \\quad S_c = \\int_0^{q^*} (p_d(q) - p^*)\\,dq",
+        didacticLinkAr:
+          "حساب القيمة المحينة للتدفقات المالية وحساب مساحة فائض المستهلك عبر التكامل المحدد.",
+        didacticLinkFr:
+          "Modélisation de la capitalisation continue et intégration de la fonction de demande.",
+      },
+    ];
+  }
+
+  return [
+    {
+      disciplineAr: "الفيزياء والميكانيك (قوانين نيوتن والموجات)",
+      disciplineFr: "Physique & Mécanique Newtonienne",
+      applicationTitleAr: `نمذجة الحركة والسرعة اللحظية والتسارع بتوظيف « ${lesson.lessonAr} »`,
+      applicationTitleFr: `Cinématique, vitesse instantanée et modélisation via « ${lesson.lessonFr} »`,
+      mathematicalModelLatex:
+        "v(t) = \\frac{dx}{dt} = x'(t), \\quad a(t) = \\frac{d^2x}{dt^2} = x''(t)",
+      didacticLinkAr:
+        "ربط المفهوم الرياضي (المشتقة، النهاية، المتجهات، أو الأعداد العقدية في الممانعة الكهربائية) بالظاهرة الفيزيائية المقاسة.",
+      didacticLinkFr:
+        "Articulation entre l'outil mathématique formel et l'interprétation cinématique ou électrique.",
+    },
+    {
+      disciplineAr: "المعلوميات والخوارزميات الرقمية",
+      disciplineFr: "Informatique & Analyse Numérique",
+      applicationTitleAr: "الحل التقريبي والمحاكاة البرمجية بلغة Python",
+      applicationTitleFr: "Approximation algorithmique et simulation sous Python",
+      mathematicalModelLatex: "|x_{n+1} - x_n| < \\varepsilon = 10^{-5}",
+      didacticLinkAr:
+        "تحويل المبرهنات النظرية إلى خوارزميات تقارب عددية قابلة للتنفيذ والتحقق.",
+      didacticLinkFr:
+        "Traduction des théorèmes d'existence en algorithmes itératifs de précision contrôlée.",
+    },
+  ];
+}
+
+/**
+ * بناء مخطط تدبير السبورة الثلاثية (Tableau Noir) وملخص دفتر النصوص (Cahier de Texte) لكل حصة
+ */
+function buildBlackboardPlansPerSession(
+  lesson: LessonItem,
+  sessions: FicheGlobalPlanningSession[],
+  courseSections: FicheCourseSection[]
+): FicheBlackboardPlanItem[] {
+  const section0 = courseSections[0];
+  const defTitle = section0?.definitions?.[0]?.termAr || lesson.capacitiesAr[0] || lesson.lessonAr;
+  const theoTitle = section0?.theorems?.[0]?.nameAr || lesson.capacitiesAr[1] || lesson.lessonAr;
+
+  return sessions.map((sess) => ({
+    sessionNum: sess.sessionNumber,
+    sessionTitleAr: sess.themeAr,
+    rightWingActivitiesAr: `الجناح الأيمن (التذكير والنشاط البنائي): تذكير بالمكتسبات القبلية + مناقشة وضعية الانطلاق لـ « ${sess.themeAr} ».`,
+    centerWingCourseAr: `الجناح الأوسط (المأسسة والحصيلة المعرفية — لا يُمسح): تدوين ${defTitle} و ${theoTitle} بالرموز الرسمية والألوان المميزة.`,
+    leftWingExercisesAr: `الجناح الأيسر (التطبيق والتقويم التكويني): تمرين تطبيقي مباشر على السبورة مع تصحيح جماعي لأخطاء التحرير.`,
+    cahierDeTexteEntryAr: `[الحصة ${sess.sessionNumber} · 08:00–09:00 · ${sess.allocatedHours}]: إنجاز محور « ${sess.themeAr} » (${sess.keyConceptsAr}) + تمرين تطبيقي وتكليف منزلي.`,
+    cahierDeTexteEntryFr: `[Séance ${sess.sessionNumber} · 08h00–09h00 · ${sess.allocatedHours}] : Traitement de « ${sess.themeFr} » (${sess.keyConceptsFr}) + Exercice d'application.`,
+  }));
+}
+

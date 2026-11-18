@@ -103,7 +103,8 @@ export type TraditionalTitleFontId =
   | "RUQAA_INK"
   | "MAGHRIBI_ANDALUSI"
   | "KUFI_GEOMETRIC"
-  | "NASKH_AMIRI";
+  | "NASKH_AMIRI"
+  | "CUSTOM_UPLOADED_FONT";
 
 export type TitleCalligraphyScale = "COMPACT" | "BALANCED" | "GRAND";
 export type TitleOrnamentStyle =
@@ -297,6 +298,26 @@ export const TRADITIONAL_TITLE_FONT_OPTIONS: TraditionalTitleFontOption[] = [
     wordSpacing: "0.06em",
     lineHeight: "1.7",
     harmonyBaseScore: 99,
+  },
+  {
+    id: "CUSTOM_UPLOADED_FONT",
+    nameAr: "خط مخصص مرفوع من جهازك (.ttf / .otf — محفوظ محلياً)",
+    nameFr: "Police Personnalisée Importée (.ttf / .otf — Stockée Localement)",
+    shortAr: "خط مخصص (.ttf/.otf)",
+    schoolOriginAr: "ملف خط خاص بالأستاذ أو المؤسسة مرفوع ومخزن محلياً",
+    descriptionAr:
+      "يتيح للأستاذ رفع أي ملف خط خاص به بصيغة TrueType (.ttf) أو OpenType (.otf) لتطبيقه مباشرة في ترويسة الفروض وعناوين التمارين مع حفظه محلياً في المتصفح.",
+    bestForAr:
+      "الهوية البصرية الخاصة بالمؤسسة أو الأستاذ وترويسات الفروض المحروسة والامتحانات التجريبية",
+    cssClass: "calligraphy-title-custom-uploaded",
+    sampleVerseAr: "الفرض المحروس الرّسمي في مادة الرّياضيات",
+    recommendedScale: "BALANCED",
+    recommendedOrnament: "ANDALUSI_MOROCCAN",
+    letterSpacing: "0.015em",
+    wordSpacing: "0.08em",
+    lineHeight: "1.75",
+    moroccanHeaderFramePreset: true,
+    harmonyBaseScore: 98,
   },
 ];
 
@@ -1038,25 +1059,47 @@ export interface LessonItem {
   isImportedSimulation?: boolean;
   importedOriginLabel?: string;
   customHeaderIcon?: LessonHeaderIconId;
+  ficheDidactique?: {
+    prerequisAr?: string[];
+    prerequisFr?: string[];
+    activiteIntroAr?: string;
+    activiteIntroFr?: string;
+    resumeCoursAr?: string;
+    resumeCoursFr?: string;
+    erreursFrequentesAr?: string[];
+    erreursFrequentesFr?: string[];
+  };
 }
+
+const AUTO_HEADER_ICON_CACHE = new Map<string, Exclude<LessonHeaderIconId, "AUTO" | "NONE">>();
+const HEADER_ICON_OPTION_BY_ID_MAP = new Map<LessonHeaderIconId, LessonHeaderIconOption>(
+  LESSON_HEADER_ICON_OPTIONS.map((opt) => [opt.id, opt])
+);
+const TAG_COLOR_CLASS_BY_ID_MAP = new Map<string, string>(
+  LESSON_TAG_OPTIONS.map((opt) => [opt.id, opt.colorClass])
+);
 
 export function detectAutoLessonHeaderIconId(
   lesson?: LessonItem
 ): Exclude<LessonHeaderIconId, "AUTO" | "NONE"> {
   if (!lesson) return "FUNCTION";
+  const cacheKey = `${lesson.lessonFr}|${lesson.lessonAr}|${lesson.category || ""}|${lesson.subCategory || ""}`;
+  const cached = AUTO_HEADER_ICON_CACHE.get(cacheKey);
+  if (cached) return cached;
+
   const text = `${lesson.lessonAr || ""} ${lesson.lessonFr || ""} ${
     lesson.subCategory || ""
   } ${lesson.category || ""} ${(lesson.tags || []).join(" ")}`.toLowerCase();
 
+  let detected: Exclude<LessonHeaderIconId, "AUTO" | "NONE"> = "FUNCTION";
   if (
     text.includes("متتالي") ||
     text.includes("suite") ||
     text.includes("u_n") ||
     text.includes("ترجعي")
   ) {
-    return "SEQUENCE";
-  }
-  if (
+    detected = "SEQUENCE";
+  } else if (
     text.includes("تكامل") ||
     text.includes("أصلية") ||
     text.includes("تفاضلي") ||
@@ -1064,12 +1107,11 @@ export function detectAutoLessonHeaderIconId(
     text.includes("primitive") ||
     text.includes("différentielle")
   ) {
-    return "INTEGRAL";
-  }
-  if (text.includes("عقدي") || text.includes("complexe")) {
-    return "COMPLEX";
-  }
-  if (
+    detected = "INTEGRAL";
+  } else if (text.includes("عقدي") || text.includes("complexe")) {
+    detected = "COMPLEX";
+  } else if (
+    lesson.category === "Geometry" ||
     text.includes("هندسة") ||
     text.includes("فضاء") ||
     text.includes("فضائية") ||
@@ -1091,12 +1133,11 @@ export function detectAutoLessonHeaderIconId(
     text.includes("rotation") ||
     text.includes("homothétie") ||
     text.includes("sphère") ||
-    text.includes("vecteur") ||
-    lesson.category === "Geometry"
+    text.includes("vecteur")
   ) {
-    return "GEOMETRY";
-  }
-  if (
+    detected = "GEOMETRY";
+  } else if (
+    lesson.category === "Probabilities" ||
     text.includes("احتمال") ||
     text.includes("إحصاء") ||
     text.includes("تعداد") ||
@@ -1104,12 +1145,10 @@ export function detectAutoLessonHeaderIconId(
     text.includes("probabilit") ||
     text.includes("statist") ||
     text.includes("dénombrement") ||
-    text.includes("aléatoire") ||
-    lesson.category === "Probabilities"
+    text.includes("aléatoire")
   ) {
-    return "PROBABILITY";
-  }
-  if (
+    detected = "PROBABILITY";
+  } else if (
     text.includes("منطق") ||
     text.includes("مجموعات") ||
     text.includes("تطبيقات") ||
@@ -1117,9 +1156,9 @@ export function detectAutoLessonHeaderIconId(
     text.includes("ensemble") ||
     text.includes("application")
   ) {
-    return "LOGIC";
-  }
-  if (
+    detected = "LOGIC";
+  } else if (
+    lesson.category === "Algebra" ||
     text.includes("حسابيات") ||
     text.includes("بنيات") ||
     text.includes("مصفوف") ||
@@ -1130,12 +1169,16 @@ export function detectAutoLessonHeaderIconId(
     text.includes("structure") ||
     text.includes("matrice") ||
     text.includes("polynôme") ||
-    text.includes("algèbre") ||
-    lesson.category === "Algebra"
+    text.includes("algèbre")
   ) {
-    return "ALGEBRA";
+    detected = "ALGEBRA";
   }
-  return "FUNCTION";
+
+  if (AUTO_HEADER_ICON_CACHE.size >= 500) {
+    AUTO_HEADER_ICON_CACHE.clear();
+  }
+  AUTO_HEADER_ICON_CACHE.set(cacheKey, detected);
+  return detected;
 }
 
 export function resolveLessonHeaderIcon(
@@ -1147,7 +1190,7 @@ export function resolveLessonHeaderIcon(
   const resolvedId =
     chosenId === "AUTO" ? detectAutoLessonHeaderIconId(lesson) : chosenId;
   return (
-    LESSON_HEADER_ICON_OPTIONS.find((opt) => opt.id === resolvedId) ||
+    HEADER_ICON_OPTION_BY_ID_MAP.get(resolvedId) ||
     LESSON_HEADER_ICON_OPTIONS[1]
   );
 }
@@ -1163,8 +1206,11 @@ export function getLessonTags(lesson: LessonItem): string[] {
 }
 
 export function getLessonBadgeColor(tagOrSubCategory?: string): string {
-  const found = LESSON_TAG_OPTIONS.find((o) => o.id === tagOrSubCategory);
-  return found ? found.colorClass : "bg-slate-100 text-slate-700 border-slate-200";
+  if (!tagOrSubCategory) return "bg-slate-100 text-slate-700 border-slate-200";
+  return (
+    TAG_COLOR_CLASS_BY_ID_MAP.get(tagOrSubCategory) ||
+    "bg-slate-100 text-slate-700 border-slate-200"
+  );
 }
 
 export type BranchColorGradientMode =
@@ -1276,11 +1322,19 @@ export const BRANCH_COLOR_THEMES: Record<
   },
 };
 
+const LESSON_BRANCH_THEME_CACHE = new Map<string, BranchColorThemeConfig>();
+
 export function detectLessonBranchTheme(lesson?: LessonItem): BranchColorThemeConfig {
   if (!lesson) return BRANCH_COLOR_THEMES.ANALYSIS_BLUE;
+  const cacheKey = `${lesson.lessonFr}|${lesson.lessonAr}|${lesson.category || ""}|${lesson.subCategory || ""}`;
+  const cached = LESSON_BRANCH_THEME_CACHE.get(cacheKey);
+  if (cached) return cached;
+
   const sub = lesson.subCategory || "";
   const cat = lesson.category || "";
   const text = `${lesson.lessonAr} ${lesson.lessonFr} ${(lesson.tags || []).join(" ")}`.toLowerCase();
+
+  let resolvedTheme = BRANCH_COLOR_THEMES.ANALYSIS_BLUE;
 
   if (
     cat === "Geometry" ||
@@ -1314,10 +1368,8 @@ export function detectLessonBranchTheme(lesson?: LessonItem): BranchColorThemeCo
     text.includes("vecteur") ||
     text.includes("droite dans le plan")
   ) {
-    return BRANCH_COLOR_THEMES.GEOMETRY_GREEN;
-  }
-
-  if (
+    resolvedTheme = BRANCH_COLOR_THEMES.GEOMETRY_GREEN;
+  } else if (
     cat === "Probabilities" ||
     sub === "احتمالات وإحصاء" ||
     text.includes("احتمال") ||
@@ -1332,10 +1384,8 @@ export function detectLessonBranchTheme(lesson?: LessonItem): BranchColorThemeCo
     text.includes("binomiale") ||
     text.includes("financ")
   ) {
-    return BRANCH_COLOR_THEMES.PROBABILITY_PURPLE;
-  }
-
-  if (
+    resolvedTheme = BRANCH_COLOR_THEMES.PROBABILITY_PURPLE;
+  } else if (
     cat === "Algebra" ||
     sub === "جبر" ||
     sub === "أعداد عقدية" ||
@@ -1359,10 +1409,14 @@ export function detectLessonBranchTheme(lesson?: LessonItem): BranchColorThemeCo
     text.includes("polynôme") ||
     text.includes("نظمات")
   ) {
-    return BRANCH_COLOR_THEMES.ALGEBRA_AMBER;
+    resolvedTheme = BRANCH_COLOR_THEMES.ALGEBRA_AMBER;
   }
 
-  return BRANCH_COLOR_THEMES.ANALYSIS_BLUE;
+  if (LESSON_BRANCH_THEME_CACHE.size >= 500) {
+    LESSON_BRANCH_THEME_CACHE.clear();
+  }
+  LESSON_BRANCH_THEME_CACHE.set(cacheKey, resolvedTheme);
+  return resolvedTheme;
 }
 
 export function resolveBranchColorTheme(
@@ -1617,6 +1671,8 @@ export const GEOGEBRA_PRESET_LIBRARY: GeoGebraResource[] = [
   },
 ];
 
+const GEOMETRY_LESSON_CACHE = new Map<string, boolean>();
+
 export function isGeometryOrSpatialLesson(lesson: LessonItem): boolean {
   if (lesson.category === "Geometry") return true;
   if (
@@ -1627,8 +1683,12 @@ export function isGeometryOrSpatialLesson(lesson: LessonItem): boolean {
   ) {
     return true;
   }
+  const cacheKey = `${lesson.lessonFr}|${lesson.lessonAr}`;
+  const cached = GEOMETRY_LESSON_CACHE.get(cacheKey);
+  if (cached !== undefined) return cached;
+
   const t = `${lesson.lessonAr} ${lesson.lessonFr}`.toLowerCase();
-  return (
+  const isGeom =
     t.includes("هندسة") ||
     t.includes("فضاء") ||
     t.includes("جداء") ||
@@ -1642,8 +1702,13 @@ export function isGeometryOrSpatialLesson(lesson: LessonItem): boolean {
     t.includes("complexe") ||
     t.includes("barycentre") ||
     t.includes("homothétie") ||
-    t.includes("rotation")
-  );
+    t.includes("rotation");
+
+  if (GEOMETRY_LESSON_CACHE.size >= 500) {
+    GEOMETRY_LESSON_CACHE.clear();
+  }
+  GEOMETRY_LESSON_CACHE.set(cacheKey, isGeom);
+  return isGeom;
 }
 
 export function getAutoGeoGebraResourceForLesson(
@@ -1663,7 +1728,8 @@ export function getAutoGeoGebraResourceForLesson(
   if (!autoAttachGeometry || !isGeometryOrSpatialLesson(lesson)) {
     return null;
   }
-  if (lesson.subCategory === "هندسة فضائية" || lesson.lessonFr.toLowerCase().includes("espace")) {
+  const lowerFr = lesson.lessonFr.toLowerCase();
+  if (lesson.subCategory === "هندسة فضائية" || lowerFr.includes("espace")) {
     return {
       ...GEOGEBRA_PRESET_LIBRARY[0],
       is3D: true,
@@ -1671,14 +1737,14 @@ export function getAutoGeoGebraResourceForLesson(
       titleFr: `${lesson.lessonFr} — Représentation dans l'espace 3D (.ggb)`,
     };
   }
-  if (lesson.subCategory === "أعداد عقدية" || lesson.lessonFr.toLowerCase().includes("complexe")) {
+  if (lesson.subCategory === "أعداد عقدية" || lowerFr.includes("complexe")) {
     return {
       ...GEOGEBRA_PRESET_LIBRARY[3],
       titleAr: `${lesson.lessonAr} — المستوى العقدي والتحويلات`,
       titleFr: `${lesson.lessonFr} — Plan complexe & Transformations`,
     };
   }
-  if (lesson.subCategory === "حساب مثلثي" || lesson.lessonFr.toLowerCase().includes("trigo")) {
+  if (lesson.subCategory === "حساب مثلثي" || lowerFr.includes("trigo")) {
     return {
       ...GEOGEBRA_PRESET_LIBRARY[4],
       titleAr: `${lesson.lessonAr} — الدائرة المثلثية`,
@@ -1701,6 +1767,11 @@ export function lessonMatchesTagFilter(lesson: LessonItem, filterTag: string): b
   return false;
 }
 
+const VARIANT_QUESTIONS_CACHE = new Map<
+  string,
+  { questionsAr: string[]; questionsFr: string[] }
+>();
+
 export function getVariantQuestions(
   lesson: LessonItem,
   model: "A" | "B" | "C" | "D" | string,
@@ -1708,14 +1779,27 @@ export function getVariantQuestions(
   variantSeed: number = 0,
   density: DSQuestionDensity = "STANDARD"
 ): { questionsAr: string[]; questionsFr: string[] } {
+  const customSig =
+    lesson.hasCustomQuestions || lesson.isImportedSimulation
+      ? `${(lesson.sampleExerciseAr || []).length}:${(lesson.sampleExerciseAr || [])[0] || ""}:${(lesson.sampleExerciseFr || [])[0] || ""}`
+      : "std";
+  const cacheKey = `${lesson.lessonFr}|${model}|${shuffleQuestions ? 1 : 0}|${variantSeed}|${density}|${customSig}`;
+  const cached = VARIANT_QUESTIONS_CACHE.get(cacheKey);
+  if (cached) {
+    return {
+      questionsAr: [...cached.questionsAr],
+      questionsFr: [...cached.questionsFr],
+    };
+  }
+
   const titleFr = lesson.lessonFr.toLowerCase();
   const titleAr = lesson.lessonAr;
   const subCat = lesson.subCategory || "";
   let questionsAr: string[] = [];
   let questionsFr: string[] = [];
 
-  // إذا كان الأستاذ في الصيغة الأساسية (variantSeed === 0) ووجدت أسئلة مخصصة، نثريها بأسئلة التوليف المغربية (N2/N3) لتكتمل بنية الفرض المحروس (5 أسئلة متدرجة)
-  if (variantSeed === 0 && lesson.sampleExerciseAr && lesson.sampleExerciseFr) {
+  // إذا كان الأستاذ في الصيغة الأساسية (variantSeed === 0) أو كانت الأسئلة مولدة/معدلة مسبقاً، نستخدمها مع إثرائها عند الحاجة
+  if ((variantSeed === 0 || lesson.hasCustomQuestions) && lesson.sampleExerciseAr && lesson.sampleExerciseFr) {
     if (model === "A") {
       questionsAr = [...lesson.sampleExerciseAr];
       questionsFr = [...lesson.sampleExerciseFr];
@@ -1854,10 +1938,12 @@ export function getVariantQuestions(
       }
     }
   } else if (subCat === "هندسة فضائية" || titleFr.includes("espace") || titleAr.includes("الفضائية")) {
-    const isAlt = variantSeed % 2 === 1;
-    const r = model === "A" ? (isAlt ? "√14" : "3") : isAlt ? "2√14" : "6";
-    const dPlane = model === "A" ? (isAlt ? "4" : "3") : isAlt ? "8" : "6";
-    const center = model === "A" ? (isAlt ? "Ω(2, -1, 1)" : "Ω(1, -1, 2)") : "Ω(2, 1, -1)";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const isAlt = seedMod % 2 === 1;
+    const rList = ["3", "√14", "√17", "5"];
+    const r = model === "A" ? rList[seedMod] : isAlt ? "2√14" : "6";
+    const dPlane = model === "A" ? String(3 + seedMod) : isAlt ? "8" : "6";
+    const center = model === "A" ? (isAlt ? `Ω(${2 + seedMod}, -1, 1)` : `Ω(1, -1, ${2 + seedMod})`) : "Ω(2, 1, -1)";
     questionsAr = [
       `في الفضاء المنسوب إلى معلم متعامد ممنظم مباشر (O, i, j, k)، نعتبر النقط A(1, 0, 2) و B(2, 1, 0) و C(0, 1, 1) والفلكة (S) التي مركزها ${center} وشعاعها R = ${r}.`,
       `1. أ) أحسب مركبات الجداء المتجهي AB ∧ AC، ثم استنتج أن النقط A و B و C غير مستقيمية.`,
@@ -1875,32 +1961,33 @@ export function getVariantQuestions(
       `3. Déterminer une représentation paramétrique de la droite (Δ) passant par Ω et orthogonale à (ABC), puis en déduire les coordonnées du centre H de (Γ) et l'équation du plan tangent en A.`,
     ];
   } else if (titleFr.includes("suite") || titleAr.includes("المتتاليات")) {
-    const isAlt = variantSeed % 2 === 1;
-    const a = model === "A" ? (isAlt ? "4" : "3") : "4";
-    const b = model === "A" ? (isAlt ? "3" : "2") : "3";
-    const u0 = model === "A" ? (isAlt ? "2" : "1") : "2";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const aNum = (model === "A" ? 3 : 4) + seedMod;
+    const bNum = aNum - 1;
+    const u0 = String(bNum - 1);
     questionsAr = [
-      `نعتبر المتتالية العددية (u_n) المعرفة بـ u_0 = ${u0} و u_{n+1} = (${a}u_n + ${b})/(u_n + 2) لكل n من N.`,
-      `1. أ) أحسب الحدين u_1 و u_2، ثم بين بالترجع أن u_n > ${isAlt ? "1" : "0"} لكل n من N.`,
-      `1. ب) تحقق أن u_{n+1} - u_n = -(u_n - ${b})(u_n + 1)/(u_n + 2)، ثم أدرس رتابة المتتالية (u_n) واستنتج أنها متقاربة.`,
-      `2. نعتبر المتتالية العددية (v_n) المعرفة بـ: v_n = (u_n - ${b})/(u_n + 1) لكل n من N.`,
+      `نعتبر المتتالية العددية (u_n) المعرفة بـ u_0 = ${u0} و u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) لكل n من N.`,
+      `1. أ) أحسب الحدين u_1 و u_2، ثم بين بالترجع أن u_n > ${bNum - 2} لكل n من N.`,
+      `1. ب) تحقق أن u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2)، ثم أدرس رتابة المتتالية (u_n) واستنتج أنها متقاربة.`,
+      `2. نعتبر المتتالية العددية (v_n) المعرفة بـ: v_n = (u_n - ${bNum})/(u_n + 1) لكل n من N.`,
       `2. أ) بين أن (v_n) متتالية هندسية محدداً أساسها q وحدها الأول v_0.`,
       `2. ب) أكتب v_n ثم u_n بدلالة n، وأحسب نهاية المتتالية (u_n) والمجموع S_n = v_0 + v_1 + ... + v_n بدلالة n.`,
     ];
     questionsFr = [
-      `Soit (u_n) la suite numérique définie par u_0 = ${u0} et u_{n+1} = (${a}u_n + ${b})/(u_n + 2) pour tout n ∈ ℕ.`,
-      `1. a) Calculer u_1 et u_2, puis montrer par récurrence que u_n > ${isAlt ? "1" : "0"} pour tout n ∈ ℕ.`,
-      `1. b) Vérifier que u_{n+1} - u_n = -(u_n - ${b})(u_n + 1)/(u_n + 2), étudier la monotonie de (u_n) et en déduire qu'elle est convergente.`,
-      `2. On considère la suite auxiliaire (v_n) définie sur ℕ par : v_n = (u_n - ${b})/(u_n + 1).`,
+      `Soit (u_n) la suite numérique définie par u_0 = ${u0} et u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) pour tout n ∈ ℕ.`,
+      `1. a) Calculer u_1 et u_2, puis montrer par récurrence que u_n > ${bNum - 2} pour tout n ∈ ℕ.`,
+      `1. b) Vérifier que u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2), étudier la monotonie de (u_n) et en déduire qu'elle est convergente.`,
+      `2. On considère la suite auxiliaire (v_n) définie sur ℕ par : v_n = (u_n - ${bNum})/(u_n + 1).`,
       `2. a) Montrer que (v_n) est une suite géométrique dont on précisera la raison q et le premier terme v_0.`,
       `2. b) Exprimer v_n puis u_n en fonction de n, calculer lim u_n et exprimer la somme S_n = v_0 + v_1 + ... + v_n en fonction de n.`,
     ];
   } else if (titleFr.includes("complexe") || subCat === "أعداد عقدية") {
-    const isAlt = variantSeed % 2 === 1;
-    const re = model === "A" ? (isAlt ? "2√2" : "2√3") : "4√3";
-    const c = model === "A" ? (isAlt ? "4" : "4") : "16";
-    const affA = model === "A" ? (isAlt ? "√2 + i√2" : "√3 + i") : "2√3 + 2i";
-    const affC = model === "A" ? (isAlt ? "-√2 + i√2" : "2i") : "4i";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const kNum = (model === "A" ? 1 : 2) + seedMod;
+    const re = `${2 * kNum}√3`;
+    const c = `${4 * kNum * kNum}`;
+    const affA = `${kNum}√3 + ${kNum}i`;
+    const affC = `${2 * kNum}i`;
     questionsAr = [
       `I. نعتبر في مجموعة الأعداد العقدية C المعادلة: (E) : z² - ${re} z + ${c} = 0.`,
       `1. أ) أحسب مميز المعادلة (E)، ثم حل في المجموعة C المعادلة (E).`,
@@ -1924,30 +2011,53 @@ export function getVariantQuestions(
     titleAr.includes("التكاملي") ||
     titleAr.includes("التفاضلية")
   ) {
-    const isAlt = variantSeed % 2 === 1;
-    const odeEq = model === "A"
-      ? (isAlt ? "y'' - 4y' + 4y = 0" : "y'' - 2y' + y = 0")
-      : "y'' - 3y' + 2y = 0";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const rRoot = (model === "A" ? 1 : 2) + seedMod;
+    const odeEq = `y'' - ${2 * rRoot}y' + ${rRoot * rRoot}y = 0`;
     questionsAr = [
       `الجزء الأول: نعتبر المعادلة التفاضلية (E) : ${odeEq}.`,
       `1. أ) حل في R المعادلة المميزة المرتبطة بالمعادلة (E)، ثم استنتج الحل العام للمعادلة التفاضلية (E).`,
       `1. ب) حدد الحل الخاص h للمعادلة (E) الذي يحقق الشرطين: h(0) = 1 و h'(0) = 0.`,
-      `الجزء الثاني: نعتبر التكاملين I = ∫_0^1 (x + 1)e^{-x} dx و J = ∫_0^{π/4} tan(x) dx.`,
+      `الجزء الثاني: نعتبر التكاملين I = ∫_0^1 (x + ${rRoot})e^{-x} dx و J = ∫_0^{π/4} tan(x) dx.`,
       `2. أ) حدد الدالة الأصلية للدالة x ↦ tan(x) على [0, π/4]، ثم أحسب التكامل J.`,
-      `2. ب) باستعمال المكاملة بالأجزاء، أحسب التكامل I، ثم استنتج بـ cm² مساحة الحيز المستوي المحصور بين منحنى الدالة f(x) = (x+1)e^{-x} ومحور الأفاصيل والمستقيمين x = 0 و x = 1 (حيث ||i|| = ||j|| = 2 cm).`,
+      `2. ب) باستعمال المكاملة بالأجزاء، أحسب التكامل I، ثم استنتج بـ cm² مساحة الحيز المستوي المحصور بين منحنى الدالة f(x) = (x+${rRoot})e^{-x} ومحور الأفاصيل والمستقيمين x = 0 و x = 1 (حيث ||i|| = ||j|| = 2 cm).`,
     ];
     questionsFr = [
       `Partie I : On considère l'équation différentielle (E) : ${odeEq}.`,
       `1. a) Résoudre l'équation caractéristique associée à (E) et donner la solution générale de (E) sur ℝ.`,
       `1. b) Déterminer la solution particulière h de (E) vérifiant les conditions initiales h(0) = 1 et h'(0) = 0.`,
-      `Partie II : On pose I = ∫_0^1 (x + 1)e^{-x} dx et J = ∫_0^{π/4} tan(x) dx.`,
+      `Partie II : On pose I = ∫_0^1 (x + ${rRoot})e^{-x} dx et J = ∫_0^{π/4} tan(x) dx.`,
       `2. a) Déterminer une primitive de x ↦ tan(x) sur [0, π/4] et calculer l'intégrale J.`,
-      `2. b) À l'aide d'une intégration par parties (IPP), calculer I, puis en déduire en cm² l'aire du domaine plan délimité par la courbe de f(x) = (x+1)e^{-x}, l'axe des abscisses et les droites x = 0 et x = 1 (unité : 2 cm).`,
+      `2. b) À l'aide d'une intégration par parties (IPP), calculer I, puis en déduire en cm² l'aire du domaine plan délimité par la courbe de f(x) = (x+${rRoot})e^{-x}, l'axe des abscisses et les droites x = 0 et x = 1 (unité : 2 cm).`,
     ];
-  } else if (titleFr.includes("logarithm") || titleFr.includes("exponentielle")) {
-    const k = model === "A" ? (variantSeed % 2 === 1 ? "1" : "2") : "3";
+  } else if (
+    (titleFr.includes("exponentielle") || titleAr.includes("الأسية")) &&
+    !titleFr.includes("logarithm") &&
+    !titleAr.includes("اللوغاريتمية")
+  ) {
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
+    const k = String((model === "A" ? 1 : 2) + seedMod);
     questionsAr = [
-      `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على المجال ]0, +∞[ بـ: g(x) = ${k}x² - 1 - ln(x).`,
+      `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على R بـ: g(x) = e^x - x - 1.`,
+      `1. أ) أحسب g'(x) لكل x من R، ثم ضع جدول تغيرات الدالة g على R.`,
+      `1. ب) أحسب g(0)، ثم استنتج أنه لكل x من R لدينا: g(x) ≥ 0.`,
+      `الجزء الثاني: نعتبر الدالة العددية f المعرفة على R بـ: f(x) = x + ${k} - x e^{-x}، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
+      `2. أ) أحسب lim_{x→-∞} f(x) و lim_{x→+∞} f(x)، وبين أن المستقيم (Δ) ذا المعادلة y = x + ${k} مقارب مائل للمنحنى (C_f) بجوار +∞ وأدرس وضعه النسبي مع (C_f).`,
+      `2. ب) بين أن f'(x) = e^{-x}(e^x + x - 1) لكل x من R، ضع جدول تغيرات الدالة f، ثم أنشئ (Δ) و (C_f) وأحسب باستعمال المكاملة بالأجزاء مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 0 و x = 1.`,
+    ];
+    questionsFr = [
+      `Partie I : Soit g la fonction auxiliaire définie sur ℝ par : g(x) = e^x - x - 1.`,
+      `1. a) Calculer g'(x) pour tout x ∈ ℝ et dresser le tableau de variations de g.`,
+      `1. b) Calculer g(0) et en déduire que pour tout x ∈ ℝ, g(x) ≥ 0.`,
+      `Partie II : On considère la fonction f définie sur ℝ par : f(x) = x + ${k} - x e^{-x} et (C_f) sa courbe représentative dans un repère orthonormé (O, i, j).`,
+      `2. a) Calculer les limites de f en -∞ et en +∞, montrer que la droite (Δ) : y = x + ${k} est asymptote oblique à (C_f) en +∞ et étudier leur position relative.`,
+      `2. b) Montrer que f'(x) = e^{-x}(e^x + x - 1) pour tout x ∈ ℝ, dresser le tableau de variations de f, puis calculer par intégration par parties l'aire du domaine compris entre (C_f), (Δ), x = 0 et x = 1.`,
+    ];
+  } else if (titleFr.includes("logarithm") || titleAr.includes("اللوغاريتمية")) {
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
+    const k = String((model === "A" ? 1 : 2) + seedMod);
+    questionsAr = [
+      `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على المجال ]0, +∞[ بـ: g(x) = ${k}x² - ${k} - ln(x).`,
       `1. أ) أحسب g'(x) لكل x > 0، ثم ضع جدول تغيرات الدالة g على ]0, +∞[ (لا يطلب حساب النهايات).`,
       `1. ب) أحسب g(1)، ثم استنتج إشارة g(x) على كل من المجالين ]0, 1] و [1, +∞[.`,
       `الجزء الثاني: نعتبر الدالة العددية f المعرفة على ]0, +∞[ بـ: f(x) = ${k}x - 1 + ln(x)/x، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
@@ -1955,7 +2065,7 @@ export function getVariantQuestions(
       `2. ب) بين أن f'(x) = g(x)/x² لكل x > 0، ضع جدول تغيرات الدالة f، ثم أنشئ المستقيم (Δ) والمنحنى (C_f) وأحسب مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 1 و x = e.`,
     ];
     questionsFr = [
-      `Partie I : Soit g la fonction auxiliaire définie sur ]0, +∞[ par : g(x) = ${k}x² - 1 - ln(x).`,
+      `Partie I : Soit g la fonction auxiliaire définie sur ]0, +∞[ par : g(x) = ${k}x² - ${k} - ln(x).`,
       `1. a) Calculer g'(x) pour tout x > 0 et dresser le tableau de variations de g sur ]0, +∞[.`,
       `1. b) Calculer g(1) et en déduire le signe de g(x) sur ]0, +∞[.`,
       `Partie II : On considère la fonction f définie sur ]0, +∞[ par : f(x) = ${k}x - 1 + ln(x)/x et (C_f) sa courbe représentative dans un repère orthonormé (O, i, j).`,
@@ -1963,11 +2073,12 @@ export function getVariantQuestions(
       `2. b) Montrer que f'(x) = g(x)/x² pour tout x > 0, dresser le tableau de variations de f, construire (Δ) et (C_f), puis calculer l'aire du domaine compris entre (C_f), (Δ) et les droites x = 1 et x = e.`,
     ];
   } else if (subCat === "احتمالات وإحصاء" || titleFr.includes("probabilit") || titleAr.includes("الاحتمالات")) {
-    const nRed = model === "A" ? (variantSeed % 2 === 1 ? "5" : "4") : "5";
-    const nGreen = model === "A" ? "3" : "4";
-    const total = model === "A" ? (variantSeed % 2 === 1 ? "10" : "9") : "11";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const nRedNum = (model === "A" ? 4 : 5) + (seedMod % 2);
+    const nGreenNum = (model === "A" ? 3 : 4) + Math.floor(seedMod / 2);
+    const total = String(nRedNum + nGreenNum + 2);
     questionsAr = [
-      `يحتوي كيس على ${total} كرات لا يمكن التمييز بينها باللمس: ${nRed} كرات حمراء، ${nGreen} كرات خضراء، وكرتين بيضاوين. نسحب عشوائياً وفي آن واحد 3 كرات من الكيس.`,
+      `يحتوي كيس على ${total} كرات لا يمكن التمييز بينها باللمس: ${nRedNum} كرات حمراء، ${nGreenNum} كرات خضراء، وكرتين بيضاوين. نسحب عشوائياً وفي آن واحد 3 كرات من الكيس.`,
       `1. أ) تحقق من عدد الإمكانيات Card(Ω)، ثم أحسب احتمال الحدث A: «سحب 3 كرات من نفس اللون» والحدث B: «سحب كرة بيضاء على الأقل».`,
       `1. ب) أحسب احتمال الحدث C: «سحب 3 كرات مختلفة اللون مثنى مثنى»، ثم أحسب الاحتمال الشرطي P_B(C) وهل الحدثان B و C مستقلان؟`,
       `2. أ) ليكن X المتغير العشوائي الذي يربط كل سحبة بعدد الكرات البيضاء المسحوبة. حدد مجموعة قيم X(Ω) وقانون احتمال المتغير العشوائي X.`,
@@ -1975,7 +2086,7 @@ export function getVariantQuestions(
       `3. نعيد التجربة السابقة 4 مرات متتالية وبإحلال (اختبارات برنولي مستقلة). أحسب احتمال تحقق الحدث A ثلاث مرات بالضبط.`,
     ];
     questionsFr = [
-      `Une urne contient ${total} boules indiscernables au toucher : ${nRed} rouges, ${nGreen} vertes et 2 blanches. On tire simultanément 3 boules de l'urne.`,
+      `Une urne contient ${total} boules indiscernables au toucher : ${nRedNum} rouges, ${nGreenNum} vertes et 2 blanches. On tire simultanément 3 boules de l'urne.`,
       `1. a) Déterminer Card(Ω), puis calculer la probabilité des événements A : « Obtenir 3 boules de même couleur » et B : « Obtenir au moins une boule blanche ».`,
       `1. b) Calculer la probabilité de C : « Obtenir 3 boules de couleurs deux à deux distinctes », calculer la probabilité conditionnelle P_B(C) et étudier l'indépendance de B et C.`,
       `2. a) Soit X la variable aléatoire égale au nombre de boules blanches tirées. Déterminer X(Ω) et établir la loi de probabilité de X.`,
@@ -1983,7 +2094,8 @@ export function getVariantQuestions(
       `3. On répète l'épreuve 4 fois de manière indépendante avec remise (schéma de Bernoulli). Calculer la probabilité que l'événement A se réalise exactement 3 fois.`,
     ];
   } else if (subCat === "حساب مثلثي" || titleFr.includes("trigonométr")) {
-    const val = model === "A" ? (variantSeed % 2 === 1 ? "1/2" : "√3/2") : "√2/2";
+    const trigVals = ["√3/2", "1/2", "√2/2", "-1/2"];
+    const val = trigVals[(Math.abs(Math.floor(variantSeed)) + (model === "B" ? 1 : 0)) % trigVals.length];
     questionsAr = [
       `1. أ) بسط التعبير المثلثي التالي لكل x من R : A(x) = cos(π - x) + sin(π/2 + x) + cos(x + 2π) + sin(π - x).`,
       `1. ب) بين أنه لكل x من R لدينا: cos⁴(x) - sin⁴(x) = cos(2x) و sin(2x)/(1 + cos(2x)) = tan(x) (حيث x ≠ π/2 + kπ).`,
@@ -1999,8 +2111,9 @@ export function getVariantQuestions(
       `3. Résoudre dans ]-π, π] l'inéquation trigonométrique : (2sin(x) - 1)(2cos(x) - √3) ≤ 0 à l'aide du cercle trigonométrique.`,
     ];
   } else if (subCat === "هندسة مستوية" || lesson.category === "Geometry") {
-    const xa = model === "A" ? (variantSeed % 2 === 1 ? "0" : "1") : "2";
-    const yb = model === "A" ? "3" : "4";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const xa = String((model === "A" ? 0 : 1) + seedMod);
+    const yb = String((model === "A" ? 3 : 4) + (seedMod % 2));
     questionsAr = [
       `في المستوى المنسوب إلى معلم متعامد ممنظم (O, i, j)، نعتبر النقط A(${xa}, 2) و B(3, ${yb}) و C(-1, 4) والمجموعة (C) للنقط M(x,y) حيث: x² + y² - 2x - 4y - 4 = 0.`,
       `1. أ) أحسب الجداء السلمي AB · AC والمنظمين ||AB|| و ||AC||، ثم استنتج cos(BAC) و sin(BAC) ومساحة المثلث ABC.`,
@@ -2016,26 +2129,52 @@ export function getVariantQuestions(
       `2. b) Déterminer une équation de la tangente (T) à (C) en A et étudier la position relative de (C) et de la droite (D) : 3x + 4y - 25 = 0.`,
     ];
   } else if (subCat === "جبر" || subCat === "منطق ومجموعات" || subCat === "حسابيات" || lesson.category === "Algebra") {
-    const root = model === "A" ? (variantSeed % 2 === 1 ? "1" : "2") : "3";
-    const coef = model === "A" ? "5" : "7";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
+    const kNum = 2 + seedMod;
     questionsAr = [
-      `الجزء الأول (المنطق والاستدلال): نعتبر العبارة (P) : « (∀x ∈ R), x² - 2x + 2 > 0 ».`,
+      `الجزء الأول (المنطق والاستدلال): نعتبر العبارة (P) : « (∀x ∈ R), x² - ${2 * kNum}x + ${kNum * kNum + 1} > 0 ».`,
       `1. أ) أعط نفي العبارة (P)، ثم بين أن العبارة (P) صحيحة.`,
       `1. ب) باستعمال الاستدلال بالترجع، بين أنه لكل n من N : 1 + 2 + 2² + ... + 2^n = 2^{n+1} - 1.`,
-      `الجزء الثاني (الحدوديات والمعادلات): نعتبر الحدودية P(x) = x³ - ${coef}x² + 8x - 4 لكل x من R.`,
-      `2. أ) أحسب P(${root})، ثم حدد الحدودية Q(x) من الدرجة الثانية بحيث P(x) = (x - ${root})Q(x) بطريقتين (القسمة الإقليدية أو المطابقة).`,
+      `الجزء الثاني (الحدوديات والمعادلات): نعتبر الحدودية P(x) = x³ - ${kNum + 4}x² + ${4 * kNum + 3}x - ${3 * kNum} لكل x من R.`,
+      `2. أ) أحسب P(1)، ثم حدد الحدودية Q(x) من الدرجة الثانية بحيث P(x) = (x - 1)Q(x) بطريقتين (القسمة الإقليدية أو المطابقة).`,
       `2. ب) حل في R المعادلة P(x) = 0، ضع جدول إشارة P(x) على R، ثم استنتج مجموعة حلول المتراجحة P(x) ≤ 0 والمعادلة P(√x) = 0.`,
     ];
     questionsFr = [
-      `Partie I (Logique & Raisonnement) : On considère la proposition (P) : « (∀x ∈ ℝ), x² - 2x + 2 > 0 ».`,
+      `Partie I (Logique & Raisonnement) : On considère la proposition (P) : « (∀x ∈ ℝ), x² - ${2 * kNum}x + ${kNum * kNum + 1} > 0 ».`,
       `1. a) Donner la négation de la proposition (P), puis démontrer que (P) est vraie.`,
       `1. b) Montrer par récurrence que pour tout n ∈ ℕ : 1 + 2 + 2² + ... + 2^n = 2^{n+1} - 1.`,
-      `Partie II (Polynômes & Équations) : On considère le polynôme P(x) = x³ - ${coef}x² + 8x - 4 pour tout x ∈ ℝ.`,
-      `2. a) Vérifier que α = ${root} est une racine de P(x), puis déterminer le polynôme Q(x) tel que P(x) = (x - ${root})Q(x) par division euclidienne.`,
+      `Partie II (Polynômes & Équations) : On considère le polynôme P(x) = x³ - ${kNum + 4}x² + ${4 * kNum + 3}x - ${3 * kNum} pour tout x ∈ ℝ.`,
+      `2. a) Vérifier que α = 1 est une racine de P(x), puis déterminer le polynôme Q(x) tel que P(x) = (x - 1)Q(x) par division euclidienne.`,
       `2. b) Résoudre dans ℝ l'équation P(x) = 0, dresser le tableau de signes de P(x) et en déduire les solutions de P(x) ≤ 0 ainsi que de l'équation P(√x) = 0.`,
     ];
+  } else if (
+    titleFr.includes("continuit") ||
+    titleFr.includes("limite") ||
+    titleAr.includes("الاتصال") ||
+    titleAr.includes("النهايات")
+  ) {
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
+    const k = String((model === "A" ? 2 : 3) + seedMod);
+    const cVal = Number(k) * Number(k) - 1;
+    questionsAr = [
+      `الجزء الأول: نعتبر الدالة العددية f المعرفة على [0, +∞[ بـ: f(x) = (√(x + ${cVal}) - ${k})/(x - 1) لكل x ≠ 1 و f(1) = 1/${2 * Number(k)}.`,
+      `1. أ) أحسب lim_{x→1} f(x) و lim_{x→+∞} f(x)، ثم أدرس اتصال الدالة f في النقطة x_0 = 1.`,
+      `1. ب) نعتبر الدالة h المعرفة على R بـ: h(x) = x³ + ${k}x - ${Number(k) + 2}. بين أن المعادلة h(x) = 0 تقبل حلاً وحيداً α في المجال ]0, 2[ وحدد إشارة h(x) على R.`,
+      `الجزء الثاني: نعتبر الدالة u المعرفة على المجال I = [1, +∞[ بـ: u(x) = √(x - 1) + ${k}.`,
+      `2. أ) بين أن الدالة u متصلة وتزايدية قطعا على المجال I، وحدد المجال J = u(I).`,
+      `2. ب) بين أن الدالة u تقبل دالة عكسية u^{-1} معرفة على المجال J، ثم حدد u^{-1}(x) لكل x من J.`,
+    ];
+    questionsFr = [
+      `Partie I : Soit f la fonction définie sur [0, +∞[ par : f(x) = (√(x + ${cVal}) - ${k})/(x - 1) pour x ≠ 1 et f(1) = 1/${2 * Number(k)}.`,
+      `1. a) Calculer lim_{x→1} f(x) et lim_{x→+∞} f(x), puis étudier la continuité de f en x_0 = 1.`,
+      `1. b) Soit h(x) = x³ + ${k}x - ${Number(k) + 2} sur ℝ. Montrer que l'équation h(x) = 0 admet une unique solution α ∈ ]0, 2[ et donner le signe de h(x).`,
+      `Partie II : On considère la fonction u définie sur I = [1, +∞[ par : u(x) = √(x - 1) + ${k}.`,
+      `2. a) Montrer que u est continue et strictement croissante sur I et déterminer J = u(I).`,
+      `2. b) Montrer que u admet une fonction réciproque u^{-1} définie sur J et déterminer u^{-1}(x) pour tout x ∈ J.`,
+    ];
   } else {
-    const k = model === "A" ? (variantSeed % 2 === 1 ? "4" : "2") : "3";
+    const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
+    const k = String((model === "A" ? 2 : 3) + seedMod);
     questionsAr = [
       `نعتبر الدالة العددية f المعرفة بـ: f(x) = (x² - ${k}x + 1)/(x - 1) لكل x ≠ 1، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
       `1. أ) حدد مجموعة تعريف الدالة f، ثم أحسب النهايات عند محدات D_f واستنتج معادلة المستقيم المقارب العمودي.`,
@@ -2115,17 +2254,21 @@ export function getVariantQuestions(
 
     if (hasIntroAr && hasIntroFr && questionsAr.length > 3) {
       // الحفاظ على نص المعطيات/المسألة التمهيدي في الموضع 0 وتبديل الأسئلة الفرعية اللاحقة فقط
-      return {
-        questionsAr: [questionsAr[0], questionsAr[2], questionsAr[1], ...questionsAr.slice(3)],
-        questionsFr: [questionsFr[0], questionsFr[2], questionsFr[1], ...questionsFr.slice(3)],
-      };
+      questionsAr = [questionsAr[0], questionsAr[2], questionsAr[1], ...questionsAr.slice(3)];
+      questionsFr = [questionsFr[0], questionsFr[2], questionsFr[1], ...questionsFr.slice(3)];
     } else if (!hasIntroAr && !hasIntroFr) {
-      return {
-        questionsAr: [questionsAr[1], questionsAr[0], ...questionsAr.slice(2)],
-        questionsFr: [questionsFr[1], questionsFr[0], ...questionsFr.slice(2)],
-      };
+      questionsAr = [questionsAr[1], questionsAr[0], ...questionsAr.slice(2)];
+      questionsFr = [questionsFr[1], questionsFr[0], ...questionsFr.slice(2)];
     }
   }
+
+  if (VARIANT_QUESTIONS_CACHE.size >= 600) {
+    VARIANT_QUESTIONS_CACHE.clear();
+  }
+  VARIANT_QUESTIONS_CACHE.set(cacheKey, {
+    questionsAr: [...questionsAr],
+    questionsFr: [...questionsFr],
+  });
 
   return { questionsAr, questionsFr };
 }
@@ -2315,151 +2458,648 @@ export function generateMoroccanQCMExercise(
         points: "1.0",
       },
     ];
+  } else if (cycle === "1BAC" || cycle === "1ERE_SPE") {
+    // =========================================================================
+    // بنك أسئلة QCM الخاص بالسنة الأولى بكالوريا (1BAC - علوم رياضية وتجريبية)
+    // لا يحتوي على اللوغاريتم نهائياً لأنه خارج مقرر الأولى باك
+    // =========================================================================
+    const allLessonText = (
+      lessons.map(
+        (l) =>
+          `${l.lessonAr} ${l.lessonFr} ${l.category || ""} ${l.subCategory || ""} ${(l.tags || []).join(" ")}`
+      ).join(" ")
+    ).toLowerCase();
+
+    const hasLogique = allLessonText.includes("منطق") || allLessonText.includes("logique");
+    const hasBarycentre = allLessonText.includes("مرجح") || allLessonText.includes("barycentre");
+    const hasTrigo = allLessonText.includes("مثلثي") || allLessonText.includes("trigonom");
+    const hasSuites1Bac = allLessonText.includes("متتالي") || allLessonText.includes("suite");
+    const hasLim1Bac = allLessonText.includes("نهايات") || allLessonText.includes("limite");
+    const hasDeriv1Bac = allLessonText.includes("اشتقاق") || allLessonText.includes("dériv");
+
+    const pool1BAC: MoroccanQCMItem[] = [];
+
+    // 1. سؤال المنطق الرياضي
+    pool1BAC.push({
+      num: 1,
+      statementAr: isModelA
+        ? "نفي العبارة الرياضية P: \"(∀x ∈ R)(∃y ∈ R) : x < y\" هو العبارة المكافئة التالية:"
+        : "العبارة الاستلزامية المضادة للعكس للاستلزام (P ⇒ Q) تكافئ منطقياً العبارة:",
+      statementFr: isModelA
+        ? "La négation de la proposition P : \"(∀x ∈ ℝ)(∃y ∈ ℝ) : x < y\" est la proposition équivalente :"
+        : "La contraposée de l'implication (P ⇒ Q) est logiquement équivalente à :",
+      optionsAr: isModelA
+        ? [
+            "أ) (∃x ∈ R)(∀y ∈ R) : x ≥ y",
+            "ب) (∃x ∈ R)(∀y ∈ R) : x < y",
+            "ج) (∀x ∈ R)(∃y ∈ R) : x ≥ y",
+            "د) (∃x ∈ R)(∃y ∈ R) : x ≥ y",
+          ]
+        : [
+            "أ) (non(Q) ⇒ non(P))",
+            "ب) (non(P) ⇒ non(Q))",
+            "ج) (Q ⇒ P)",
+            "د) (non(Q) et P)",
+          ],
+      optionsFr: isModelA
+        ? [
+            "A) (∃x ∈ ℝ)(∀y ∈ ℝ) : x ≥ y",
+            "B) (∃x ∈ ℝ)(∀y ∈ ℝ) : x < y",
+            "C) (∀x ∈ ℝ)(∃y ∈ ℝ) : x ≥ y",
+            "D) (∃x ∈ ℝ)(∃y ∈ ℝ) : x ≥ y",
+          ]
+        : [
+            "A) (non(Q) ⇒ non(P))",
+            "B) (non(P) ⇒ non(Q))",
+            "C) (Q ⇒ P)",
+            "D) (non(Q) et P)",
+          ],
+      correctAnswerAr: isModelA ? "أ) (∃x ∈ R)(∀y ∈ R) : x ≥ y" : "أ) (non(Q) ⇒ non(P))",
+      correctAnswerFr: isModelA ? "A) (∃x ∈ ℝ)(∀y ∈ ℝ) : x ≥ y" : "A) (non(Q) ⇒ non(P))",
+      justificationAr: isModelA
+        ? "نفي المكمم الكوني (∀) هو الوجودي (∃)، ونفي (∃) هو (∀)، ونفي المتفاوتة القطعية (x < y) هو (x ≥ y)."
+        : "حسب القواعد الأساسية للمنطق الرياضي، الاستلزام يكافئ استلزامه المضاد للعكس: (P ⇒ Q) ⇔ (¬Q ⇒ ¬P).",
+      justificationFr: isModelA
+        ? "La négation échange les quantificateurs (∀ ↔ ∃) et inverse l'inégalité stricte : non(x < y) ⇔ x ≥ y."
+        : "D'après les lois fondamentales de la logique : la contraposée (¬Q ⇒ ¬P) est équivalente à (P ⇒ Q).",
+      points: "1.0",
+    });
+
+    // 2. سؤال عموميات حول الدوال العددية
+    pool1BAC.push({
+      num: 2,
+      statementAr: isModelA
+        ? "مجموعة تعريف الدالة العددية f المعرفة بـ f(x) = √(4 - x²) هي المجال:"
+        : "مجموعة تعريف الدالة العددية g المعرفة بـ g(x) = 1 / √(x² - 1) هي المجموعة:",
+      statementFr: isModelA
+        ? "Le domaine de définition de la fonction f définie par f(x) = √(4 - x²) est l'intervalle :"
+        : "Le domaine de définition de la fonction g définie par g(x) = 1 / √(x² - 1) est :",
+      optionsAr: isModelA
+        ? ["أ) D_f = [-2, 2]", "ب) D_f = ]-∞, -2] ∪ [2, +∞[", "ج) D_f = [0, 2]", "د) D_f = R \\ {-2, 2}"]
+        : ["أ) D_g = ]-∞, -1[ ∪ ]1, +∞[", "ب) D_g = [-1, 1]", "ج) D_g = R \\ {-1, 1}", "د) D_g = ]1, +∞["],
+      optionsFr: isModelA
+        ? ["A) D_f = [-2, 2]", "B) D_f = ]-∞, -2] ∪ [2, +∞[", "C) D_f = [0, 2]", "D) D_f = ℝ \\ {-2, 2}"]
+        : ["A) D_g = ]-∞, -1[ ∪ ]1, +∞[", "B) D_g = [-1, 1]", "C) D_g = ℝ \\ {-1, 1}", "D) D_g = ]1, +∞["],
+      correctAnswerAr: isModelA ? "أ) D_f = [-2, 2]" : "أ) D_g = ]-∞, -1[ ∪ ]1, +∞[",
+      correctAnswerFr: isModelA ? "A) D_f = [-2, 2]" : "A) D_g = ]-∞, -1[ ∪ ]1, +∞[",
+      justificationAr: isModelA
+        ? "الدالة معرفة إذا وفقط إذا كان ما بداخل الجذر موجباً: 4 - x² ≥ 0 أي x² ≤ 4 ومنه x ∈ [-2, 2]."
+        : "الدالة معرفة إذا وفقط إذا كان ما بداخل الجذر في المقام موجباً قطعا: x² - 1 > 0 ومنه x ∈ ]-∞, -1[ ∪ ]1, +∞[.",
+      justificationFr: isModelA
+        ? "f est définie ssi 4 - x² ≥ 0, ce qui équivaut à x² ≤ 4, soit x ∈ [-2, 2]."
+        : "g est définie ssi le radicande au dénominateur est strictement positif : x² - 1 > 0, soit x ∈ ]-∞, -1[ ∪ ]1, +∞[.",
+      points: "1.0",
+    });
+
+    // 3. سؤال المرجح في المستوى
+    pool1BAC.push({
+      num: 3,
+      statementAr: isModelA
+        ? "إذا كانت النقطة G مرجح النقطتين الموزنتين (A, 2) و (B, 3)، فإن المتجهة AG⃗ تساوي:"
+        : "إذا كانت النقطة G مرجح النقطتين الموزنتين (A, 1) و (B, -3)، فإن المتجهة AG⃗ تساوي:",
+      statementFr: isModelA
+        ? "Si G est le barycentre des points pondérés (A, 2) et (B, 3), alors le vecteur AG⃗ vaut :"
+        : "Si G est le barycentre des points pondérés (A, 1) et (B, -3), alors le vecteur AG⃗ vaut :",
+      optionsAr: isModelA
+        ? ["أ) AG⃗ = (3/5) AB⃗", "ب) AG⃗ = (2/5) AB⃗", "ج) AG⃗ = (3/2) AB⃗", "د) AG⃗ = 5 AB⃗"]
+        : ["أ) AG⃗ = (3/2) AB⃗", "ب) AG⃗ = -(3/2) AB⃗", "ج) AG⃗ = (1/2) AB⃗", "د) AG⃗ = -3 AB⃗"],
+      optionsFr: isModelA
+        ? ["A) AG⃗ = (3/5) AB⃗", "B) AG⃗ = (2/5) AB⃗", "C) AG⃗ = (3/2) AB⃗", "D) AG⃗ = 5 AB⃗"]
+        : ["A) AG⃗ = (3/2) AB⃗", "B) AG⃗ = -(3/2) AB⃗", "C) AG⃗ = (1/2) AB⃗", "D) AG⃗ = -3 AB⃗"],
+      correctAnswerAr: isModelA ? "أ) AG⃗ = (3/5) AB⃗" : "أ) AG⃗ = (3/2) AB⃗",
+      correctAnswerFr: isModelA ? "A) AG⃗ = (3/5) AB⃗" : "A) AG⃗ = (3/2) AB⃗",
+      justificationAr: isModelA
+        ? "بتطبيق الخاصية المميزة للمرجح: (2 + 3)AG⃗ = 3 AB⃗ ومنه AG⃗ = (3/5) AB⃗."
+        : "لدينا (1 - 3)AG⃗ = -3 AB⃗ إذن -2 AG⃗ = -3 AB⃗ ومنه AG⃗ = (3/2) AB⃗.",
+      justificationFr: isModelA
+        ? "Propriété fondamentale du barycentre : (a + b)AG⃗ = b AB⃗, d'où (2 + 3)AG⃗ = 3 AB⃗ soit AG⃗ = (3/5)AB⃗."
+        : "Par définition : (1 - 3)AG⃗ = -3 AB⃗, soit -2 AG⃗ = -3 AB⃗ donc AG⃗ = (3/2)AB⃗.",
+      points: "1.0",
+    });
+
+    // 4. سؤال الحساب المثلثي
+    pool1BAC.push({
+      num: 4,
+      statementAr: isModelA
+        ? "لكل x ∈ R، القيمة المبسطة للتعبير cos(x + π/2) هي:"
+        : "لكل x ∈ R، القيمة المبسطة للتعبير sin(x + π/2) هي:",
+      statementFr: isModelA
+        ? "Pour tout x ∈ ℝ, l'expression simplifiée de cos(x + π/2) est :"
+        : "Pour tout x ∈ ℝ, l'expression simplifiée de sin(x + π/2) est :",
+      optionsAr: isModelA
+        ? ["أ) -sin(x)", "ب) sin(x)", "ج) -cos(x)", "د) cos(x)"]
+        : ["أ) cos(x)", "ب) -cos(x)", "ج) sin(x)", "د) -sin(x)"],
+      optionsFr: isModelA
+        ? ["A) -sin(x)", "B) sin(x)", "C) -cos(x)", "D) cos(x)"]
+        : ["A) cos(x)", "B) -cos(x)", "C) sin(x)", "D) -sin(x)"],
+      correctAnswerAr: isModelA ? "أ) -sin(x)" : "أ) cos(x)",
+      correctAnswerFr: isModelA ? "A) -sin(x)" : "A) cos(x)",
+      justificationAr: isModelA
+        ? "حسب صيغ التحويل والدائرة المثلثية: cos(x + π/2) = -sin(x)."
+        : "حسب صيغ التحويل الأساسية في الدائرة المثلثية: sin(x + π/2) = cos(x).",
+      justificationFr: isModelA
+        ? "Formule trigonométrique classique de rotation d'un quart de tour : cos(x + π/2) = -sin(x)."
+        : "Formule trigonométrique usuelle : sin(x + π/2) = cos(x).",
+      points: "1.0",
+    });
+
+    // 5. سؤال المتتاليات العددية (1BAC)
+    pool1BAC.push({
+      num: 5,
+      statementAr: isModelA
+        ? "لتكن (u_n) متتالية حسابية حدها الأول u_0 = 3 وأساسها r = 4. قيمة الحد u_{10} هي:"
+        : "لتكن (v_n) متتالية هندسية حدها الأول v_0 = 2 وأساسها q = 3. قيمة الحد v_4 هي:",
+      statementFr: isModelA
+        ? "Soit (u_n) une suite arithmétique de premier terme u_0 = 3 et de raison r = 4. Le terme u_{10} vaut :"
+        : "Soit (v_n) une suite géométrique de premier terme v_0 = 2 et de raison q = 3. Le terme v_4 vaut :",
+      optionsAr: isModelA
+        ? ["أ) u_{10} = 43", "ب) u_{10} = 40", "ج) u_{10} = 37", "د) u_{10} = 47"]
+        : ["أ) v_4 = 162", "ب) v_4 = 54", "ج) v_4 = 486", "د) v_4 = 24"],
+      optionsFr: isModelA
+        ? ["A) u_{10} = 43", "B) u_{10} = 40", "C) u_{10} = 37", "D) u_{10} = 47"]
+        : ["A) v_4 = 162", "B) v_4 = 54", "C) v_4 = 486", "D) v_4 = 24"],
+      correctAnswerAr: isModelA ? "أ) u_{10} = 43" : "أ) v_4 = 162",
+      correctAnswerFr: isModelA ? "A) u_{10} = 43" : "A) v_4 = 162",
+      justificationAr: isModelA
+        ? "صيغة الحد العام للمتتالية الحسابية: u_n = u_0 + n·r = 3 + 10×4 = 3 + 40 = 43."
+        : "صيغة الحد العام للمتتالية الهندسية: v_n = v_0 · q^n = 2 × 3^4 = 2 × 81 = 162.",
+      justificationFr: isModelA
+        ? "Terme général d'une suite arithmétique : u_n = u_0 + n·r, d'où u_{10} = 3 + 10 × 4 = 43."
+        : "Terme général d'une suite géométrique : v_n = v_0 · q^n, d'où v_4 = 2 × 3^4 = 2 × 81 = 162.",
+      points: "1.0",
+    });
+
+    // 6. سؤال النهايات والاشتقاق (1BAC)
+    pool1BAC.push({
+      num: 6,
+      statementAr: isModelA
+        ? "قيمة النهاية lim_{x→2} (x² - 4)/(x - 2) تساوي:"
+        : "معادلة مماس منحنى الدالة f(x) = x² - 3x عند النقطة ذات الأفصول x_0 = 1 هي المستقيم (T) ذو المعادلة:",
+      statementFr: isModelA
+        ? "La valeur de la limite lim_{x→2} (x² - 4)/(x - 2) est égale à :"
+        : "L'équation de la tangente à la courbe de f(x) = x² - 3x au point d'abscisse x_0 = 1 est :",
+      optionsAr: isModelA
+        ? ["أ) 4", "ب) 0", "ج) 2", "د) +∞"]
+        : ["أ) y = -x - 1", "ب) y = -x + 1", "ج) y = 2x - 4", "د) y = -x - 2"],
+      optionsFr: isModelA
+        ? ["A) 4", "B) 0", "C) 2", "D) +∞"]
+        : ["A) y = -x - 1", "B) y = -x + 1", "C) y = 2x - 4", "D) y = -x - 2"],
+      correctAnswerAr: isModelA ? "أ) 4" : "أ) y = -x - 1",
+      correctAnswerFr: isModelA ? "A) 4" : "A) y = -x - 1",
+      justificationAr: isModelA
+        ? "بالتعميل بالمتطابقة الهامة: (x² - 4) = (x - 2)(x + 2)، ثم بالاختزال نجد lim (x + 2) = 4."
+        : "لدينا f'(x) = 2x - 3 إذن f'(1) = -1، و f(1) = -2. معادلة المماس: y = f'(1)(x - 1) + f(1) = -1(x - 1) - 2 = -x - 1.",
+      justificationFr: isModelA
+        ? "Forme indéterminée 0/0 levée par factorisation : (x² - 4)/(x - 2) = x + 2 → 4 quand x → 2."
+        : "f'(x) = 2x - 3 d'où f'(1) = -1 et f(1) = -2. L'équation de la tangente est y = -1(x - 1) - 2 = -x - 1.",
+      points: "1.0",
+    });
+
+    // ترتيب الأسئلة حسب توافقها مع دروس الفرض المحروس للأولى باك
+    const prioritized1BAC: MoroccanQCMItem[] = [];
+    if (hasLogique) prioritized1BAC.push(pool1BAC[0]);
+    if (hasBarycentre) prioritized1BAC.push(pool1BAC[2]);
+    if (hasTrigo) prioritized1BAC.push(pool1BAC[3]);
+    if (hasSuites1Bac) prioritized1BAC.push(pool1BAC[4]);
+    if (hasLim1Bac || hasDeriv1Bac) prioritized1BAC.push(pool1BAC[5]);
+    if (!hasLogique && !hasBarycentre && !hasTrigo && !hasSuites1Bac && !hasLim1Bac && !hasDeriv1Bac) {
+      prioritized1BAC.push(pool1BAC[1]);
+    }
+    // إكمال البقية من بنك 1BAC
+    pool1BAC.forEach((item) => {
+      if (!prioritized1BAC.includes(item)) prioritized1BAC.push(item);
+    });
+
+    basePool = prioritized1BAC;
   } else {
-    basePool = [
-      {
-        num: 1,
-        statementAr: isModelA
-          ? "نهاية الدالة lim_{x→+∞} (ln(x² + 1) - 2x) على المجال ]0, +∞[ تساوي:"
-          : "نهاية الدالة lim_{x→0^+} x² · ln(x) على المجال ]0, +∞[ تساوي:",
-        statementFr: isModelA
-          ? "La limite lim_{x→+∞} (ln(x² + 1) - 2x) est égale à :"
-          : "La limite lim_{x→0^+} x² · ln(x) est égale à :",
-        optionsAr: isModelA
-          ? ["أ) -∞", "ب) 0", "ج) +∞", "د) 2"]
-          : ["أ) 0", "ب) -∞", "ج) 1", "د) +∞"],
-        optionsFr: isModelA
-          ? ["A) -∞", "B) 0", "C) +∞", "D) 2"]
-          : ["A) 0", "B) -∞", "C) 1", "D) +∞"],
-        correctAnswerAr: isModelA ? "أ) -∞" : "أ) 0",
-        correctAnswerFr: isModelA ? "A) -∞" : "A) 0",
-        justificationAr: isModelA
-          ? "بالتعميل بـ x نجد ln(x²+1) - 2x = x(2ln(x)/x - 2) + ln(1+1/x²) وبما أن lim ln(x)/x = 0 فإن النهاية هي -∞."
-          : "حسب النهايات الاعتيادية الأساسية في المقرر لدينا لكل n ≥ 1 : lim_{x→0^+} x^n ln(x) = 0.",
-        justificationFr: isModelA
-          ? "En factorisant par x : x(2ln(x)/x - 2) + ln(1 + 1/x²) → -∞ car lim_{x→+∞} ln(x)/x = 0."
-          : "D'après les limites de référence du programme (croissances comparées) : lim_{x→0^+} x^n ln(x) = 0.",
-        points: "1.0",
-      },
-      {
-        num: 2,
-        statementAr: isModelA
-          ? "في المجموعة C، عمدة العدد العقدي z = (-√3 + i)^6 توافق بترديد 2π العدد:"
-          : "في المجموعة C، معيار وعمدة العدد العقدي z = 1 + i√3 هما:",
-        statementFr: isModelA
-          ? "Dans ℂ, un argument du nombre complexe z = (-√3 + i)^6 est congru modulo 2π à :"
-          : "Dans ℂ, le module et un argument de z = 1 + i√3 sont :",
-        optionsAr: isModelA
-          ? ["أ) π [2π] (عدد حقيقي سالب)", "ب) π/2 [2π]", "ج) π/3 [2π]", "د) -π/6 [2π]"]
-          : [
-              "أ) |z| = 2 و arg(z) ≡ π/3 [2π]",
-              "ب) |z| = 2 و arg(z) ≡ π/6 [2π]",
-              "ج) |z| = 4 و arg(z) ≡ π/3 [2π]",
-              "د) |z| = √2 و arg(z) ≡ π/4 [2π]",
-            ],
-        optionsFr: isModelA
-          ? ["A) π [2π]", "B) π/2 [2π]", "C) π/3 [2π]", "D) -π/6 [2π]"]
-          : [
-              "A) |z| = 2 et arg(z) ≡ π/3 [2π]",
-              "B) |z| = 2 et arg(z) ≡ π/6 [2π]",
-              "C) |z| = 4 et arg(z) ≡ π/3 [2π]",
-              "D) |z| = √2 et arg(z) ≡ π/4 [2π]",
-            ],
-        correctAnswerAr: isModelA
-          ? "أ) π [2π] (عدد حقيقي سالب)"
-          : "أ) |z| = 2 و arg(z) ≡ π/3 [2π]",
-        correctAnswerFr: isModelA ? "A) π [2π]" : "A) |z| = 2 et arg(z) ≡ π/3 [2π]",
-        justificationAr: isModelA
-          ? "لدينا -√3 + i = 2 e^{i5π/6}، ومنه z = 2^6 e^{i5π} = -64، وعمدته 5π ≡ π [2π]."
-          : "لدينا |z| = √(1 + 3) = 2، ومنه z = 2(1/2 + i√3/2) = 2(cos(π/3) + i sin(π/3)).",
-        justificationFr: isModelA
-          ? "On écrit -√3 + i = 2e^{i5π/6}, d'où z = 64e^{i5π} = -64 et arg(z) ≡ π [2π]."
-          : "On calcule |z| = √(1² + (√3)²) = 2 et on factorise par 2 : z = 2(cos(π/3) + i sin(π/3)).",
-        points: "1.0",
-      },
-      {
-        num: 3,
-        statementAr: isModelA
-          ? "قيمة التكامل I = ∫_1^e (ln(x))/x dx تساوي بالضبط:"
-          : "قيمة التكامل J = ∫_0^1 2x · e^{x²} dx تساوي بالضبط:",
-        statementFr: isModelA
-          ? "La valeur exacte de l'intégrale I = ∫_1^e (ln(x))/x dx est :"
-          : "La valeur exacte de l'intégrale J = ∫_0^1 2x · e^{x²} dx est :",
-        optionsAr: isModelA
-          ? ["أ) 1/2", "ب) 1", "ج) e - 1", "د) 1/e"]
-          : ["أ) e - 1", "ب) e", "ج) 1", "د) e² - 1"],
-        optionsFr: isModelA
-          ? ["A) 1/2", "B) 1", "C) e - 1", "D) 1/e"]
-          : ["A) e - 1", "B) e", "C) 1", "D) e² - 1"],
-        correctAnswerAr: isModelA ? "أ) 1/2" : "أ) e - 1",
-        correctAnswerFr: isModelA ? "A) 1/2" : "A) e - 1",
-        justificationAr: isModelA
-          ? "الدالة تحت التكامل من الشكل u'(x)·u(x) حيث u(x) = ln(x)، إذن دالتها الأصلية هي (1/2)(ln x)²، ومنه I = 1/2."
-          : "الدالة من الشكل u'(x)e^{u(x)} مع u(x) = x²، إذن دالتها الأصلية هي e^{x²}، ومنه J = e^1 - e^0 = e - 1.",
-        justificationFr: isModelA
-          ? "Forme u'·u avec u(x) = ln(x) : une primitive est (1/2)(ln x)², d'où I = 1/2 - 0 = 1/2."
-          : "Forme u'·e^u avec u(x) = x² : une primitive est e^{x²}, d'où J = e^1 - e^0 = e - 1.",
-        points: "1.0",
-      },
-      {
-        num: 4,
-        statementAr: isModelA
-          ? "في الفضاء المنسوب لمعلم متعامد ممنظم، مسافة النقطة Ω(1, -1, 2) عن المستوى (P) : 2x - y + 2z - 3 = 0 هي:"
-          : "في الفضاء المنسوب لمعلم متعامد ممنظم، مسافة النقطة Ω(2, 1, -1) عن المستوى (P) : x + 2y + 2z + 3 = 0 هي:",
-        statementFr: isModelA
-          ? "Dans l'espace muni d'un repère orthonormé, la distance du point Ω(1, -1, 2) au plan (P) : 2x - y + 2z - 3 = 0 est :"
-          : "Dans l'espace muni d'un repère orthonormé, la distance du point Ω(2, 1, -1) au plan (P) : x + 2y + 2z + 3 = 0 est :",
-        optionsAr: isModelA
-          ? ["أ) d = 4/3", "ب) d = 2", "ج) d = 4/9", "د) d = √3"]
-          : ["أ) d = 5/3", "ب) d = 3", "ج) d = 5/9", "د) d = √5"],
-        optionsFr: isModelA
-          ? ["A) d = 4/3", "B) d = 2", "C) d = 4/9", "D) d = √3"]
-          : ["A) d = 5/3", "B) d = 3", "C) d = 5/9", "D) d = √5"],
-        correctAnswerAr: isModelA ? "أ) d = 4/3" : "أ) d = 5/3",
-        correctAnswerFr: isModelA ? "A) d = 4/3" : "A) d = 5/3",
-        justificationAr: isModelA
-          ? "بتطبيق صيغة المسافة: d(Ω, (P)) = |2(1) - (-1) + 2(2) - 3| / √(2² + (-1)² + 2²) = 4/3."
-          : "بتطبيق صيغة المسافة: d(Ω, (P)) = |2 + 2(1) + 2(-1) + 3| / √(1² + 2² + 2²) = 5/3.",
-        justificationFr: isModelA
-          ? "Par application directe de la formule : d(Ω,(P)) = |2 + 1 + 4 - 3| / √(4 + 1 + 4) = 4/3."
-          : "Par application directe de la formule : d(Ω,(P)) = |2 + 2 - 2 + 3| / √(1 + 4 + 4) = 5/3.",
-        points: "1.0",
-      },
-      {
-        num: 5,
-        statementAr: "الحل العام للمعادلة التفاضلية y' + 2y = 0 على المجموعة R هو الدوال من الشكل:",
-        statementFr: "La solution générale sur ℝ de l'équation différentielle y' + 2y = 0 est :",
-        optionsAr: [
-          "أ) y(x) = k·e^{-2x} (مع k ∈ R)",
-          "ب) y(x) = k·e^{2x} (مع k ∈ R)",
-          "ج) y(x) = -2e^x + k",
-          "د) y(x) = k·cos(2x)",
-        ],
-        optionsFr: [
-          "A) y(x) = k·e^{-2x} (k ∈ ℝ)",
-          "B) y(x) = k·e^{2x} (k ∈ ℝ)",
-          "C) y(x) = -2e^x + k",
-          "D) y(x) = k·cos(2x)",
-        ],
-        correctAnswerAr: "أ) y(x) = k·e^{-2x} (مع k ∈ R)",
-        correctAnswerFr: "A) y(x) = k·e^{-2x} (k ∈ ℝ)",
-        justificationAr: "المعادلة من الشكل y' = ay مع a = -2، وحلولها هي الدوال x ↦ k·e^{-2x}.",
-        justificationFr: "Équation linéaire y' = ay avec a = -2, dont les solutions sont x ↦ k·e^{-2x}.",
-        points: "1.0",
-      },
-      {
-        num: 6,
-        statementAr: "إذا كان X متغيراً عشوائياً يتبع القانون الحداني B(n=4, p=1/2)، فإن الأمل الرياضي E(X) يساوي:",
-        statementFr: "Si X suit la loi binomiale B(n=4, p=1/2), alors son espérance mathématique E(X) vaut :",
-        optionsAr: ["أ) E(X) = 2", "ب) E(X) = 1", "ج) E(X) = 1/2", "د) E(X) = 4"],
-        optionsFr: ["A) E(X) = 2", "B) E(X) = 1", "C) E(X) = 1/2", "D) E(X) = 4"],
-        correctAnswerAr: "أ) E(X) = 2",
-        correctAnswerFr: "A) E(X) = 2",
-        justificationAr: "حسب خاصية الأمل الرياضي للقانون الحداني B(n, p) لدينا E(X) = n × p = 4 × (1/2) = 2.",
-        justificationFr: "Pour une loi binomiale B(n, p), l'espérance est E(X) = n × p = 4 × 0,5 = 2.",
-        points: "1.0",
-      },
+    // =========================================================================
+    // بنك أسئلة QCM الخاص بالسنة الثانية بكالوريا (2BAC - جميع المسالك)
+    // يتكيف بدقة مع الدروس المحددة للفرض، ويتجنب دالة اللوغاريتم إلا إذا كان درسها مقرراً!
+    // =========================================================================
+    const allLessonText = (
+      lessons.map(
+        (l) =>
+          `${l.lessonAr} ${l.lessonFr} ${l.category || ""} ${l.subCategory || ""} ${(l.tags || []).join(" ")}`
+      ).join(" ")
+    ).toLowerCase();
+
+    const hasLogarithm =
+      allLessonText.includes("لوغاريت") ||
+      allLessonText.includes("اللوغاريتم") ||
+      allLessonText.includes("logarithm");
+    const hasExponential =
+      allLessonText.includes("أسي") ||
+      allLessonText.includes("الأسية") ||
+      allLessonText.includes("exponentiel");
+    const hasContinuityOrLimits =
+      allLessonText.includes("اتصال") ||
+      allLessonText.includes("continuit") ||
+      allLessonText.includes("نهايات") ||
+      allLessonText.includes("limite");
+    const hasDerivation =
+      allLessonText.includes("اشتقاق") ||
+      allLessonText.includes("dériv") ||
+      allLessonText.includes("دراسة الدوال");
+    const hasSuites =
+      allLessonText.includes("متتالي") ||
+      allLessonText.includes("suite");
+    const hasComplexes =
+      allLessonText.includes("عقدي") ||
+      allLessonText.includes("complexe");
+    const hasEspace =
+      allLessonText.includes("فضاء") ||
+      allLessonText.includes("الفضاء") ||
+      allLessonText.includes("espace");
+    const hasIntegrals =
+      allLessonText.includes("تكامل") ||
+      allLessonText.includes("دوال أصلية") ||
+      allLessonText.includes("intégral") ||
+      allLessonText.includes("primitive");
+    const hasEquaDiff =
+      allLessonText.includes("تفاضل") ||
+      allLessonText.includes("différentielle");
+    const hasProba =
+      allLessonText.includes("احتمال") ||
+      allLessonText.includes("تعداد") ||
+      allLessonText.includes("probab") ||
+      allLessonText.includes("dénombrement");
+
+    // بنوك موضوعاتية لـ 2BAC:
+    // A. الاتصال والنهايات ومبرهنة القيم الوسيطية (الدرس الأول في الدورة الأولى لجميع شعب 2BAC)
+    const itemContinuityLimits: MoroccanQCMItem = {
+      num: 1,
+      statementAr: isModelA
+        ? "قيمة النهاية lim_{x→0} (√(x + 1) - 1)/x تساوي بالضبط:"
+        : "قيمة النهاية lim_{x→4} (√x - 2)/(x - 4) تساوي بالضبط:",
+      statementFr: isModelA
+        ? "La valeur exacte de la limite lim_{x→0} (√(x + 1) - 1)/x est :"
+        : "La valeur exacte de la limite lim_{x→4} (√x - 2)/(x - 4) est :",
+      optionsAr: isModelA
+        ? ["أ) 1/2", "ب) 1", "ج) 0", "د) +∞"]
+        : ["أ) 1/4", "ب) 1/2", "ج) 0", "د) 2"],
+      optionsFr: isModelA
+        ? ["A) 1/2", "B) 1", "C) 0", "D) +∞"]
+        : ["A) 1/4", "B) 1/2", "C) 0", "D) 2"],
+      correctAnswerAr: isModelA ? "أ) 1/2" : "أ) 1/4",
+      correctAnswerFr: isModelA ? "A) 1/2" : "A) 1/4",
+      justificationAr: isModelA
+        ? "بالضرب في المرافق: (√(x+1) - 1)(√(x+1) + 1)/(x(√(x+1)+1)) = x/(x(√(x+1)+1)) = 1/(√(x+1)+1) → 1/2."
+        : "بالضرب في المرافق: (√x - 2)(√x + 2)/((x - 4)(√x + 2)) = (x - 4)/((x - 4)(√x + 2)) = 1/(√x + 2) → 1/4.",
+      justificationFr: isModelA
+        ? "En multipliant par l'expression conjuguée : (√(x+1)-1)(√(x+1)+1)/(x(√(x+1)+1)) = 1/(√(x+1)+1) → 1/2."
+        : "En multipliant par la quantité conjuguée : 1/(√x + 2) → 1/(2 + 2) = 1/4 quand x → 4.",
+      points: "1.0",
+    };
+
+    // B. مبرهنة القيم الوسيطية والدالة العكسية
+    const itemTVI: MoroccanQCMItem = {
+      num: 2,
+      statementAr: isModelA
+        ? "لتكن f دالة عددية متصلة وراتبة قطعا على المجال [1, 3] بحيث f(1) = -2 و f(3) = 5. عدد حلول المعادلة f(x) = 0 في المجال ]1, 3[ هو:"
+        : "لتكن f تقابلا متصلا وقابلا للاشتقاق عند x_0 = 2 بحيث f(2) = 5 و f'(2) = 3. قيمة مشتقة الدالة العكسية (f^{-1})'(5) تساوي:",
+      statementFr: isModelA
+        ? "Soit f une fonction continue et strictement monotone sur [1, 3] avec f(1) = -2 et f(3) = 5. Le nombre de solutions de f(x) = 0 dans ]1, 3[ est :"
+        : "Soit f une bijection continue et dérivable en x_0 = 2 avec f(2) = 5 et f'(2) = 3. La dérivée de la fonction réciproque (f^{-1})'(5) vaut :",
+      optionsAr: isModelA
+        ? ["أ) حل وحيد بالضبط", "ب) حلان مختلفان", "ج) لا يوجد أي حل", "د) ما لا نهاية من الحلول"]
+        : ["أ) 1/3", "ب) 3", "ج) -1/3", "د) 1/5"],
+      optionsFr: isModelA
+        ? ["A) Exactement une solution unique", "B) Deux solutions", "C) Aucune solution", "D) Une infinité de solutions"]
+        : ["A) 1/3", "B) 3", "C) -1/3", "D) 1/5"],
+      correctAnswerAr: isModelA ? "أ) حل وحيد بالضبط" : "أ) 1/3",
+      correctAnswerFr: isModelA ? "A) Exactement une solution unique" : "A) 1/3",
+      justificationAr: isModelA
+        ? "حسب مبرهنة القيم الوسيطية، بما أن f متصلة وراتبة قطعا و f(1)×f(3) = -10 < 0 فإن الصفر ينتمي إلى f([1, 3]) والمعادلة تقبل حلاً وحيداً."
+        : "خاصية مشتقة الدالة العكسية: (f^{-1})'(b) = 1 / f'(a) حيث f(a) = b، وبالتالي (f^{-1})'(5) = 1 / f'(2) = 1/3.",
+      justificationFr: isModelA
+        ? "D'après le théorème des valeurs intermédiaires (corollaire de la bijection) : f est continue, strictement monotone et f(1)·f(3) < 0, donc racine unique."
+        : "Formule de dérivation de la réciproque : (f^{-1})'(y_0) = 1 / f'(x_0) avec f(x_0) = y_0, d'où 1 / f'(2) = 1/3.",
+      points: "1.0",
+    };
+
+    // C. الاشتقاق ودراسة الدوال
+    const itemDerivation: MoroccanQCMItem = {
+      num: 3,
+      statementAr: isModelA
+        ? "الدالة المشتقة f' للدالة التخالفية f(x) = (2x - 1)/(x + 1) المعرفة على ]-1, +∞[ هي:"
+        : "الدالة المشتقة g' للدالة g(x) = (x - 2)/(2x + 1) المعرفة على ]-1/2, +∞[ هي:",
+      statementFr: isModelA
+        ? "La fonction dérivée f' de la fonction homographique f(x) = (2x - 1)/(x + 1) sur ]-1, +∞[ est :"
+        : "La fonction dérivée g' de la fonction g(x) = (x - 2)/(2x + 1) sur ]-1/2, +∞[ est :",
+      optionsAr: isModelA
+        ? [
+            "أ) f'(x) = 3 / (x + 1)²",
+            "ب) f'(x) = 1 / (x + 1)²",
+            "ج) f'(x) = -3 / (x + 1)²",
+            "د) f'(x) = 2",
+          ]
+        : [
+            "أ) g'(x) = 5 / (2x + 1)²",
+            "ب) g'(x) = 3 / (2x + 1)²",
+            "ج) g'(x) = -3 / (2x + 1)²",
+            "د) g'(x) = 1/2",
+          ],
+      optionsFr: isModelA
+        ? [
+            "A) f'(x) = 3 / (x + 1)²",
+            "B) f'(x) = 1 / (x + 1)²",
+            "C) f'(x) = -3 / (x + 1)²",
+            "D) f'(x) = 2",
+          ]
+        : [
+            "A) g'(x) = 5 / (2x + 1)²",
+            "B) g'(x) = 3 / (2x + 1)²",
+            "C) g'(x) = -3 / (2x + 1)²",
+            "D) g'(x) = 1/2",
+          ],
+      correctAnswerAr: isModelA ? "أ) f'(x) = 3 / (x + 1)²" : "أ) g'(x) = 5 / (2x + 1)²",
+      correctAnswerFr: isModelA ? "A) f'(x) = 3 / (x + 1)²" : "A) g'(x) = 5 / (2x + 1)²",
+      justificationAr: isModelA
+        ? "باستعمال قاعدة مشتقة خارج دالتين أو محددة الدالة التخالفية: det([2, -1; 1, 1]) = 2(1) - (-1)(1) = 3، ومنه f'(x) = 3/(x+1)²."
+        : "محددة الدالة التخالفية: det([1, -2; 2, 1]) = 1(1) - (-2)(2) = 1 + 4 = 5، ومنه g'(x) = 5/(2x+1)².",
+      justificationFr: isModelA
+        ? "Par dérivation d'un quotient homographique : ad - bc = 2(1) - (-1)(1) = 3, donc f'(x) = 3/(x+1)² > 0."
+        : "Dérivée homographique : ad - bc = 1(1) - (-2)(2) = 5, donc g'(x) = 5/(2x+1)² > 0.",
+      points: "1.0",
+    };
+
+    // D. المتتاليات العددية (2BAC)
+    const itemSuites: MoroccanQCMItem = {
+      num: 4,
+      statementAr: isModelA
+        ? "لتكن (u_n) متتالية عددية معرفة لكل n ∈ N بـ u_n = 3 · (3/4)^n + 2. نهاية المتتالية (u_n) هي:"
+        : "لتكن (v_n) متتالية عددية تحقق لكل n ≥ 1 : |v_n - 4| ≤ (1/2)^n. نهاية المتتالية (v_n) هي:",
+      statementFr: isModelA
+        ? "Soit (u_n) la suite définie par u_n = 3 · (3/4)^n + 2. La limite de la suite (u_n) est :"
+        : "Soit (v_n) une suite vérifiant pour tout n ≥ 1 : |v_n - 4| ≤ (1/2)^n. La limite de (v_n) est :",
+      optionsAr: isModelA
+        ? ["أ) lim u_n = 2", "ب) lim u_n = 5", "ج) lim u_n = 0", "د) lim u_n = +∞"]
+        : ["أ) lim v_n = 4", "ب) lim v_n = 0", "ج) lim v_n = 1/2", "د) متتالية متباعدة"],
+      optionsFr: isModelA
+        ? ["A) lim u_n = 2", "B) lim u_n = 5", "C) lim u_n = 0", "D) lim u_n = +∞"]
+        : ["A) lim v_n = 4", "B) lim v_n = 0", "C) lim v_n = 1/2", "D) Divergente"],
+      correctAnswerAr: isModelA ? "أ) lim u_n = 2" : "أ) lim v_n = 4",
+      correctAnswerFr: isModelA ? "A) lim u_n = 2" : "A) lim v_n = 4",
+      justificationAr: isModelA
+        ? "بما أن -1 < 3/4 < 1 فإن lim (3/4)^n = 0، وبالتالي lim u_n = 3×0 + 2 = 2."
+        : "بما أن lim (1/2)^n = 0 فحسب مصاديق التقارب بالحصر (مبرهنة الدرك) نستنتج مباشرة أن lim v_n = 4.",
+      justificationFr: isModelA
+        ? "Comme |3/4| < 1, lim (3/4)^n = 0, donc lim u_n = 3×0 + 2 = 2."
+        : "Puisque lim (1/2)^n = 0, d'après le théorème des gendarmes (critère de comparaison), lim v_n = 4.",
+      points: "1.0",
+    };
+
+    // E. الدوال اللوغاريتمية (لا تدرج إلا إذا كان درس اللوغاريتم حاضراً في دروس الفرض!)
+    const itemLogarithm: MoroccanQCMItem = {
+      num: 5,
+      statementAr: isModelA
+        ? "نهاية الدالة lim_{x→+∞} (ln(x² + 1) - 2x) على المجال ]0, +∞[ تساوي:"
+        : "نهاية الدالة lim_{x→0^+} x² · ln(x) على المجال ]0, +∞[ تساوي:",
+      statementFr: isModelA
+        ? "La limite lim_{x→+∞} (ln(x² + 1) - 2x) est égale à :"
+        : "La limite lim_{x→0^+} x² · ln(x) est égale à :",
+      optionsAr: isModelA
+        ? ["أ) -∞", "ب) 0", "ج) +∞", "د) 2"]
+        : ["أ) 0", "ب) -∞", "ج) 1", "د) +∞"],
+      optionsFr: isModelA
+        ? ["A) -∞", "B) 0", "C) +∞", "D) 2"]
+        : ["A) 0", "B) -∞", "C) 1", "D) +∞"],
+      correctAnswerAr: isModelA ? "أ) -∞" : "أ) 0",
+      correctAnswerFr: isModelA ? "A) -∞" : "A) 0",
+      justificationAr: isModelA
+        ? "بالتعميل بـ x نجد ln(x²+1) - 2x = x(2ln(x)/x - 2) + ln(1+1/x²) وبما أن lim ln(x)/x = 0 فإن النهاية هي -∞."
+        : "حسب النهايات الاعتيادية الأساسية في التزايدات المقارنة للدوال اللوغاريتمية: لكل n ≥ 1 لدينا lim_{x→0^+} x^n ln(x) = 0.",
+      justificationFr: isModelA
+        ? "En factorisant par x : x(2ln(x)/x - 2) + ln(1 + 1/x²) → -∞ car lim_{x→+∞} ln(x)/x = 0."
+        : "D'après les limites de référence de croissances comparées : lim_{x→0^+} x^n ln(x) = 0 pour tout n ≥ 1.",
+      points: "1.0",
+    };
+
+    // F. الأعداد العقدية
+    const itemComplexes: MoroccanQCMItem = {
+      num: 6,
+      statementAr: isModelA
+        ? "في المجموعة C، عمدة العدد العقدي z = (-√3 + i)^6 توافق بترديد 2π العدد:"
+        : "في المجموعة C، معيار وعمدة العدد العقدي z = 1 + i√3 هما:",
+      statementFr: isModelA
+        ? "Dans ℂ, un argument du nombre complexe z = (-√3 + i)^6 est congru modulo 2π à :"
+        : "Dans ℂ, le module et un argument de z = 1 + i√3 sont :",
+      optionsAr: isModelA
+        ? ["أ) π [2π] (عدد حقيقي سالب)", "ب) π/2 [2π]", "ج) π/3 [2π]", "د) -π/6 [2π]"]
+        : [
+            "أ) |z| = 2 و arg(z) ≡ π/3 [2π]",
+            "ب) |z| = 2 و arg(z) ≡ π/6 [2π]",
+            "ج) |z| = 4 و arg(z) ≡ π/3 [2π]",
+            "د) |z| = √2 و arg(z) ≡ π/4 [2π]",
+          ],
+      optionsFr: isModelA
+        ? ["A) π [2π]", "B) π/2 [2π]", "C) π/3 [2π]", "D) -π/6 [2π]"]
+        : [
+            "A) |z| = 2 et arg(z) ≡ π/3 [2π]",
+            "B) |z| = 2 et arg(z) ≡ π/6 [2π]",
+            "C) |z| = 4 et arg(z) ≡ π/3 [2π]",
+            "D) |z| = √2 et arg(z) ≡ π/4 [2π]",
+          ],
+      correctAnswerAr: isModelA
+        ? "أ) π [2π] (عدد حقيقي سالب)"
+        : "أ) |z| = 2 و arg(z) ≡ π/3 [2π]",
+      correctAnswerFr: isModelA ? "A) π [2π]" : "A) |z| = 2 et arg(z) ≡ π/3 [2π]",
+      justificationAr: isModelA
+        ? "لدينا -√3 + i = 2 e^{i5π/6}، ومنه z = 2^6 e^{i5π} = -64، وعمدته 5π ≡ π [2π]."
+        : "لدينا |z| = √(1 + 3) = 2، ومنه z = 2(1/2 + i√3/2) = 2(cos(π/3) + i sin(π/3)).",
+      justificationFr: isModelA
+        ? "On écrit -√3 + i = 2e^{i5π/6}, d'où z = 64e^{i5π} = -64 et arg(z) ≡ π [2π]."
+        : "On calcule |z| = √(1² + (√3)²) = 2 et on factorise par 2 : z = 2(cos(π/3) + i sin(π/3)).",
+      points: "1.0",
+    };
+
+    // G. الهندسة الفضائية والجداء السلمي في الفضاء
+    const itemEspace: MoroccanQCMItem = {
+      num: 7,
+      statementAr: isModelA
+        ? "في الفضاء المنسوب لمعلم متعامد ممنظم، مسافة النقطة Ω(1, -1, 2) عن المستوى (P) : 2x - y + 2z - 3 = 0 هي:"
+        : "في الفضاء المنسوب لمعلم متعامد ممنظم، مسافة النقطة Ω(2, 1, -1) عن المستوى (P) : x + 2y + 2z + 3 = 0 هي:",
+      statementFr: isModelA
+        ? "Dans l'espace muni d'un repère orthonormé, la distance du point Ω(1, -1, 2) au plan (P) : 2x - y + 2z - 3 = 0 est :"
+        : "Dans l'espace muni d'un repère orthonormé, la distance du point Ω(2, 1, -1) au plan (P) : x + 2y + 2z + 3 = 0 est :",
+      optionsAr: isModelA
+        ? ["أ) d = 4/3", "ب) d = 2", "ج) d = 4/9", "د) d = √3"]
+        : ["أ) d = 5/3", "ب) d = 3", "ج) d = 5/9", "د) d = √5"],
+      optionsFr: isModelA
+        ? ["A) d = 4/3", "B) d = 2", "C) d = 4/9", "D) d = √3"]
+        : ["A) d = 5/3", "B) d = 3", "C) d = 5/9", "D) d = √5"],
+      correctAnswerAr: isModelA ? "أ) d = 4/3" : "أ) d = 5/3",
+      correctAnswerFr: isModelA ? "A) d = 4/3" : "A) d = 5/3",
+      justificationAr: isModelA
+        ? "بتطبيق صيغة المسافة: d(Ω, (P)) = |2(1) - (-1) + 2(2) - 3| / √(2² + (-1)² + 2²) = 4/3."
+        : "بتطبيق صيغة المسافة: d(Ω, (P)) = |2 + 2(1) + 2(-1) + 3| / √(1² + 2² + 2²) = 5/3.",
+      justificationFr: isModelA
+        ? "Par application directe de la formule : d(Ω,(P)) = |2 + 1 + 4 - 3| / √(4 + 1 + 4) = 4/3."
+        : "Par application directe de la formule : d(Ω,(P)) = |2 + 2 - 2 + 3| / √(1 + 4 + 4) = 5/3.",
+      points: "1.0",
+    };
+
+    // H. الدوال الأسية
+    const itemExponential: MoroccanQCMItem = {
+      num: 8,
+      statementAr: isModelA
+        ? "قيمة النهاية lim_{x→-∞} x · e^x تساوي:"
+        : "قيمة النهاية lim_{x→+∞} e^x / x² تساوي:",
+      statementFr: isModelA
+        ? "La valeur de la limite lim_{x→-∞} x · e^x est égale à :"
+        : "La valeur de la limite lim_{x→+∞} e^x / x² est égale à :",
+      optionsAr: isModelA
+        ? ["أ) 0", "ب) -∞", "ج) +∞", "د) 1"]
+        : ["أ) +∞", "ب) 0", "ج) 1", "د) e"],
+      optionsFr: isModelA
+        ? ["A) 0", "B) -∞", "C) +∞", "D) 1"]
+        : ["A) +∞", "B) 0", "C) 1", "D) e"],
+      correctAnswerAr: isModelA ? "أ) 0" : "أ) +∞",
+      correctAnswerFr: isModelA ? "A) 0" : "A) +∞",
+      justificationAr: isModelA
+        ? "خاصية التزايدات المقارنة للدالة الأسية: lim_{x→-∞} x^n e^x = 0 لكل n ≥ 1."
+        : "خاصية التزايدات المقارنة للدالة الأسية: lim_{x→+∞} e^x / x^n = +∞ لكل n ≥ 1.",
+      justificationFr: isModelA
+        ? "Limite de référence des croissances comparées : lim_{x→-∞} x·e^x = 0."
+        : "Limite usuelle de croissances comparées : l'exponentielle l'emporte sur toute puissance en +∞, donc lim = +∞.",
+      points: "1.0",
+    };
+
+    // I. الحساب التكاملي والمعادلات التفاضلية
+    const itemIntegrals: MoroccanQCMItem = {
+      num: 9,
+      statementAr: isModelA
+        ? "قيمة التكامل I = ∫_1^e (ln(x))/x dx تساوي بالضبط:"
+        : "قيمة التكامل J = ∫_0^1 2x · e^{x²} dx تساوي بالضبط:",
+      statementFr: isModelA
+        ? "La valeur exacte de l'intégrale I = ∫_1^e (ln(x))/x dx est :"
+        : "La valeur exacte de l'intégrale J = ∫_0^1 2x · e^{x²} dx est :",
+      optionsAr: isModelA
+        ? ["أ) 1/2", "ب) 1", "ج) e - 1", "د) 1/e"]
+        : ["أ) e - 1", "ب) e", "ج) 1", "د) e² - 1"],
+      optionsFr: isModelA
+        ? ["A) 1/2", "B) 1", "C) e - 1", "D) 1/e"]
+        : ["A) e - 1", "B) e", "C) 1", "D) e² - 1"],
+      correctAnswerAr: isModelA ? "أ) 1/2" : "أ) e - 1",
+      correctAnswerFr: isModelA ? "A) 1/2" : "A) e - 1",
+      justificationAr: isModelA
+        ? "الدالة تحت التكامل من الشكل u'(x)·u(x) حيث u(x) = ln(x)، إذن دالتها الأصلية هي (1/2)(ln x)²، ومنه I = 1/2."
+        : "الدالة من الشكل u'(x)e^{u(x)} مع u(x) = x²، إذن دالتها الأصلية هي e^{x²}، ومنه J = e^1 - e^0 = e - 1.",
+      justificationFr: isModelA
+        ? "Forme u'·u avec u(x) = ln(x) : une primitive est (1/2)(ln x)², d'où I = 1/2 - 0 = 1/2."
+        : "Forme u'·e^u avec u(x) = x² : une primitive est e^{x²}, d'où J = e^1 - e^0 = e - 1.",
+      points: "1.0",
+    };
+
+    const itemEquaDiff: MoroccanQCMItem = {
+      num: 10,
+      statementAr: "الحل العام للمعادلة التفاضلية y' + 2y = 0 على المجموعة R هو الدوال من الشكل:",
+      statementFr: "La solution générale sur ℝ de l'équation différentielle y' + 2y = 0 est :",
+      optionsAr: [
+        "أ) y(x) = k·e^{-2x} (مع k ∈ R)",
+        "ب) y(x) = k·e^{2x} (مع k ∈ R)",
+        "ج) y(x) = -2e^x + k",
+        "د) y(x) = k·cos(2x)",
+      ],
+      optionsFr: [
+        "A) y(x) = k·e^{-2x} (k ∈ ℝ)",
+        "B) y(x) = k·e^{2x} (k ∈ ℝ)",
+        "C) y(x) = -2e^x + k",
+        "D) y(x) = k·cos(2x)",
+      ],
+      correctAnswerAr: "أ) y(x) = k·e^{-2x} (مع k ∈ R)",
+      correctAnswerFr: "A) y(x) = k·e^{-2x} (k ∈ ℝ)",
+      justificationAr: "المعادلة من الشكل y' = ay مع a = -2، وحلولها هي الدوال x ↦ k·e^{-2x}.",
+      justificationFr: "Équation linéaire y' = ay avec a = -2, dont les solutions sont x ↦ k·e^{-2x}.",
+      points: "1.0",
+    };
+
+    // J. الاحتمالات
+    const itemProba: MoroccanQCMItem = {
+      num: 11,
+      statementAr: "إذا كان X متغيراً عشوائياً يتبع القانون الحداني B(n=4, p=1/2)، فإن الأمل الرياضي E(X) يساوي:",
+      statementFr: "Si X suit la loi binomiale B(n=4, p=1/2), alors son espérance mathématique E(X) vaut :",
+      optionsAr: ["أ) E(X) = 2", "ب) E(X) = 1", "ج) E(X) = 1/2", "د) E(X) = 4"],
+      optionsFr: ["A) E(X) = 2", "B) E(X) = 1", "C) E(X) = 1/2", "D) E(X) = 4"],
+      correctAnswerAr: "أ) E(X) = 2",
+      correctAnswerFr: "A) E(X) = 2",
+      justificationAr: "حسب خاصية الأمل الرياضي للقانون الحداني B(n, p) لدينا E(X) = n × p = 4 × (1/2) = 2.",
+      justificationFr: "Pour une loi binomiale B(n, p), l'espérance est E(X) = n × p = 4 × 0,5 = 2.",
+      points: "1.0",
+    };
+
+    // تجميع بنك الأسئلة المرجعية لـ 2BAC بالترتيب البيداغوجي المنسجم مع الدروس النشطة:
+    const prioritized2BAC: MoroccanQCMItem[] = [];
+
+    // إذا كان الفرض يشمل الاتصال أو الاشتقاق (مثل DS1 S1)، نضع أسئلة الاتصال والاشتقاق ومبرهنة القيم الوسيطية في المقدمة
+    if (hasContinuityOrLimits || hasDerivation) {
+      prioritized2BAC.push(itemContinuityLimits);
+      prioritized2BAC.push(itemDerivation);
+      prioritized2BAC.push(itemTVI);
+    }
+
+    // إذا كان الفرض يشمل المتتاليات (مثل DS2 S1)، نضع سؤال المتتاليات
+    if (hasSuites) {
+      prioritized2BAC.push(itemSuites);
+    }
+
+    // لا يدرج تمرين اللوغاريتم إلا إذا كان درس الدوال اللوغاريتمية مقرراً صراحة في دروس الفرض!
+    if (hasLogarithm) {
+      prioritized2BAC.push(itemLogarithm);
+    }
+
+    // الدوال الأسية
+    if (hasExponential) {
+      prioritized2BAC.push(itemExponential);
+    }
+
+    // الأعداد العقدية
+    if (hasComplexes) {
+      prioritized2BAC.push(itemComplexes);
+    }
+
+    // الهندسة الفضائية
+    if (hasEspace) {
+      prioritized2BAC.push(itemEspace);
+    }
+
+    // التكامل والمعادلات التفاضلية
+    if (hasIntegrals) {
+      prioritized2BAC.push(itemIntegrals);
+    }
+    if (hasEquaDiff) {
+      prioritized2BAC.push(itemEquaDiff);
+    }
+
+    // الاحتمالات
+    if (hasProba) {
+      prioritized2BAC.push(itemProba);
+    }
+
+    // قائمة الأمان الاحتياطية المتدرجة (تبدأ بالاتصال والاشتقاق والمتتاليات، ولا تضع اللوغاريتم في البداية)
+    const fallbackChain: MoroccanQCMItem[] = [
+      itemContinuityLimits,
+      itemDerivation,
+      itemTVI,
+      itemSuites,
+      itemComplexes,
+      itemEspace,
+      itemLogarithm,
+      itemExponential,
+      itemIntegrals,
+      itemEquaDiff,
+      itemProba,
     ];
+
+    fallbackChain.forEach((it) => {
+      if (!prioritized2BAC.includes(it)) {
+        // إذا لم يكن اللوغاريتم مقرراً، لا نضيفه في الاحتياطي إلا إذا نفذت كل التمارين الأخرى
+        if (it === itemLogarithm && !hasLogarithm) return;
+        prioritized2BAC.push(it);
+      }
+    });
+
+    basePool = prioritized2BAC;
   }
 
   // دمج الأسئلة المخصصة التي أضافها الأستاذ مع الأسئلة المرجعية
@@ -2845,9 +3485,18 @@ export interface SerieExerciseBlock {
 export function getSerieAndDMExercises(
   lesson: LessonItem,
   subType: DMSubType,
-  model: "A" | "B" = "A"
+  model: "A" | "B" = "A",
+  variationSeed: number = 0,
+  questionDensity: DSQuestionDensity = "INTENSIVE",
+  shuffleQuestions: boolean = false
 ): SerieExerciseBlock[] {
-  const { questionsAr, questionsFr } = getVariantQuestions(lesson, model, false);
+  const { questionsAr, questionsFr } = getVariantQuestions(
+    lesson,
+    model,
+    shuffleQuestions,
+    variationSeed,
+    questionDensity
+  );
   const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
   const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
   const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;

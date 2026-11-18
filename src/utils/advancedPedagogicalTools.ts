@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { evaluate as mathEvaluate } from "mathjs";
 import {
   LessonItem,
   InsertedFigure,
@@ -521,20 +522,26 @@ export const CLASSIC_BAC_FUNCTION_PRESETS: FunctionPreset[] = [
 
 export function evaluateSafeMathExpression(expr: string, xVal: number): number {
   try {
-    // Normalize common math syntax to JS Math
-    const normalized = expr
-      .replace(/\^/g, "**")
-      .replace(/\bln\s*\(/g, "Math.log(")
-      .replace(/\blog\s*\(/g, "Math.log10(")
-      .replace(/\bexp\s*\(/g, "Math.exp(")
-      .replace(/\bsin\s*\(/g, "Math.sin(")
-      .replace(/\bcos\s*\(/g, "Math.cos(")
-      .replace(/\btan\s*\(/g, "Math.tan(")
-      .replace(/\bsqrt\s*\(/g, "Math.sqrt(")
-      .replace(/\babs\s*\(/g, "Math.abs(");
+    const cleaned = expr.trim();
+    if (!cleaned || cleaned.length > 260) return NaN;
+    if (/[=;\[\]{}]/.test(cleaned)) return NaN;
 
-    const fn = new Function("x", `return (${normalized});`);
-    const res = Number(fn(xVal));
+    const normalized = cleaned
+      .replace(/\*\*/g, "^")
+      .replace(/\bMath\.log10\s*\(/g, "log10(")
+      .replace(/\bMath\.log\s*\(/g, "log(")
+      .replace(/\bMath\.exp\s*\(/g, "exp(")
+      .replace(/\bMath\.sin\s*\(/g, "sin(")
+      .replace(/\bMath\.cos\s*\(/g, "cos(")
+      .replace(/\bMath\.tan\s*\(/g, "tan(")
+      .replace(/\bMath\.sqrt\s*\(/g, "sqrt(")
+      .replace(/\bMath\.abs\s*\(/g, "abs(")
+      .replace(/\bMath\.PI\b/g, "pi")
+      .replace(/\bMath\.E\b/g, "e")
+      .replace(/\bln\s*\(/g, "log(")
+      .replace(/\blog\s*\(/g, "log10(");
+
+    const res = Number(mathEvaluate(normalized, { x: xVal }));
     return Number.isFinite(res) ? res : NaN;
   } catch {
     return NaN;

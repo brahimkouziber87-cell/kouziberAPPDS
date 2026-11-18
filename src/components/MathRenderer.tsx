@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import katex from "katex";
+import { sanitizeTrustedPedagogicalHtml } from "../utils/pedagogicalIndexedDbEngine";
 
 export const KATEX_MOROCCAN_MACROS: Record<string, string> = {
   "\\R": "\\mathbb{R}",
@@ -119,13 +120,25 @@ export function normalizeMathSyntax(latex: string): string {
     .replace(/=>/g, "\\implies ")
     .replace(/->/g, "\\to ");
 
-  // Normalisation des intégrales abrégées : ∫_a^b ... dx
+  // Normalisation des intégrales et sommes abrégées : ∫_a^b ... dx, ∑_{k=0}^n ...
   s = s
     .replace(/∫_\{([^}]+)\}\^\{([^}]+)\}/g, "\\int_{$1}^{$2}")
     .replace(/∫_([^\s^_]+)\^\{([^}]+)\}/g, "\\int_{$1}^{$2}")
     .replace(/∫_\{([^}]+)\}\^([^\s^_]+)/g, "\\int_{$1}^{$2}")
     .replace(/∫_([^\s^_]+)\^([^\s^_]+)/g, "\\int_{$1}^{$2}")
     .replace(/∫/g, "\\int ")
+    .replace(/∑_\{([^}]+)\}\^\{([^}]+)\}/g, "\\sum_{$1}^{$2}")
+    .replace(/∑_([^\s^_]+)\^\{([^}]+)\}/g, "\\sum_{$1}^{$2}")
+    .replace(/∑_\{([^}]+)\}\^([^\s^_]+)/g, "\\sum_{$1}^{$2}")
+    .replace(/∑_([^\s^_]+)\^([^\s^_]+)/g, "\\sum_{$1}^{$2}")
+    .replace(/∑/g, "\\sum ")
+    .replace(/∏_\{([^}]+)\}\^\{([^}]+)\}/g, "\\prod_{$1}^{$2}")
+    .replace(/∏/g, "\\prod ")
+    .replace(/⊆/g, "\\subseteq ")
+    .replace(/⊇/g, "\\supseteq ")
+    .replace(/∅/g, "\\emptyset ")
+    .replace(/⊥/g, "\\perp ")
+    .replace(/∥/g, "\\parallel ")
     .replace(/\s+d([xtyuz])\b/g, "\\,\\mathrm{d}$1");
 
   // Normalisation des limites abrégées : lim_{x->...}
@@ -212,7 +225,11 @@ export function renderSingleLatexFormula(
       trust: true,
     });
   } catch {
-    html = `<code class="font-mono text-slate-800 bg-slate-100 px-1 rounded">${tex}</code>`;
+    const safeTex = tex
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    html = `<code class="font-mono text-slate-800 bg-slate-100 px-1 rounded">${safeTex}</code>`;
   }
 
   setCachedValue(LATEX_HTML_CACHE, cacheKey, html);
@@ -229,8 +246,8 @@ export interface TextSegment {
 const IMPLICIT_MATH_TOKEN_SOURCE = [
   // 1. Commandes LaTeX explicites
   "\\\\(?:frac|sqrt|lim|int|sum|prod|vec|vect|mathbb|mathrm|mathbf|mathcal|binom|over|left|right|alpha|beta|gamma|delta|Delta|lambda|theta|pi|infty|le|ge|neq|times|pm|in|notin|subset|cup|cap|to|iff|implies)\\b(?:\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}|\\[[^[\\]]*\\]|_\\{[^{}]*\\}|\\^\\{[^{}]*\\}|_[a-zA-Z0-9]|\\^[a-zA-Z0-9]|[a-zA-Z0-9+\\-*/=<>^_{}().,]+|\\s+)*",
-  // 2. Intégrales et limites complètes (ex: I = ∫_0^1 (x + 1)e^{-x} dx, lim_{x→0^+} f(x) = +∞)
-  "(?:\\b[A-Za-z](?:_[0-9a-zA-Z]+)?\\s*=\\s*)?(?:\\blim_\\{[^}]+\\}|∫_[^\\s,;:]+(?:\\^[^\\s,;:]+)?)\\s*(?:\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|[A-Za-z0-9_^{}+\\-*/.·√π∞e']|\\s+(?=(?:\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|[0-9√π∞=≤≥<>→]|[A-Za-z](?:_\\{|\\^\\{|[_^0-9'()=≤≥<>→+\\-*/]|\\b))))*(?:\\s*(?:=|≤|≥|<|>|→)\\s*[+\\-]?(?:∞|oo|[A-Za-z0-9_^{}()+\\-*/.·√π∞e']+))?",
+  // 2. Intégrales, sommes et limites complètes (ex: I = ∫_0^1 (x + 1)e^{-x} dx, ∑_{k=0}^n u_k, lim_{x→0^+} f(x) = +∞)
+  "(?:\\b[A-Za-z](?:_[0-9a-zA-Z]+)?\\s*=\\s*)?(?:\\blim_\\{[^}]+\\}|[∫∑∏]_[^\\s,;:]+(?:\\^[^\\s,;:]+)?)\\s*(?:\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|[A-Za-z0-9_^{}+\\-*/.·√π∞e']|\\s+(?=(?:\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|[0-9√π∞=≤≥<>→]|[A-Za-z](?:_\\{|\\^\\{|[_^0-9'()=≤≥<>→+\\-*/]|\\b))))*(?:\\s*(?:=|≤|≥|<|>|→)\\s*[+\\-]?(?:∞|oo|[A-Za-z0-9_^{}()+\\-*/.·√π∞e']+))?",
   // 3. Repères du plan/espace, courbes et suites entre parenthèses : (O, i⃗, j⃗), (C_f), (u_n)
   "\\(O\\s*[,;]\\s*[^)]+\\)|\\(C_[a-zA-Z0-9]+\\)|\\(C[fgh]\\)|\\([uvUVwW]_(?:\\{[^}]+\\}|[a-zA-Z0-9+\\-]+)\\)",
   // 4. Intervalles réels : ]0, +∞[, [0, +∞[, ]-∞, +∞[, [0, π]
@@ -374,7 +391,10 @@ export function renderMathHtml(text: string): string {
         const rendered = renderSingleLatexFormula(seg.content, false);
         return `<span class="katex-inline-math" dir="ltr">${rendered}</span>`;
       }
-      return seg.content;
+      return seg.content
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
     })
     .join("");
 }
@@ -407,7 +427,9 @@ export const MathText: React.FC<MathTextProps> = React.memo(
       <Container className={`math-text-container ${className}`}>
         {segments.map((seg, idx) => {
           if (seg.type === "display-math") {
-            const html = renderSingleLatexFormula(seg.content, true);
+            const html = sanitizeTrustedPedagogicalHtml(
+              renderSingleLatexFormula(seg.content, true)
+            ).sanitizedHtml;
             return (
               <div
                 key={idx}
@@ -419,7 +441,9 @@ export const MathText: React.FC<MathTextProps> = React.memo(
           }
 
           if (seg.type === "inline-math") {
-            const html = renderSingleLatexFormula(seg.content, false);
+            const html = sanitizeTrustedPedagogicalHtml(
+              renderSingleLatexFormula(seg.content, false)
+            ).sanitizedHtml;
             return (
               <span
                 key={idx}

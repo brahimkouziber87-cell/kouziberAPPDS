@@ -25,6 +25,8 @@ export type AiPedagogicalTask =
   | "GENERATE_ISOMORPHIC_VARIANT"
   | "SIMPLIFY_COMPLEX_WORDING"
   | "GENERATE_SYNTHESIS_PROBLEM"
+  | "GENERATE_DM_GRADUATED_SERIE"
+  | "GENERATE_FICHE_SITUATION_PROBLEME"
   | "GENERATE_BILINGUAL_RUBRIC"
   | "GENERATE_PYTHON_DIDACTIC"
   | "DIDACTIC_AUDIT_142_08"
@@ -209,6 +211,18 @@ const AI_TASKS: Array<{
     labelAr: "بناء مسألة توليفية شاملة (Problème Type Bac)",
     labelFr: "Construction d'un problème de synthèse complet",
     badge: "مسألة وطنية",
+  },
+  {
+    id: "GENERATE_DM_GRADUATED_SERIE",
+    labelAr: "توليد فرض منزلي أو سلسلة متدرجة (N1 → N2 → N3 → أولمبياد)",
+    labelFr: "Série graduée ou Devoir Maison progressif (N1 → N2 → N3)",
+    badge: "فرض منزلي وسلسلة",
+  },
+  {
+    id: "GENERATE_FICHE_SITUATION_PROBLEME",
+    labelAr: "بناء وضعية انطلاق بنائية وتقويم تكويني للجذاذة (OP 2007)",
+    labelFr: "Situation-problème constructiviste (Brousseau) & Test formatif",
+    badge: "جذاذة OP 2007",
   },
   {
     id: "GENERATE_BILINGUAL_RUBRIC",
@@ -657,15 +671,16 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
         ? initialLessonIndex
         : 0;
     setTargetLessonIdx(lessonIdx);
+    const taskToUse = initialTask || selectedTask;
+    const promptText =
+      lessons.length > 0
+        ? buildLessonProblemPrompt(lessonIdx, taskToUse)
+        : SAMPLE_PROBLEMS_PRESETS[0].text;
     if (initialTask) {
-      const promptText =
-        lessons.length > 0
-          ? buildLessonProblemPrompt(lessonIdx, initialTask)
-          : SAMPLE_PROBLEMS_PRESETS[0].text;
       setSelectedTask(initialTask);
-      setProblemText(promptText);
-      void handleRunAiTask(initialTask, promptText);
     }
+    setProblemText(promptText);
+    void handleRunAiTask(taskToUse, promptText);
   }, [isOpen, initialTask, initialLessonIndex, lessons.length, buildLessonProblemPrompt]);
 
   if (!isOpen) return null;
@@ -805,8 +820,10 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
         .filter(Boolean);
       if (lines.length <= 1) return [raw.trim()];
       const grouped: string[] = [];
+      const questionStartRegex =
+        /^(?:\d+[\.\-\)\:]|[أ-ي][\.\-\)]|[a-z][\.\-\)]|(?:الجزء|فرع|سؤال|تمرين|مسألة|Partie|Question|Exercice)\s+(?:[I|V|X|\d]+|الأول|الثاني|الثالث|الرابع))\s*/i;
       for (const line of lines) {
-        if (/^(?:\d+[\.\-\)]|[أ-ي][\.\)]|[a-z][\.\)])\s+/i.test(line) || grouped.length === 0) {
+        if (questionStartRegex.test(line) || grouped.length === 0) {
           grouped.push(line);
         } else {
           grouped[grouped.length - 1] += `\n${line}`;
@@ -979,32 +996,22 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
           </div>
         )}
 
-        {/* العرض 2: لوحة تفضيلات وفحص المحرك والدليل التقني لـ Gemini SDK */}
+        {/* العرض 2: لوحة المعايرة الديداكتيكية وتفضيلات الاستدلال الرياضي */}
         {modalView === "SETTINGS_DOCS" ? (
           <div className="flex-1 overflow-y-auto p-5 bg-slate-50/70 space-y-5">
-            {/* البطاقة 1: حالة الاتصال وإدارة متغير الخادم GEMINI_API_KEY وفحص المسارات الخمسة */}
+            {/* البطاقة 1: معايرة الصرامة الديداكتيكية وبروتوكول التحرير الرياضي */}
             <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-950 text-cyan-300 flex items-center justify-center font-mono font-black text-sm">
-                    SDK
+                  <div className="w-9 h-9 rounded-xl bg-indigo-950 text-cyan-300 flex items-center justify-center font-serif font-black text-sm">
+                    ∑
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-950">
-                      حالة محرك الذكاء الاصطناعي ومزامنة مفتاح الخادم (
-                      <code dir="ltr" className="text-indigo-800">
-                        GEMINI_API_KEY
-                      </code>
-                      )
+                      معايرة الاستدلال الرياضي والضوابط البيداغوجية (M142-08 &amp; OP 2007)
                     </h3>
                     <p className="text-[11px] text-slate-500">
-                      يتم تأمين مفتاح{" "}
-                      <code dir="ltr" className="font-mono font-bold">
-                        GEMINI_API_KEY
-                      </code>{" "}
-                      تلقائياً في بيئة الخادم (Settings &gt; Secrets) مع تفعيل
-                      المحرك الرياضي الهجين المدمج لضمان عمل جميع العمليات بنسبة
-                      100% دون أي انقطاع.
+                      ضبط مستوى تفصيل البراهين، كثافة الإرشادات التمهيدية (Scaffolding)، ودقة تفكيك سلم التنقيط إلى أرباع النقطة (0.25 pt).
                     </p>
                   </div>
                 </div>
@@ -1014,35 +1021,17 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                     type="button"
                     onClick={handlePingGeminiTest}
                     disabled={isTestingPing}
-                    className="px-3.5 py-2 rounded-xl text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                    className="px-3.5 py-2 rounded-xl text-xs font-black bg-indigo-950 hover:bg-indigo-900 text-cyan-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-60"
                   >
-                    <Activity
-                      className={`w-3.5 h-3.5 text-cyan-700 ${
+                    <Sparkles
+                      className={`w-3.5 h-3.5 ${
                         isTestingPing ? "animate-spin" : ""
                       }`}
                     />
                     <span>
                       {isTestingPing
-                        ? "جاري فحص الاستدلال..."
-                        : "اختبار استدلال سريع حي"}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRunFull5EndpointsDiagnostic}
-                    disabled={isRunningFullDiag}
-                    className="px-3.5 py-2 rounded-xl text-xs font-black bg-indigo-950 hover:bg-indigo-900 text-cyan-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-60"
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${
-                        isRunningFullDiag ? "animate-spin" : ""
-                      }`}
-                    />
-                    <span>
-                      {isRunningFullDiag
-                        ? "جاري فحص المسارات الـ 5..."
-                        : "فحص شامل لجميع المسارات الذكية (5/5)"}
+                        ? "جاري توليد عينة استدلالية..."
+                        : "اختبار استدلال رياضي فوري"}
                     </span>
                   </button>
                 </div>
@@ -1052,17 +1041,13 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                 <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200 space-y-1">
                   <div className="text-[11px] font-bold text-teal-800 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-teal-700" />
-                    <span>مفتاح الخادم الآمن (Server Secret)</span>
+                    <span>بروتوكول استقلالية الأسئلة (142-08)</span>
                   </div>
-                  <div className="text-xs font-black text-teal-950 font-mono">
-                    {aiStatus.configured
-                      ? "✓ GEMINI_API_KEY (Cloud Active)"
-                      : "✓ GEMINI_API_KEY + Hybrid Engine Ready"}
+                  <div className="text-xs font-black text-teal-950">
+                    ✓ صيغ وسطية صريحة (&laquo; بين أن &raquo; / &laquo; تحقق أن &raquo;)
                   </div>
                   <div className="text-[10.5px] text-teal-800">
-                    مدار تلقائياً عبر{" "}
-                    <span className="font-bold">Settings &gt; Secrets</span> في
-                    الخادم الخلفي دون كشفه في المتصفح
+                    يضمن عدم توقف المتعلم في الفرض المحروس إذا تعثر في سؤال جزئي سابق
                   </div>
                 </div>
 
@@ -1084,22 +1069,17 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 space-y-1">
-                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
+                  <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-amber-600" />
-                    <span>زمن الاستجابة واستقرار JSON/LaTeX</span>
+                    <span>معالجة الصيغ والرموز الرياضية (LaTeX)</span>
                   </div>
-                  <div
-                    dir="ltr"
-                    className="text-xs font-black text-slate-950 font-mono"
-                  >
-                    {pingLatencyMs !== null
-                      ? `${pingLatencyMs} ms (200 OK)`
-                      : "Ready (< 50 ms Hybrid)"}
+                  <div className="text-xs font-black text-amber-950">
+                    ✓ توافق كامل مع KaTeX و XeLaTeX
                   </div>
-                  <div className="text-[10.5px] text-slate-600">
-                    معالجة آمنة لرموز LaTeX (
-                    <code dir="ltr">\frac, \ln, \int</code>) داخل JSON
+                  <div className="text-[10.5px] text-amber-800">
+                    ضبط تلقائي للرموز (
+                    <code dir="ltr">\frac, \ln, \int, \vec</code>) وازدواجية المصطلحات (عربي/فرنسي)
                   </div>
                 </div>
               </div>
@@ -1107,58 +1087,6 @@ print("Approximation de l'aire :", aire_rectangles(2000))`,
               {pingTestNote && (
                 <div className="p-3 rounded-xl bg-cyan-950 text-cyan-200 text-xs font-bold flex items-center justify-between gap-2">
                   <span>{pingTestNote}</span>
-                  {pingLatencyMs !== null && (
-                    <span className="font-mono text-[11px] bg-cyan-900 px-2 py-0.5 rounded text-cyan-100">
-                      {pingLatencyMs} ms
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* جدول تشخيص المسارات الخمسة للخادم */}
-              {endpointsDiag.length > 0 && (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="bg-slate-900 text-white px-3.5 py-2 text-[11px] font-black flex items-center justify-between">
-                    <span>
-                      تشخيص المسارات الخلفية الخمسة للذكاء الاصطناعي والحساب
-                      الرمزي
-                    </span>
-                    <span className="font-mono text-[10px] text-teal-300">
-                      5 / 5 Endpoints Operational
-                    </span>
-                  </div>
-                  <div className="divide-y divide-slate-200 text-xs bg-white">
-                    {endpointsDiag.map((ep) => (
-                      <div
-                        key={ep.route}
-                        className="px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
-                          <span className="font-bold text-slate-900">
-                            {ep.nameAr}
-                          </span>
-                          <code
-                            dir="ltr"
-                            className="font-mono text-[10.5px] text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200"
-                          >
-                            {ep.route}
-                          </code>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            dir="ltr"
-                            className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
-                          >
-                            {ep.mode}
-                          </span>
-                          <span className="text-[10.5px] font-black text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
-                            ✓ جاهز (200 OK)
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
@@ -1344,7 +1272,7 @@ const response = await ai.models.generateContent({
                     <span>1. اختر المهمة البيداغوجية للذكاء الاصطناعي:</span>
                   </span>
                   <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-                    8 مهام متخصصة
+                    {AI_TASKS.length} مهام متخصصة
                   </span>
                 </label>
 
@@ -1801,9 +1729,17 @@ const response = await ai.models.generateContent({
                         {lessons.length > 1 && (
                           <select
                             value={targetLessonIdx}
-                            onChange={(e) =>
-                              setTargetLessonIdx(Number(e.target.value))
-                            }
+                            onChange={(e) => {
+                              const nextIdx = Number(e.target.value);
+                              setTargetLessonIdx(nextIdx);
+                              if (lessons[nextIdx]) {
+                                const nextPrompt = buildLessonProblemPrompt(
+                                  nextIdx,
+                                  selectedTask
+                                );
+                                setProblemText(nextPrompt);
+                              }
+                            }}
                             className="border border-indigo-200 rounded-lg px-2 py-1 text-[11px] font-bold bg-white text-indigo-950"
                             title="اختر التمرين المستهدف في الفرض لتطبيق التعديل عليه"
                           >

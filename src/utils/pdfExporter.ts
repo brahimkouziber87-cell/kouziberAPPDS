@@ -787,6 +787,8 @@ export async function exportPreviewToPDF({
       pixelRatio,
       backgroundColor: "#ffffff",
       cacheBust: true,
+      skipFonts: true,
+      fontEmbedCSS: "",
       filter: (node: Node) => {
         if (node instanceof HTMLElement && node.classList.contains("no-print")) {
           return false;
@@ -1494,6 +1496,8 @@ export async function exportPedagogicalAuditReportToPDF(
       pixelRatio: 2.5,
       backgroundColor: "#ffffff",
       cacheBust: true,
+      skipFonts: true,
+      fontEmbedCSS: "",
     });
 
     const img = new Image();
@@ -1757,6 +1761,8 @@ export async function exportBookletImposedPDF(
     pixelRatio: 2.4,
     backgroundColor: "#ffffff",
     cacheBust: true,
+    skipFonts: true,
+    fontEmbedCSS: "",
     filter: (node: Node) => {
       if (node instanceof HTMLElement && node.classList.contains("no-print")) {
         return false;
@@ -1978,4 +1984,395 @@ export async function exportBookletImposedPDF(
     physicalA4Sheets: imposition.physicalA4Sheets,
   };
 }
+
+/**
+ * ============================================================================
+ * 3. محرك «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي (Institutional Folded A5 — 50% Paper Saving)
+ * يصدر الفروض بتنسيق صفحتين A5 متجاورتين داخل ورقة A4 أفقية قابلة للطي أو القص الوسطي
+ * مما يقلل استهلاك الورق في المؤسسات التعليمية بنسبة 50% تماماً.
+ * ============================================================================
+ */
+export type InstitutionalA5LayoutMode =
+  | "AUTO_ECO_50"
+  | "DUAL_COPY_2UP"
+  | "BOOKLET_FOLDED_A5";
+
+export interface ExportInstitutionalFoldedA5Options {
+  elementId?: string;
+  fileName?: string;
+  layoutMode?: InstitutionalA5LayoutMode;
+  bindingEdge?: "RTL_RIGHT" | "LTR_LEFT";
+  addFoldGuides?: boolean;
+  docTitle?: string;
+  headerMeta?: string;
+  isMission?: boolean;
+  isFrench?: boolean;
+  colorMode?: PrintColorMode;
+  interactiveQuizUrl?: string;
+  includeFooterQrCode?: boolean;
+}
+
+export async function exportInstitutionalFoldedA5PDF(
+  options: ExportInstitutionalFoldedA5Options = {}
+): Promise<{
+  fileName: string;
+  originalPages: number;
+  a5PanelsCount: number;
+  physicalA4Sheets: number;
+  effectiveMode: InstitutionalA5LayoutMode;
+  paperSavedPercent: number;
+}> {
+  const {
+    elementId = "printable-document-sheet",
+    fileName = "Impression_Institutionnelle_A5_Plie_Eco50.pdf",
+    layoutMode = "AUTO_ECO_50",
+    bindingEdge = "RTL_RIGHT",
+    addFoldGuides = true,
+    docTitle = "الطباعة المجمعة للمؤسسات (A5 مطوي — توفير 50% من الورق)",
+    headerMeta = "وزارة التربية الوطنية · المملكة المغربية",
+    isMission = false,
+    isFrench = false,
+    colorMode = "FULL_COLOR",
+    interactiveQuizUrl,
+    includeFooterQrCode = true,
+  } = options;
+
+  const element = document.getElementById(elementId);
+  if (!element) {
+    throw new Error("تعذر العثور على عنصر الوثيقة لتوليد ملف الطباعة المجمعة للمؤسسات (A5 مطوي).");
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
+  const domQuizUrl = element.getAttribute("data-interactive-quiz-url") || "";
+  const resolvedQuizUrl =
+    interactiveQuizUrl ||
+    domQuizUrl ||
+    buildInteractiveQuizLinkForDocument({
+      educationSystem: isMission ? "MISSION_FR" : "MOROCCO_MEN",
+      title: docTitle || fileName,
+    });
+  const qrMatrix =
+    includeFooterQrCode && resolvedQuizUrl
+      ? generateIsoQrMatrix(resolvedQuizUrl, "M")
+      : undefined;
+
+  const dataUrl = await toPng(element, {
+    quality: 1.0,
+    pixelRatio: 2.4,
+    backgroundColor: "#ffffff",
+    cacheBust: true,
+    skipFonts: true,
+    fontEmbedCSS: "",
+    filter: (node: Node) => {
+      if (node instanceof HTMLElement && node.classList.contains("no-print")) {
+        return false;
+      }
+      return true;
+    },
+    style: {
+      transform: "none",
+      margin: "0",
+      boxShadow: "none",
+      borderRadius: "0",
+      border: "none",
+    },
+  });
+
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () =>
+      reject(new Error("تعذر معالجة صورة الوثيقة لتوليد طباعة A5 المطوية للمؤسسات."));
+    img.src = dataUrl;
+  });
+
+  // أبعاد نصف ورقة A4 الأفقية = صفحة A5 عمودية (148.5mm × 210mm)
+  const a5WidthMm = 148.5;
+  const a5HeightMm = 210;
+  const a5MarginMm = 7.0;
+  const footerHeightMm = includeFooterQrCode ? 11.5 : 7.5;
+  const runningHeaderMm = 5.5;
+
+  const contentWidthMm = a5WidthMm - a5MarginMm * 2;
+  const bodyHeightMm = a5HeightMm - a5MarginMm * 2 - footerHeightMm - runningHeaderMm;
+
+  const pxPerMm = img.width / contentWidthMm;
+  const maxSliceHeightPx = Math.floor(bodyHeightMm * pxPerMm);
+  const footerHeightPx = Math.round(footerHeightMm * pxPerMm);
+  const runningHeaderPx = Math.round(runningHeaderMm * pxPerMm);
+  const fullA5CanvasHeightPx = runningHeaderPx + maxSliceHeightPx + footerHeightPx;
+
+  const cuts = calculateSmartPageSlices(element, img.width, img.height, maxSliceHeightPx);
+  const originalPages = Math.max(1, cuts.length - 1);
+
+  // إذا كان الوضع كتيب Saddle-Stitch بالكامل نستخدم دالة الكتيب مع إرجاع البيانات الموحدة
+  if (layoutMode === "BOOKLET_FOLDED_A5") {
+    const bookletRes = await exportBookletImposedPDF({
+      elementId,
+      fileName,
+      bindingEdge,
+      addFoldGuides,
+      docTitle,
+      headerMeta,
+      isMission,
+      isFrench,
+      colorMode,
+      interactiveQuizUrl,
+      includeFooterQrCode,
+    });
+    return {
+      fileName: bookletRes.fileName,
+      originalPages: bookletRes.originalPages,
+      a5PanelsCount: bookletRes.paddedBookletPages,
+      physicalA4Sheets: bookletRes.physicalA4Sheets,
+      effectiveMode: "BOOKLET_FOLDED_A5",
+      paperSavedPercent: 50,
+    };
+  }
+
+  // تحديد النمط الفعلي:
+  // - إذا كانت الوثيقة من صفحة واحدة في وضع AUTO_ECO_50: نكرر الصفحة مرتين جنباً إلى جنب (2×A5) في ورقة A4 واحدة (ورقة واحدة لكل تلميذين = توفير 50%)
+  // - إذا كانت الوثيقة من صفحتين فأكثر في وضع AUTO_ECO_50: نضع كل صفحتين متتاليتين (1 و 2، 3 و 4...) في ورقة A4 أفقية مطوية من الوسط إلى A5 (توفير 50% من الأوراق)
+  const useDualCopyPerSheet =
+    layoutMode === "DUAL_COPY_2UP" || (layoutMode === "AUTO_ECO_50" && originalPages === 1);
+
+  const totalDisplayPages = useDualCopyPerSheet
+    ? originalPages
+    : Math.ceil(originalPages / 2) * 2;
+
+  const renderSingleA5PanelCanvas = (
+    pageNumber1Based: number,
+    copyBadgeLabel?: string
+  ): string => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = fullA5CanvasHeightPx;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (pageNumber1Based <= originalPages) {
+      const idx = pageNumber1Based - 1;
+      const startY = cuts[idx];
+      const endY = cuts[idx + 1];
+      const sliceHeightPx = Math.max(0, endY - startY);
+
+      if (sliceHeightPx > 0) {
+        ctx.drawImage(
+          img,
+          0,
+          startY,
+          img.width,
+          sliceHeightPx,
+          0,
+          runningHeaderPx,
+          img.width,
+          sliceHeightPx
+        );
+      }
+    } else {
+      // صفحة مسودة مؤطرة في حال كان عدد الصفحات فردياً في وضع الطي المتتالي
+      const padX = Math.round(canvas.width * 0.05);
+      const topY = runningHeaderPx + Math.round(canvas.height * 0.04);
+      const boxH = maxSliceHeightPx - Math.round(canvas.height * 0.08);
+
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = Math.max(1.5, Math.round(canvas.width / 450));
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(padX, topY, canvas.width - padX * 2, boxH);
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#475569";
+      const titleFontPx = Math.max(18, Math.round(canvas.width / 36));
+      ctx.font = `700 ${titleFontPx}px "Cairo", "IBM Plex Sans Arabic", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(
+        isMission || isFrench
+          ? `Page de brouillon et calculs (${pageNumber1Based}/${totalDisplayPages})`
+          : `مسودة العمليات الحسابية والتحرير — صفحة (${pageNumber1Based}/${totalDisplayPages})`,
+        canvas.width / 2,
+        topY + titleFontPx * 1.8
+      );
+
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      const lineStep = Math.round(titleFontPx * 1.9);
+      for (
+        let y = topY + titleFontPx * 3.2;
+        y < topY + boxH - lineStep;
+        y += lineStep
+      ) {
+        ctx.beginPath();
+        ctx.moveTo(padX + 24, y);
+        ctx.lineTo(canvas.width - padX - 24, y);
+        ctx.stroke();
+      }
+    }
+
+    drawCanvasRunningHeaderAndFooter(
+      ctx,
+      canvas.width,
+      canvas.height,
+      runningHeaderPx,
+      footerHeightPx,
+      pageNumber1Based - 1,
+      totalDisplayPages,
+      {
+        docTitle: copyBadgeLabel ? `${docTitle} (${copyBadgeLabel})` : docTitle,
+        headerMeta,
+        isMission,
+        isFrench,
+        qrMatrix,
+        interactiveQuizUrl: resolvedQuizUrl,
+      }
+    );
+
+    if (colorMode === "LASER_MONO") {
+      applyLaserMonochromeFilter(ctx, canvas.width, canvas.height);
+    }
+
+    return canvas.toDataURL("image/png", 0.96);
+  };
+
+  interface A4LandscapePair {
+    sheetNumber: number;
+    leftDataUrl: string;
+    rightDataUrl: string;
+    leftLabel: string;
+    rightLabel: string;
+  }
+
+  const sheets: A4LandscapePair[] = [];
+
+  if (useDualCopyPerSheet) {
+    // وضع استنساخ نسختين متجاورتين (2×A5) في كل ورقة A4 أفقية لتوفير 50% من الورق للمؤسسة
+    for (let p = 1; p <= originalPages; p++) {
+      const rightUrl = renderSingleA5PanelCanvas(
+        p,
+        isMission || isFrench ? "Exemplaire A5 #1" : "نسخة A5 رقم 1"
+      );
+      const leftUrl = renderSingleA5PanelCanvas(
+        p,
+        isMission || isFrench ? "Exemplaire A5 #2" : "نسخة A5 رقم 2"
+      );
+      sheets.push({
+        sheetNumber: p,
+        leftDataUrl: leftUrl,
+        rightDataUrl: rightUrl,
+        leftLabel: `P.${p} (Copy 2)`,
+        rightLabel: `P.${p} (Copy 1)`,
+      });
+    }
+  } else {
+    // وضع طي كل صفحتين متتاليتين في ورقة A4 أفقية مطوية من المنتصف إلى A5
+    const totalPairs = Math.ceil(originalPages / 2);
+    for (let s = 0; s < totalPairs; s++) {
+      const firstPage = s * 2 + 1;
+      const secondPage = s * 2 + 2;
+      const firstUrl = renderSingleA5PanelCanvas(firstPage);
+      const secondUrl = renderSingleA5PanelCanvas(secondPage);
+
+      // في العربية (RTL): الصفحة الأولى على النصف الأيمن والثانية على النصف الأيسر؛ وفي الفرنسية (LTR) العكس
+      const rightUrl = bindingEdge === "RTL_RIGHT" ? firstUrl : secondUrl;
+      const leftUrl = bindingEdge === "RTL_RIGHT" ? secondUrl : firstUrl;
+      const rightLbl = bindingEdge === "RTL_RIGHT" ? `P.${firstPage}` : `P.${secondPage}`;
+      const leftLbl = bindingEdge === "RTL_RIGHT" ? `P.${secondPage}` : `P.${firstPage}`;
+
+      sheets.push({
+        sheetNumber: s + 1,
+        leftDataUrl: leftUrl,
+        rightDataUrl: rightUrl,
+        leftLabel: leftLbl,
+        rightLabel: rightLbl,
+      });
+    }
+  }
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  });
+
+  const halfWidthMm = 148.5;
+  const fullHeightMm = 210;
+  const innerPadMm = 5.5;
+  const targetW = halfWidthMm - innerPadMm * 2;
+  const targetH = fullHeightMm - innerPadMm * 2;
+
+  sheets.forEach((sh, idx) => {
+    if (idx > 0) {
+      pdf.addPage("a4", "landscape");
+    }
+
+    if (sh.leftDataUrl) {
+      pdf.addImage(
+        sh.leftDataUrl,
+        "PNG",
+        innerPadMm,
+        innerPadMm,
+        targetW,
+        targetH,
+        undefined,
+        "FAST"
+      );
+    }
+
+    if (sh.rightDataUrl) {
+      pdf.addImage(
+        sh.rightDataUrl,
+        "PNG",
+        halfWidthMm + innerPadMm,
+        innerPadMm,
+        targetW,
+        targetH,
+        undefined,
+        "FAST"
+      );
+    }
+
+    if (addFoldGuides) {
+      // خط الطي والقص الوسطي بين صفحتي A5 على ورقة A4 الأفقية
+      pdf.setDrawColor(100, 116, 139);
+      pdf.setLineWidth(0.35);
+      pdf.setLineDashPattern([2.2, 2.2], 0);
+      pdf.line(halfWidthMm, 4.5, halfWidthMm, fullHeightMm - 4.5);
+      pdf.setLineDashPattern([], 0);
+
+      // علامات تحديد الطي العلوية والسفلية
+      pdf.setDrawColor(15, 23, 42);
+      pdf.setLineWidth(0.45);
+      pdf.line(halfWidthMm - 2, 2.2, halfWidthMm + 2, 2.2);
+      pdf.line(halfWidthMm - 2, fullHeightMm - 2.2, halfWidthMm + 2, fullHeightMm - 2.2);
+
+      pdf.setFontSize(7);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(
+        `Institutional Folded A5 (-50% Paper) | Sheet ${sh.sheetNumber}/${sheets.length} | [ ${sh.leftLabel}  |  ${sh.rightLabel} ]`,
+        halfWidthMm,
+        3.8,
+        { align: "center" }
+      );
+    }
+  });
+
+  const cleanFileName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+  pdf.save(cleanFileName);
+
+  return {
+    fileName: cleanFileName,
+    originalPages,
+    a5PanelsCount: sheets.length * 2,
+    physicalA4Sheets: sheets.length,
+    effectiveMode: useDualCopyPerSheet ? "DUAL_COPY_2UP" : layoutMode,
+    paperSavedPercent: 50,
+  };
+}
+
 

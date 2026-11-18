@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: saved_exams
+    // Document ID: {examId} (alphanumeric, underscore, hyphen, 1..128 chars)
+    // Fields:
+    //   - id: string (required, matches examId)
+    //   - ownerId: string (required, immutable, matches request.auth.uid)
+    //   - ownerEmail: string (required, max 254 chars)
+    //   - titleAr: string (required, 1..300 chars)
+    //   - titleFr: string (required, 1..300 chars)
+    //   - documentType: string (required, enum)
+    //   - trackCode: string (required, 1..40 chars)
+    //   - trackLabelAr: string (required, 1..160 chars)
+    //   - semester: number (required, 1 or 2)
+    //   - examKey: string (required, 1..40 chars)
+    //   - examModel: string (required, 'A' or 'B')
+    //   - duration: string (required, 1..30 chars)
+    //   - totalPoints: number (required, 0..100)
+    //   - totalQuestions: number (required, 0..200)
+    //   - totalSubQuestions: number (required, 0..500)
+    //   - n1: number (required, 0..100)
+    //   - n2: number (required, 0..100)
+    //   - n3: number (required, 0..100)
+    //   - school: string (required, 0..200 chars)
+    //   - professor: string (required, 0..200 chars)
+    //   - academicYear: string (required, 1..30 chars)
+    //   - latexSource: string (required, 1..250000 chars)
+    //   - lessonsJson: string (required, 2..250000 chars)
+    //   - isFavorite: bool (required)
+    //   - sourceOrigin: string (required, enum)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // Default deny all paths unless explicitly allowed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "brahim.kouziber87@gmail.com";
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidSavedExam(data, examId) {
+      let expectedKeys = [
+        'id',
+        'ownerId',
+        'ownerEmail',
+        'titleAr',
+        'titleFr',
+        'documentType',
+        'trackCode',
+        'trackLabelAr',
+        'semester',
+        'examKey',
+        'examModel',
+        'duration',
+        'totalPoints',
+        'totalQuestions',
+        'totalSubQuestions',
+        'n1',
+        'n2',
+        'n3',
+        'school',
+        'professor',
+        'academicYear',
+        'latexSource',
+        'lessonsJson',
+        'isFavorite',
+        'sourceOrigin',
+        'createdAt',
+        'updatedAt'
+      ];
+      return data.keys().hasAll(expectedKeys)
+        && data.keys().hasOnly(expectedKeys)
+        && data.id is string && data.id == examId
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 254
+        && data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 300
+        && data.titleFr is string && data.titleFr.size() >= 1 && data.titleFr.size() <= 300
+        && data.documentType is string && data.documentType in ['DS_142_08', 'DM_SERIE', 'FICHE_OP2007', 'DIAGNOSTIC', 'EXAMEN_BLANC', 'IMPORTED_TEX']
+        && data.trackCode is string && data.trackCode.size() >= 1 && data.trackCode.size() <= 40
+        && data.trackLabelAr is string && data.trackLabelAr.size() >= 1 && data.trackLabelAr.size() <= 160
+        && data.semester is number && (data.semester == 1 || data.semester == 2)
+        && data.examKey is string && data.examKey.size() >= 1 && data.examKey.size() <= 40
+        && data.examModel is string && data.examModel in ['A', 'B']
+        && data.duration is string && data.duration.size() >= 1 && data.duration.size() <= 30
+        && data.totalPoints is number && data.totalPoints >= 0 && data.totalPoints <= 100
+        && data.totalQuestions is number && data.totalQuestions >= 0 && data.totalQuestions <= 200
+        && data.totalSubQuestions is number && data.totalSubQuestions >= 0 && data.totalSubQuestions <= 500
+        && data.n1 is number && data.n1 >= 0 && data.n1 <= 100
+        && data.n2 is number && data.n2 >= 0 && data.n2 <= 100
+        && data.n3 is number && data.n3 >= 0 && data.n3 <= 100
+        && data.school is string && data.school.size() <= 200
+        && data.professor is string && data.professor.size() <= 200
+        && data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 30
+        && data.latexSource is string && data.latexSource.size() >= 1 && data.latexSource.size() <= 250000
+        && data.lessonsJson is string && data.lessonsJson.size() >= 2 && data.lessonsJson.size() <= 250000
+        && data.isFavorite is bool
+        && data.sourceOrigin is string && data.sourceOrigin in ['STUDIO_GENERATED', 'IMPORTED_TEX', 'EXAMEN_BLANC']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /saved_exams/{examId} {
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(examId)
+        && isValidSavedExam(request.resource.data, examId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(examId)
+        && (resource.data.ownerId == request.auth.uid || isAdmin())
+        && isValidSavedExam(request.resource.data, examId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}

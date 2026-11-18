@@ -55,6 +55,37 @@ export default defineConfig(() => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-offline-cache',
+                expiration: {
+                  maxEntries: 60,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'cdn-math-katex-cache',
+                expiration: {
+                  maxEntries: 40,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+          ],
         },
         devOptions: {
           enabled: true,
@@ -72,6 +103,9 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id.includes("src/data/curriculum")) {
+              return "curriculum-db";
+            }
             if (id.includes("node_modules/mathjs")) {
               return "vendor-mathjs";
             }
@@ -80,6 +114,12 @@ export default defineConfig(() => {
             }
             if (id.includes("node_modules/pdfjs-dist")) {
               return "vendor-pdfjs";
+            }
+            if (id.includes("node_modules/jspdf") || id.includes("node_modules/jszip") || id.includes("node_modules/html-to-image")) {
+              return "vendor-pdf-export";
+            }
+            if (id.includes("node_modules/motion") || id.includes("node_modules/framer-motion")) {
+              return "vendor-motion";
             }
             if (id.includes("node_modules/lucide-react")) {
               return "vendor-icons";

@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "SavedExamDocument": {
+      "title": "Saved Exam Document",
+      "description": "Represents a completed or imported pedagogical exam/document saved in Firebase Firestore by a mathematics teacher.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the saved exam document."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the teacher who owns this exam."
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the teacher who created the exam."
+        },
+        "titleAr": {
+          "type": "string",
+          "description": "Arabic title of the exam or pedagogical document."
+        },
+        "titleFr": {
+          "type": "string",
+          "description": "French title of the exam or pedagogical document."
+        },
+        "documentType": {
+          "type": "string",
+          "enum": ["DS_142_08", "DM_SERIE", "FICHE_OP2007", "DIAGNOSTIC", "EXAMEN_BLANC", "IMPORTED_TEX"],
+          "description": "Category of the pedagogical document."
+        },
+        "trackCode": {
+          "type": "string",
+          "description": "Moroccan high school track code (e.g., TCS, 1BAC_SE, 2BAC_PC, 2BAC_SM)."
+        },
+        "trackLabelAr": {
+          "type": "string",
+          "description": "Arabic label of the track."
+        },
+        "semester": {
+          "type": "number",
+          "description": "Academic semester (1 or 2)."
+        },
+        "examKey": {
+          "type": "string",
+          "description": "Official exam code (e.g., S1_F1, S1_F2, S2_F1, S2_F2)."
+        },
+        "examModel": {
+          "type": "string",
+          "enum": ["A", "B"],
+          "description": "Exam variant model (A or B)."
+        },
+        "duration": {
+          "type": "string",
+          "description": "Exam duration string (e.g., 2h, 1h)."
+        },
+        "totalPoints": {
+          "type": "number",
+          "description": "Total bareme points (typically 20)."
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "Total number of main questions across exercises."
+        },
+        "totalSubQuestions": {
+          "type": "number",
+          "description": "Total number of sub-questions (أ، ب، ج / a, b, c)."
+        },
+        "n1": {
+          "type": "number",
+          "description": "Percentage of N1 (application directe) taxonomy."
+        },
+        "n2": {
+          "type": "number",
+          "description": "Percentage of N2 (mobilisation) taxonomy."
+        },
+        "n3": {
+          "type": "number",
+          "description": "Percentage of N3 (probleme ouvert) taxonomy."
+        },
+        "school": {
+          "type": "string",
+          "description": "High school name."
+        },
+        "professor": {
+          "type": "string",
+          "description": "Professor name."
+        },
+        "academicYear": {
+          "type": "string",
+          "description": "Academic year (e.g., 2025/2026)."
+        },
+        "latexSource": {
+          "type": "string",
+          "description": "Complete platform-normalized LaTeX source code of the exam."
+        },
+        "lessonsJson": {
+          "type": "string",
+          "description": "Serialized JSON array of LessonItem exercises and sub-questions."
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the teacher marked this exam as a favorite."
+        },
+        "sourceOrigin": {
+          "type": "string",
+          "enum": ["STUDIO_GENERATED", "IMPORTED_TEX", "EXAMEN_BLANC"],
+          "description": "How this exam was created or imported."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "ownerEmail",
+        "titleAr",
+        "titleFr",
+        "documentType",
+        "trackCode",
+        "trackLabelAr",
+        "semester",
+        "examKey",
+        "examModel",
+        "duration",
+        "totalPoints",
+        "totalQuestions",
+        "totalSubQuestions",
+        "n1",
+        "n2",
+        "n3",
+        "school",
+        "professor",
+        "academicYear",
+        "latexSource",
+        "lessonsJson",
+        "isFavorite",
+        "sourceOrigin",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/saved_exams/{examId}": {
+      "schema": {
+        "$ref": "#/entities/SavedExamDocument"
+      },
+      "description": "Stores completed and imported pedagogical exams owned by individual teachers."
+    }
+  }
+}

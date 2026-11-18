@@ -20,7 +20,11 @@
             str.indexOf('WebSocket') !== -1 ||
             str.indexOf('websocket') !== -1 ||
             str.indexOf('[vite]') !== -1 ||
-            str.indexOf('closed without opened') !== -1
+            str.indexOf('closed without opened') !== -1 ||
+            str.indexOf('cssRules') !== -1 ||
+            str.indexOf('CSSStyleSheet') !== -1 ||
+            str.indexOf('Error inlining remote css') !== -1 ||
+            str.indexOf('Error while reading CSS rules') !== -1
           );
         };
 
@@ -150,10 +154,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Architects+Daughter&family=Aref+Ruqaa+Ink:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@600;700;800&family=Gulzar&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Kalam:wght@400;700&family=Katibeh&family=Kufam:wght@400;600;700&family=Lateef:wght@400;600;700&family=Marhey:wght@400;600;700&family=Mirza:wght@400;600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Patrick+Hand&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Rakkas&family=Reem+Kufi:wght@400;600;700&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" crossorigin="anonymous">
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-600 selection:text-white">
     <div id="root"></div>
+    <script src="/core/lesson-log-engine.js" defer></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

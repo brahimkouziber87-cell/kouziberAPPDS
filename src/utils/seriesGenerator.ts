@@ -323,13 +323,26 @@ export function generateCustomCountSerieExercises(
   // إذا كانت السلسلة تحتوي على أكثر من درس، نوزع التمارين على الدروس المختارة بالتساوي والتدرج
   for (let i = 0; i < safeCount; i++) {
     const lessonForEx = lessons[i % lessons.length] || primaryLesson;
+    const altModel: "A" | "B" = model === "A" ? "B" : "A";
     const { questionsAr, questionsFr } = getVariantQuestions(lessonForEx, model, false);
+    const { questionsAr: altQuestionsAr, questionsFr: altQuestionsFr } = getVariantQuestions(
+      lessonForEx,
+      altModel,
+      false
+    );
+    const { questionsAr: synthQuestionsAr, questionsFr: synthQuestionsFr } = getVariantQuestions(
+      lessonForEx,
+      model,
+      true
+    );
     const subCat = lessonForEx.subCategory || "تحليل";
     const titleFr = lessonForEx.lessonFr.toLowerCase();
     const cap0Ar = lessonForEx.capacitiesAr[0] || lessonForEx.lessonAr;
     const cap1Ar = lessonForEx.capacitiesAr[1] || cap0Ar;
+    const cap2Ar = lessonForEx.capacitiesAr[2] || cap1Ar;
     const cap0Fr = lessonForEx.capacitiesFr[0] || lessonForEx.lessonFr;
     const cap1Fr = lessonForEx.capacitiesFr[1] || cap0Fr;
+    const cap2Fr = lessonForEx.capacitiesFr[2] || cap1Fr;
     const exNum = i + 1;
 
     // تدرج بيداغوجي للصعوبة بناء على موقع التمرين بالنسبة للعدد الإجمالي
@@ -345,41 +358,45 @@ export function generateCustomCountSerieExercises(
     let partPts = "";
 
     if (relativePos < 0.25 || i === 0) {
-      // المرحلة الأولى: تطبيق مباشر وأوتوماتيزمات الحساب (N1)
+      // المرحلة الأولى: تطبيق مباشر وأوتوماتيزمات الحساب (N1) بأسئلة رياضية حقيقية من الدرس
       stars = "★";
       partPts = "2.5";
       badgeAr = `التمرين ${exNum} (★) [تطبيق وأوتوماتيزمات N1] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★) [Application & Automatismes N1] — ${lessonForEx.lessonFr}`;
       qAr = [
-        `1. أ) أحسب وبسط التعابير الرياضية الأساسية المرتبطة بـ « ${cap0Ar} » في الحالات الاعتيادية.`,
-        questionsAr[0] || `1. ب) تحقق من صحة العلاقات والصيغ المرجعية لدرس ${lessonForEx.lessonAr}.`,
-        `2. حدد مجموعة التعريف وشروط الوجود والقيم الخاصة بالنسبة للتعبير المعطى.`,
+        questionsAr[0] || `1. أ) أحسب وبسط التعبير الأساسي المرتبط بـ « ${cap0Ar} ».`,
+        altQuestionsAr[0] || questionsAr[1] || `2. تحقق جبرياً من العلاقة المرجعية لـ « ${cap1Ar} ».`,
+        questionsAr[1] && altQuestionsAr[0]
+          ? questionsAr[1]
+          : `3. استنتج مجموعة التعريف أو القيم الخاصة المرتبطة بـ « ${cap0Ar} ».`,
       ];
       qFr = [
-        `1. a) Calculer et simplifier les expressions fondamentales liées à « ${cap0Fr} ».`,
-        questionsFr[0] || `1. b) Vérifier les formules fondamentales associées à ${lessonForEx.lessonFr}.`,
-        `2. Préciser le domaine de validité et les valeurs remarquables de l'expression.`,
+        questionsFr[0] || `1. a) Calculer et simplifier l'expression fondamentale liée à « ${cap0Fr} ».`,
+        altQuestionsFr[0] || questionsFr[1] || `2. Vérifier algébriquement la relation de référence sur « ${cap1Fr} ».`,
+        questionsFr[1] && altQuestionsFr[0]
+          ? questionsFr[1]
+          : `3. En déduire le domaine de validité et les valeurs remarquables pour « ${cap0Fr} ».`,
       ];
-      hintAr = `تذكير ديداكتيكي: راجع التعاريف والخاصيات الأساسية المباشرة لـ ${lessonForEx.lessonAr}.`;
-      hintFr = `Rappel didactique : Mobiliser directement les définitions du cours sur ${lessonForEx.lessonFr}.`;
+      hintAr = `تذكير ديداكتيكي: وظف مباشرة القواعد المرجعية لدرس ${lessonForEx.lessonAr} (${cap0Ar}).`;
+      hintFr = `Rappel didactique : Appliquer directement les formules de référence sur ${lessonForEx.lessonFr} (${cap0Fr}).`;
     } else if (relativePos < 0.50 || i === 1) {
-      // المرحلة الثانية: تعبئة الموارد وطرق الحساب النموذجية (N2)
+      // المرحلة الثانية: تعبئة الموارد وطرق الحساب النموذجية (N2) بأسئلة رياضية حقيقية
       stars = "★★";
       partPts = "3.0";
       badgeAr = `التمرين ${exNum} (★★) [طرائق وتمارين نموذجية N2] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★★) [Méthodes types & Modèles N2] — ${lessonForEx.lessonFr}`;
       qAr = [
-        questionsAr[1] || `1. حل المعادلات والمتراجحات المقترنة بـ « ${cap0Ar} » في المجموعة ℝ.`,
-        `2. أدرس الإشارة، أو احسب المشتقة والتقعر، أو استنتج رتابة التعبير الجبري بدقة.`,
-        `3. اعطِ تأويلاً بيانياً أو هندسياً للنتائج المحصل عليها.`,
+        questionsAr[1] || questionsAr[0] || `1. حل في المجموعة المناسبة المعادلات والمتراجحات المرتبطة بـ « ${cap0Ar} ».`,
+        altQuestionsAr[1] || questionsAr[2] || `2. أدرس الإشارة والرتابة باستعمال خواص « ${cap1Ar} ».`,
+        `3. أعطِ تأويلاً هندسياً أو بيانياً للنتيجة المحصل عليها في إطار « ${cap2Ar} ».`,
       ];
       qFr = [
-        questionsFr[1] || `1. Résoudre les équations et inéquations associées à « ${cap0Fr} » dans ℝ.`,
-        `2. Étudier le signe, la dérivabilité ou les variations de l'expression étudiée.`,
-        `3. Interpréter géométriquement ou graphiquement les résultats obtenus.`,
+        questionsFr[1] || questionsFr[0] || `1. Résoudre les équations et inéquations associées à « ${cap0Fr} ».`,
+        altQuestionsFr[1] || questionsFr[2] || `2. Étudier le signe et les variations en mobilisant « ${cap1Fr} ».`,
+        `3. Interpréter géométriquement ou graphiquement le résultat obtenu dans le cadre de « ${cap2Fr} ».`,
       ];
-      hintAr = `منهجية: انتبه لإشارات الحدود واستعمل جدول الإشارة للربط بين الجبر والهندسة.`;
-      hintFr = `Méthode : Dresser un tableau de signes rigoureux et justifier chaque équivalence.`;
+      hintAr = `منهجية: انتبه لشروط التكافؤ المنطقي وإشارات العوامل عند توظيف « ${cap1Ar} ».`;
+      hintFr = `Méthode : Dresser un tableau de signes rigoureux et justifier chaque équivalence sur « ${cap1Fr} ».`;
     } else if (relativePos < 0.75 || i === 2) {
       // المرحلة الثالثة: تمرين توليفي نوعي يربط عدة محاور (Type DS / Examen)
       stars = "★★";
@@ -387,17 +404,17 @@ export function generateCustomCountSerieExercises(
       badgeAr = `التمرين ${exNum} (★★) [توليفي ونمط الامتحان الوطني N3] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★★) [Synthèse & Type Examen National N3] — ${lessonForEx.lessonFr}`;
       qAr = [
-        questionsAr[2] || `1. بين أن الدالة أو المتتالية المدروسة متصلة ورتيبة على المجال المحدد.`,
-        `2. طبق المبرهنات الأساسية (مبرهنة القيم الوسيطية TVI / مبرهنة التزايدات المنتهية TAF / مبرهنات الهندسة والفلكة).`,
-        `3. استنتج حلاً وحيداً للمعادلة وأعط تأطيراً دقيقاً سعته 10⁻¹ للحل.`,
+        questionsAr[2] || questionsAr[0] || `1. بين تحقق الشروط القبلية للمبرهنة الأساسية في « ${cap1Ar} ».`,
+        altQuestionsAr[2] || synthQuestionsAr[synthQuestionsAr.length - 1] || `2. استنتج وجود الحل الوحيد أو العلاقة التوليفية المرتبطة بـ « ${cap2Ar} ».`,
+        synthQuestionsAr[synthQuestionsAr.length - 1] || `3. مسألة توليفية: اربط بين النتائج السابقة واستنتج التأطير أو القيمة المضبوطة بدقة.`,
       ];
       qFr = [
-        questionsFr[2] || `1. Démontrer la continuité et la stricte monotonie sur l'intervalle considéré.`,
-        `2. Appliquer les théorèmes fondamentaux (TVI / TAF / orthogonalité / produit scalaire).`,
-        `3. En déduire l'existence et l'unicité d'une solution α et donner un encadrement à 10⁻¹ près.`,
+        questionsFr[2] || questionsFr[0] || `1. Démontrer les hypothèses du théorème fondamental sur « ${cap1Fr} ».`,
+        altQuestionsFr[2] || synthQuestionsFr[synthQuestionsFr.length - 1] || `2. En déduire l'existence de la solution ou la relation de synthèse liée à « ${cap2Fr} ».`,
+        synthQuestionsFr[synthQuestionsFr.length - 1] || `3. Synthèse : Relier les résultats précédents pour conclure avec un encadrement précis.`,
       ];
-      hintAr = `منهجية الامتحان: تأكد من صياغة الشروط الثلاثة لمبرهنة القيم الوسيطية (الاتصال، الرتابة، وإشارة الجداء f(a)·f(b) < 0).`;
-      hintFr = `Conseil examen : Rédiger rigoureusement les hypothèses du théorème des valeurs intermédiaires.`;
+      hintAr = `منهجية الامتحان: صغ الفرضيات والشروط القبلية بوضوح قبل تطبيق المبرهنة في « ${lessonForEx.lessonAr} ».`;
+      hintFr = `Conseil examen : Rédiger explicitement toutes les hypothèses avant d'appliquer le théorème sur « ${lessonForEx.lessonFr} ».`;
     } else if (relativePos < 0.90 || i === safeCount - 2) {
       // المرحلة الرابعة: مسألة النمذجة والاستمثال والمسائل الهندسية / الفيزيائية المفتوحة
       stars = "★★★";
@@ -500,3 +517,176 @@ export function generateCustomCountSerieExercises(
 
   return allBlocks;
 }
+
+/**
+ * المرحلة 4 من خارطة الطريق (أ):
+ * هندسة سلاسل التمارين ذات المستويات الثلاثية الفارقية (3-Tier Differentiated Series)
+ * مع شارات المناولة الصفية/المنزلية وتلميحات السبورة السريعة للأستاذ
+ */
+export interface DifferentiatedSeriesTierItem {
+  tierCode: "TIER_1_APPLICATION" | "TIER_2_CONSOLIDATION" | "TIER_3_EXCELLENCE";
+  tierTitleAr: string;
+  tierTitleFr: string;
+  usageBadgeAr: string;
+  estimatedMinutes: number;
+  teacherBoardHintAr: string;
+  exercises: SerieExerciseBlock[];
+}
+
+export function buildThreeTierDifferentiatedSeries(
+  lessons: LessonItem[],
+  model: "A" | "B" = "A"
+): DifferentiatedSeriesTierItem[] {
+  const rawBlocks = generateCustomCountSerieExercises(lessons, 6, model);
+  const firstLesson = lessons[0];
+  const cap0 = firstLesson?.capacitiesAr?.[0] || firstLesson?.lessonAr || "القدرات الأساسية";
+
+  return [
+    {
+      tierCode: "TIER_1_APPLICATION",
+      tierTitleAr: "المستوى I: تمارين التطبيق المباشر وتثبيت القواعد (N1 — للجميع)",
+      tierTitleFr: "Niveau I : Application directe et consolidation des réflexes (N1)",
+      usageBadgeAr: "[للمناولة داخل القسم · 15 د لكل تمرين]",
+      estimatedMinutes: 30,
+      teacherBoardHintAr: `توجيه للأستاذ على السبورة: ركز على سلامة الترميز الرياضي والتحقق من شروط « ${cap0} » قبل الانتقال للحساب.`,
+      exercises: rawBlocks.slice(0, 2),
+    },
+    {
+      tierCode: "TIER_2_CONSOLIDATION",
+      tierTitleAr: "المستوى II: تمارين التعمق والاستدلال ونمط الفروض المحروسة (N2)",
+      tierTitleFr: "Niveau II : Approfondissement, méthodes types et préparation au DS (N2)",
+      usageBadgeAr: "[للقسم والتحضير المنزلي · 25 د لكل تمرين]",
+      estimatedMinutes: 50,
+      teacherBoardHintAr:
+        "توجيه للأستاذ: طالب المتعلمين بتعليل كل تكافؤ منطقي وتأطير النتيجة النهائية كما في شبكة تصحيح الفرض المحروس.",
+      exercises: rawBlocks.slice(2, 4),
+    },
+    {
+      tierCode: "TIER_3_EXCELLENCE",
+      tierTitleAr: "المستوى III: مسائل التوليف والنمذجة وتحدي التميز (N3/N4)",
+      tierTitleFr: "Niveau III : Problèmes de synthèse, modélisation et défi d'excellence (N3/N4)",
+      usageBadgeAr: "[للتميز والعمل بالمجموعات · 35 د لكل مسألة]",
+      estimatedMinutes: 70,
+      teacherBoardHintAr:
+        "توجيه للأستاذ: افسح المجال للمبادرة الفردية ومقارنة طرائق الحل المختلفة قبل تقديم الحل النموذجي.",
+      exercises: rawBlocks.slice(4, 6),
+    },
+  ];
+}
+
+/**
+ * المرحلة 4 من خارطة الطريق (ب):
+ * مولد الفروض المنزلية المفرّدة بالمعاملات لمنع النقل الآلي (Anti-Plagiarism Parameterized DM)
+ * مع سقالات البحث المرحلية (Guided Scaffolding) وسلم التنقيط المفتشي (20/20)
+ */
+export interface ParameterizedHomeworkGroupVariant {
+  groupId: "A" | "B" | "C" | "D";
+  groupLabelAr: string;
+  parameters: { alpha: number; beta: number; gamma: number };
+  exercises: Array<{
+    exerciseNum: number;
+    lessonTitleAr: string;
+    questionsAr: string[];
+    questionsFr: string[];
+    guidedScaffoldingHintsAr: string[];
+    guidedScaffoldingHintsFr: string[];
+    answerKeySummaryAr: string;
+  }>;
+}
+
+export interface ParameterizedHomeworkPack {
+  dmTitleAr: string;
+  dmType: MoroccanDMType;
+  groups: ParameterizedHomeworkGroupVariant[];
+  inspectorRubric20Pts: Array<{
+    code: string;
+    criterionAr: string;
+    criterionFr: string;
+    points: number;
+  }>;
+}
+
+export function generateParameterizedHomeworkVariants(
+  lessons: LessonItem[],
+  dmType: MoroccanDMType = "PREPARATOIRE_DS"
+): ParameterizedHomeworkPack {
+  const safeLessons = lessons.length > 0 ? lessons : [];
+  const groupIds: Array<"A" | "B" | "C" | "D"> = ["A", "B", "C", "D"];
+
+  const groups: ParameterizedHomeworkGroupVariant[] = groupIds.map((groupId, gIdx) => {
+    const alpha = gIdx + 2; // 2, 3, 4, 5
+    const beta = (gIdx + 1) * 2 + 1; // 3, 5, 7, 9
+    const gamma = gIdx + 1; // 1, 2, 3, 4
+
+    const exercises = safeLessons.slice(0, 3).map((lesson, exIdx) => {
+      const variant = getVariantQuestions(lesson, groupId, false, gIdx + 1, "STANDARD");
+      const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
+      const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
+      const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;
+
+      return {
+        exerciseNum: exIdx + 1,
+        lessonTitleAr: lesson.lessonAr,
+        questionsAr: variant.questionsAr.map(
+          (q, qIdx) =>
+            `${qIdx + 1}) [معطيات الفوج ${groupId}: α=${alpha}, β=${beta}] ${q}`
+        ),
+        questionsFr: variant.questionsFr.map(
+          (q, qIdx) =>
+            `${qIdx + 1}) [Données Groupe ${groupId} : α=${alpha}, β=${beta}] ${q}`
+        ),
+        guidedScaffoldingHintsAr: [
+          `إرشاد منهجي 1 (سقالة بحث): استعمل خاصية « ${cap0Ar} » مع تعويض الوسيط α = ${alpha}.`,
+          `إرشاد منهجي 2: اربط إشارة التعبير الناتج بالقيمة الحدية المرتبطة بـ β = ${beta} في إطار « ${cap1Ar} ».`,
+        ],
+        guidedScaffoldingHintsFr: [
+          `Indication 1 : Mobiliser « ${cap0Fr} » avec le paramètre α = ${alpha}.`,
+          `Indication 2 : Exploiter la valeur remarquable liée à β = ${beta}.`,
+        ],
+        answerKeySummaryAr: `مفتاح تصحيح الفوج ${groupId}: القيمة المميزة x₀ = ${beta}/${alpha} = ${(
+          beta / alpha
+        ).toFixed(2)}، مع ثبات بنية البرهان والاستنتاج الهندسي.`,
+      };
+    });
+
+    return {
+      groupId,
+      groupLabelAr: `الفوج ${groupId} (معاملات التخصيص: α=${alpha}, β=${beta}, γ=${gamma})`,
+      parameters: { alpha, beta, gamma },
+      exercises,
+    };
+  });
+
+  return {
+    dmTitleAr: MOROCCAN_DM_PRESETS[dmType].titleAr,
+    dmType,
+    groups,
+    inspectorRubric20Pts: [
+      {
+        code: "R1",
+        criterionAr: "مجهود البحث الفردي واستثمار الإرشادات المنهجية",
+        criterionFr: "Effort de recherche personnelle et exploitation des pistes",
+        points: 4,
+      },
+      {
+        code: "R2",
+        criterionAr: "سلامة الاستدلال المنطقي وتبرير شروط المبرهنات",
+        criterionFr: "Rigueur du raisonnement et justification des hypothèses",
+        points: 10,
+      },
+      {
+        code: "R3",
+        criterionAr: "الدقة الحسابية من أجل معاملات الفوج (α, β) والإنشاء الهندسي",
+        criterionFr: "Exactitude des calculs paramétrés et tracés graphiques",
+        points: 4,
+      },
+      {
+        code: "R4",
+        criterionAr: "جودة التحرير الرياضي وتنظيم الورقة المزدوجة",
+        criterionFr: "Qualité de la rédaction mathématique et soin de la copie",
+        points: 2,
+      },
+    ],
+  };
+}
+

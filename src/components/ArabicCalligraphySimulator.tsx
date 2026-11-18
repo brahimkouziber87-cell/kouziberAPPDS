@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   Check,
   CheckCircle2,
@@ -8,7 +8,9 @@ import {
   RotateCcw,
   Sliders,
   Sparkles,
+  Trash2,
   Type,
+  Upload,
   Wand2,
 } from "lucide-react";
 import {
@@ -23,6 +25,13 @@ import {
   TRADITIONAL_TITLE_FONT_OPTIONS,
   TraditionalTitleFontId,
 } from "../data/curriculum";
+import {
+  addCustomUploadedFont,
+  CustomUploadedFontItem,
+  deleteCustomUploadedFont,
+  injectCustomUploadedFontsToDocument,
+  loadCustomUploadedFonts,
+} from "../utils/customFontsStorage";
 
 export interface AppliedTitleCalligraphyConfig {
   fontId: TraditionalTitleFontId;
@@ -32,6 +41,8 @@ export interface AppliedTitleCalligraphyConfig {
   enableMoroccanHeaderOrnament?: boolean;
   customLetterSpacingEm?: number;
   svgHeaderFrame?: MoroccanHeaderSvgFrame;
+  customUploadedFontId?: string;
+  customUploadedFontName?: string;
 }
 
 export const MoroccanHeaderSvgBanner: React.FC<{
@@ -204,6 +215,82 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
     "A4_WHITE" | "PARCHMENT" | "ROYAL_NAVY"
   >("PARCHMENT");
   const [customTestPhrase, setCustomTestPhrase] = useState<string>("");
+  const [storedCustomFonts, setStoredCustomFonts] = useState<CustomUploadedFontItem[]>(() =>
+    loadCustomUploadedFonts()
+  );
+  const [selectedCustomFontId, setSelectedCustomFontId] = useState<string | undefined>(
+    appliedConfig.customUploadedFontId
+  );
+  const [customFontUploadStatus, setCustomFontUploadStatus] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const fontFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const fonts = loadCustomUploadedFonts();
+    setStoredCustomFonts(fonts);
+    const activeId = selectedCustomFontId || appliedConfig.customUploadedFontId || fonts[0]?.id;
+    if (activeId && !selectedCustomFontId) {
+      setSelectedCustomFontId(activeId);
+    }
+    injectCustomUploadedFontsToDocument(fonts, activeId);
+  }, [selectedCustomFontId, appliedConfig.customUploadedFontId]);
+
+  const handleUploadCustomFontFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const bufferReader = new FileReader();
+    bufferReader.onload = () => {
+      const arrayBuf = bufferReader.result as ArrayBuffer;
+      const headerBytes = new Uint8Array(arrayBuf.slice(0, 8));
+
+      const dataUrlReader = new FileReader();
+      dataUrlReader.onload = () => {
+        const dataUrl = String(dataUrlReader.result || "");
+        const result = addCustomUploadedFont({
+          fileName: file.name,
+          dataUrl,
+          sizeBytes: file.size,
+          headerBytes,
+        });
+
+        if (!result.success || !result.font) {
+          setCustomFontUploadStatus({
+            type: "error",
+            text: result.errorAr || "تعذر رفع ملف الخط المخصص.",
+          });
+          return;
+        }
+
+        setStoredCustomFonts(result.fonts);
+        setSelectedCustomFontId(result.font.id);
+        setPreviewFontId("CUSTOM_UPLOADED_FONT");
+        injectCustomUploadedFontsToDocument(result.fonts, result.font.id);
+
+        onApplyConfig({
+          fontId: "CUSTOM_UPLOADED_FONT",
+          scale: previewScale,
+          ornament: previewOrnament,
+          scope: previewScope,
+          enableMoroccanHeaderOrnament,
+          customLetterSpacingEm,
+          svgHeaderFrame,
+          customUploadedFontId: result.font.id,
+          customUploadedFontName: result.font.name,
+        });
+
+        setCustomFontUploadStatus({
+          type: "success",
+          text: `تم رفع وحفظ الخط المخصص «${result.font.name}» (${result.font.format === "opentype" ? ".otf" : ".ttf"}) محلياً وتطبيقه على ترويسة وعناوين الفرض بنجاح!`,
+        });
+      };
+      dataUrlReader.readAsDataURL(file);
+    };
+    bufferReader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
 
   // مزامنة الحالة عند تغير الإعدادات من خارج المحاكي (من تبويب الخطوط والورقة أو محرر العناوين)
   React.useEffect(() => {
@@ -222,6 +309,9 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
     if (appliedConfig.svgHeaderFrame !== undefined) {
       setSvgHeaderFrame(appliedConfig.svgHeaderFrame);
     }
+    if (appliedConfig.customUploadedFontId) {
+      setSelectedCustomFontId(appliedConfig.customUploadedFontId);
+    }
   }, [
     appliedConfig.fontId,
     appliedConfig.scale,
@@ -230,6 +320,7 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
     appliedConfig.enableMoroccanHeaderOrnament,
     appliedConfig.customLetterSpacingEm,
     appliedConfig.svgHeaderFrame,
+    appliedConfig.customUploadedFontId,
   ]);
 
   const activeFontMeta = useMemo(
@@ -362,7 +453,7 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
           {TRADITIONAL_TITLE_FONT_OPTIONS.map((fontOpt) => {
             const isSelected = previewFontId === fontOpt.id;
             const isAppliedOnDoc =
@@ -383,6 +474,8 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
                 className={`p-2 rounded-xl border text-right transition flex flex-col justify-between gap-1 cursor-pointer ${
                   isSelected
                     ? "bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-amber-400/50"
+                    : fontOpt.id === "CUSTOM_UPLOADED_FONT"
+                    ? "bg-cyan-50/90 hover:bg-cyan-100/80 text-cyan-950 border-cyan-300"
                     : fontOpt.id === "ANDALUSI_MAGHRIBI_SCRIPT"
                     ? "bg-amber-50/80 hover:bg-amber-100/80 text-amber-950 border-amber-300"
                     : "bg-slate-50/90 hover:bg-white text-slate-800 border-slate-200/90"
@@ -413,6 +506,130 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
               </button>
             );
           })}
+        </div>
+
+        {/* قسم رفع وإدارة ملفات الخطوط المخصصة (.ttf / .otf) المخزنة محلياً */}
+        <div className="bg-gradient-to-l from-cyan-50/90 via-white to-indigo-50/80 border border-cyan-300/90 rounded-xl p-2.5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-cyan-950 text-cyan-300 flex items-center justify-center shrink-0">
+                <Upload className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <div className="text-[11px] font-black text-slate-900">
+                  رفع ملف خط خاص بك لترويسة وعناوين الفروض (.ttf أو .otf — تخزين محلي دائم)
+                </div>
+                <div className="text-[10px] text-slate-600">
+                  ارفع خطوطك المفضلة من حاسوبك أو هاتفك لتطبيقها فوراً على الترويسة وعناوين التمارين مع حفظها محلياً في المتصفح.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={fontFileInputRef}
+                type="file"
+                accept=".ttf,.otf,font/ttf,font/otf,application/x-font-ttf,application/x-font-opentype"
+                onChange={handleUploadCustomFontFile}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fontFileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-lg bg-cyan-900 hover:bg-cyan-800 text-white text-[11px] font-black flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5 text-cyan-300" />
+                <span>رفع ملف خط (.ttf / .otf)</span>
+              </button>
+            </div>
+          </div>
+
+          {customFontUploadStatus && (
+            <div
+              className={`px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold border flex items-center justify-between ${
+                customFontUploadStatus.type === "success"
+                  ? "bg-emerald-50 text-emerald-950 border-emerald-300"
+                  : "bg-rose-50 text-rose-950 border-rose-300"
+              }`}
+            >
+              <span>{customFontUploadStatus.text}</span>
+              <button
+                type="button"
+                onClick={() => setCustomFontUploadStatus(null)}
+                className="text-[10px] underline mr-2 cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          )}
+
+          {storedCustomFonts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-cyan-200/80">
+              <span className="text-[10px] font-black text-cyan-950">
+                الخطوط المخصصة المحفوظة محلياً ({storedCustomFonts.length}):
+              </span>
+              {storedCustomFonts.map((cFont) => {
+                const isCurrentCustom =
+                  previewFontId === "CUSTOM_UPLOADED_FONT" &&
+                  (selectedCustomFontId === cFont.id ||
+                    (!selectedCustomFontId && storedCustomFonts[0]?.id === cFont.id));
+                return (
+                  <div
+                    key={cFont.id}
+                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10.5px] transition ${
+                      isCurrentCustom
+                        ? "bg-slate-900 text-cyan-300 border-slate-900 font-black"
+                        : "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomFontId(cFont.id);
+                        setPreviewFontId("CUSTOM_UPLOADED_FONT");
+                        injectCustomUploadedFontsToDocument(storedCustomFonts, cFont.id);
+                        onApplyConfig({
+                          fontId: "CUSTOM_UPLOADED_FONT",
+                          scale: previewScale,
+                          ornament: previewOrnament,
+                          scope: previewScope,
+                          enableMoroccanHeaderOrnament,
+                          customLetterSpacingEm,
+                          svgHeaderFrame,
+                          customUploadedFontId: cFont.id,
+                          customUploadedFontName: cFont.name,
+                        });
+                      }}
+                      className="flex items-center gap-1 cursor-pointer"
+                      title={`تفعيل الخط المخصص: ${cFont.fileName} (${(cFont.sizeBytes / 1024).toFixed(1)} KB)`}
+                    >
+                      <span>{cFont.name}</span>
+                      <span className="text-[9px] font-mono opacity-75">
+                        ({cFont.format === "opentype" ? "OTF" : "TTF"})
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const remaining = deleteCustomUploadedFont(cFont.id);
+                        setStoredCustomFonts(remaining);
+                        const nextId = remaining[0]?.id;
+                        setSelectedCustomFontId(nextId);
+                        injectCustomUploadedFontsToDocument(remaining, nextId);
+                        if (remaining.length === 0 && previewFontId === "CUSTOM_UPLOADED_FONT") {
+                          setPreviewFontId("ANDALUSI_MAGHRIBI_SCRIPT");
+                        }
+                      }}
+                      title="حذف هذا الخط من التخزين المحلي"
+                      className="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1070,7 +1287,10 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
 
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const activeCustomFont = storedCustomFonts.find(
+                (f) => f.id === selectedCustomFontId
+              ) || storedCustomFonts[0];
               onApplyConfig({
                 fontId: previewFontId,
                 scale: previewScale,
@@ -1079,8 +1299,16 @@ export const ArabicCalligraphySimulator: React.FC<ArabicCalligraphySimulatorProp
                 enableMoroccanHeaderOrnament,
                 customLetterSpacingEm,
                 svgHeaderFrame,
-              })
-            }
+                customUploadedFontId:
+                  previewFontId === "CUSTOM_UPLOADED_FONT"
+                    ? activeCustomFont?.id
+                    : appliedConfig.customUploadedFontId,
+                customUploadedFontName:
+                  previewFontId === "CUSTOM_UPLOADED_FONT"
+                    ? activeCustomFont?.name
+                    : appliedConfig.customUploadedFontName,
+              });
+            }}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
               isCurrentlyApplied && previewFontId !== "DEFAULT_DOC"
                 ? "bg-emerald-700 text-white"

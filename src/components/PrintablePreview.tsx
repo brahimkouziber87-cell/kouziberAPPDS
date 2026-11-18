@@ -55,7 +55,9 @@ import {
   Compass,
   Image as ImageIcon,
   Layers,
+  LayoutTemplate,
   Ruler,
+  Smartphone,
   Sparkles,
   Upload,
   BrainCircuit,
@@ -65,14 +67,54 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
+import {
+  PrintLayoutTemplateId,
+  getPrintLayoutTemplate,
+  SmartPageBreakConfig,
+  DEFAULT_SMART_PAGE_BREAK_CONFIG,
+  computeOptimizedPageBreakPlan,
+  computeVisualizerOverlayLines,
+  ReadingModeConfig,
+  DEFAULT_READING_MODE_CONFIG,
+  buildReadingModeStylesheet,
+} from "../utils/printLayoutTemplates";
+import {
+  ExerciseSolutionQrMap,
+  buildExerciseSolutionUrl,
+  renderExerciseQrSvg,
+  getQrPixelSizeFromPreset,
+} from "../utils/exerciseSolutionQrEngine";
 import { InteractiveExamQrFooter } from "./InteractiveExamQrFooter";
-import { buildInteractiveQuizLinkForDocument } from "../utils/qrCodeHelper";
+import { HomeworkSolutionQrCard } from "./HomeworkSolutionQrCard";
+import {
+  buildInteractiveQuizLinkForDocument,
+  generateHomeworkAssignmentVerificationCode,
+} from "../utils/qrCodeHelper";
 import {
   A4LayoutOverflowReport,
   analyzeA4LayoutMetrics,
   computePrintMediaQueryMetrics,
   PrintPageSizePreset,
 } from "../utils/pdfExporter";
+import { MemoizedDualModelABComparisonView } from "../context/PedagogicalStudioContext";
+import type { StrategicProposalTabId } from "./SevenStrategicProposalsModal";
+import {
+  decomposeQuestionIntoSubQuestions,
+  SubQuestionDecompositionMode,
+} from "../utils/dsSupervisedExamEnhancements";
+import {
+  BindingAndCropConfig,
+  DEFAULT_BINDING_AND_CROP_CONFIG,
+  generateTriptychBlackboardPlan,
+  generateCahierDeTextesSummary,
+} from "../utils/reprographicsAndDidacticsEngine";
+import {
+  PrintableStapleAndCropMarksOverlay,
+  PrintableReprographicsJobTicketBanner,
+  PrintableQuarterPointMicroRubricCard,
+  PrintableAlgebraicCounterExamplesCard,
+} from "./PrintableReprographicsOverlays";
+import type { ReprographicsStudioTabId } from "./ReprographicsAndTeacherStudioModal";
 import {
   PythonAlgorithmPreset,
   executeSimulatedPython,
@@ -93,6 +135,11 @@ import {
   TcolorboxCustomConfig,
 } from "../utils/latexPackagesAndMath";
 import {
+  buildHighPrecisionSeyesCssStyle,
+  SEYES_SPACING_OPTIONS,
+  SeyesSpacingPreset,
+} from "../utils/latexImporterAndSeyesEngine";
+import {
   BAC_CERTIFIED_CURVE_PRESETS,
   buildCustomEvaluationGrid,
   calculateExamTimeBalance,
@@ -101,6 +148,10 @@ import {
   GridGranularity,
   MassarStudentEntry,
   parseMassarPronoteCSV,
+  EvalGridCustomConfig142_08,
+  applyEvalGridCustomConfigToGridData,
+  formatMasteryScaleCheckboxText,
+  getEvalGridTemplateById,
 } from "../utils/evaluationGridExporter";
 import {
   generateExerciseCorrection,
@@ -179,6 +230,8 @@ interface PrintablePreviewProps {
   showQuestionBareme?: boolean;
   includeAnswerWorkspace?: boolean;
   studentGridStyle?: StudentGridStyle;
+  seyesSpacingPreset?: SeyesSpacingPreset;
+  onChangeSeyesSpacingPreset?: (preset: SeyesSpacingPreset) => void;
   workspaceHeightMode?: "ADAPTIVE" | "COMPACT" | "GENEROUS";
   includeGradingScaleTable?: boolean;
   includeSelfEvalGrid?: boolean;
@@ -275,6 +328,31 @@ interface PrintablePreviewProps {
   onChangePrintPageSizePreset?: (preset: PrintPageSizePreset) => void;
   onChangeCustomPageDimensionsMm?: (widthMm: number, heightMm: number) => void;
   onToggleSimulatePrintMediaQuery?: () => void;
+  showDualABSplitView?: boolean;
+  onToggleDualABSplitView?: () => void;
+  onOpenSevenStrategicProposals?: (initialTab?: StrategicProposalTabId) => void;
+  bindingAndCropConfig?: BindingAndCropConfig;
+  onToggleEcoTonerMode?: () => void;
+  onOpenReprographicsStudio?: (initialTab?: ReprographicsStudioTabId) => void;
+  reproGroupsCount?: number;
+  reproStudentsPerGroup?: number;
+  reproDuplexMode?: "RECTO_ONLY" | "RECTO_VERSO" | "TWO_UP_A5";
+  variationSeed?: number;
+  printLayoutTemplateId?: PrintLayoutTemplateId;
+  onChangePrintLayoutTemplate?: (templateId: PrintLayoutTemplateId) => void;
+  onOpenPrintLayoutTemplatesModal?: () => void;
+  exerciseSolutionQrs?: ExerciseSolutionQrMap;
+  onOpenExerciseSolutionQrModal?: () => void;
+  smartPageBreakConfig?: SmartPageBreakConfig;
+  activeHomeworkDocId?: string;
+  onOpenHomeworkSolutionPage?: () => void;
+  onExitHomeworkSolutionOnlyMode?: () => void;
+  sheetViewMode?: "CONTINUOUS" | "MULTIPAGE_CARDS";
+  onToggleSheetViewMode?: () => void;
+  evalGridCustomConfig?: EvalGridCustomConfig142_08;
+  readingModeConfig?: ReadingModeConfig;
+  subQuestionDecompositionMode?: SubQuestionDecompositionMode;
+  onChangeSubQuestionDecompositionMode?: (mode: SubQuestionDecompositionMode) => void;
 }
 
 export type DocumentViewMarginModelId =
@@ -584,6 +662,7 @@ export const LessonHeaderIconBadge: React.FC<{
   accentHex?: string;
   bgHex?: string;
   borderHex?: string;
+  showReadingModeTypeLabel?: boolean;
 }> = ({
   lesson,
   overrideIconId,
@@ -592,6 +671,7 @@ export const LessonHeaderIconBadge: React.FC<{
   accentHex,
   bgHex,
   borderHex,
+  showReadingModeTypeLabel = false,
 }) => {
   const resolved = resolveLessonHeaderIcon(lesson, overrideIconId);
   if (!resolved || resolved.id === "NONE" || resolved.id === "AUTO") return null;
@@ -599,6 +679,8 @@ export const LessonHeaderIconBadge: React.FC<{
   return (
     <span
       title={isFr ? resolved.labelFr : resolved.labelAr}
+      data-reading-exercise-icon-badge="true"
+      data-icon-id={resolved.id}
       style={
         isDarkHeader
           ? undefined
@@ -608,7 +690,7 @@ export const LessonHeaderIconBadge: React.FC<{
               backgroundColor: bgHex || undefined,
             }
       }
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-black shrink-0 print-exact-color ${
+      className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-md border text-[11px] font-black shrink-0 print-exact-color ${
         isDarkHeader
           ? "bg-white/20 text-amber-200 border-white/35 shadow-2xs"
           : "bg-white/95 shadow-2xs"
@@ -618,6 +700,11 @@ export const LessonHeaderIconBadge: React.FC<{
       <span className="font-mono text-[10.5px] leading-none tracking-tight">
         {resolved.mathSymbol}
       </span>
+      {showReadingModeTypeLabel && (
+        <span className="no-print text-[10px] font-bold border-r border-current/25 pr-1">
+          {isFr ? resolved.shortFr : resolved.shortAr}
+        </span>
+      )}
     </span>
   );
 };
@@ -674,6 +761,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   showQuestionBareme = true,
   includeAnswerWorkspace = false,
   studentGridStyle = "SEYES_FRENCH",
+  seyesSpacingPreset = "BILINGUAL_10MM",
+  onChangeSeyesSpacingPreset,
   workspaceHeightMode = "ADAPTIVE",
   includeGradingScaleTable = true,
   includeSelfEvalGrid = true,
@@ -758,11 +847,38 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   onChangePrintPageSizePreset,
   onChangeCustomPageDimensionsMm,
   onToggleSimulatePrintMediaQuery,
+  showDualABSplitView,
+  onToggleDualABSplitView,
+  onOpenSevenStrategicProposals,
+  bindingAndCropConfig = DEFAULT_BINDING_AND_CROP_CONFIG,
+  onToggleEcoTonerMode,
+  onOpenReprographicsStudio,
+  reproGroupsCount = 3,
+  reproStudentsPerGroup = 36,
+  reproDuplexMode = "RECTO_VERSO",
+  variationSeed = 0,
+  printLayoutTemplateId = "STANDARD_ACADEMIC",
+  onChangePrintLayoutTemplate,
+  onOpenPrintLayoutTemplatesModal,
+  exerciseSolutionQrs,
+  onOpenExerciseSolutionQrModal,
+  smartPageBreakConfig = DEFAULT_SMART_PAGE_BREAK_CONFIG,
+  activeHomeworkDocId = "dm_doc_1",
+  onOpenHomeworkSolutionPage,
+  onExitHomeworkSolutionOnlyMode,
+  sheetViewMode = "CONTINUOUS",
+  onToggleSheetViewMode,
+  evalGridCustomConfig,
+  readingModeConfig = DEFAULT_READING_MODE_CONFIG,
+  subQuestionDecompositionMode = "STRUCTURED_ABC_ALL",
+  onChangeSubQuestionDecompositionMode,
 }) => {
+  const [unlockFullSolutionEarly, setUnlockFullSolutionEarly] = React.useState<boolean>(false);
   const [showMarginGuides, setShowMarginGuides] = React.useState<boolean>(false);
   const [internalShowA4PageBreaks, setInternalShowA4PageBreaks] = React.useState<boolean>(false);
   const [internalEconomicTwoUpMode, setInternalEconomicTwoUpMode] = React.useState<boolean>(false);
   const [internalIncludeInteractiveQr, setInternalIncludeInteractiveQr] = React.useState<boolean>(true);
+  const [internalShowDualABSplitView, setInternalShowDualABSplitView] = React.useState<boolean>(false);
   const [showPositiveMarkingTips, setShowPositiveMarkingTips] = React.useState<boolean>(true);
   const [syncDocTypeOnModelClick, setSyncDocTypeOnModelClick] = React.useState<boolean>(true);
   const [showCustomMarginSliders, setShowCustomMarginSliders] = React.useState<boolean>(false);
@@ -781,6 +897,127 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
     () => resolveAutoDocViewMarginModel(activeModule, dmSubType),
     [activeModule, dmSubType]
   );
+
+  const isBeforeDueDate = React.useMemo(() => {
+    if (!dmDueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dmDueDate)) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return today < dmDueDate;
+  }, [dmDueDate]);
+
+  const activePrintTemplate = React.useMemo(
+    () => getPrintLayoutTemplate(printLayoutTemplateId),
+    [printLayoutTemplateId]
+  );
+
+  const smartPageBreakPlan = React.useMemo(
+    () =>
+      computeOptimizedPageBreakPlan(
+        customLessons && customLessons.length > 0
+          ? customLessons
+          : track.semesters[sem]?.[dsKey] || [],
+        smartPageBreakConfig,
+        {
+          columnsCount: activePrintTemplate.columnsCount,
+          includeAnswerWorkspace:
+            includeAnswerWorkspace || activePrintTemplate.hasAnswerWorkspaceProminent,
+          includeDetailedSolutions,
+        }
+      ),
+    [
+      customLessons,
+      track,
+      sem,
+      dsKey,
+      smartPageBreakConfig,
+      activePrintTemplate.columnsCount,
+      activePrintTemplate.hasAnswerWorkspaceProminent,
+      includeAnswerWorkspace,
+      includeDetailedSolutions,
+    ]
+  );
+
+  const visualizerOverlayLines = React.useMemo(
+    () =>
+      computeVisualizerOverlayLines(
+        smartPageBreakPlan,
+        measuredSheetDims.heightPx
+      ),
+    [smartPageBreakPlan, measuredSheetDims.heightPx]
+  );
+
+  const renderExerciseSolutionQrElement = (
+    exId: string,
+    idx: number,
+    position: "HEADER" | "BOTTOM"
+  ) => {
+    const cfg = exerciseSolutionQrs?.[exId];
+    if (!cfg || !cfg.enabled) return null;
+
+    const targetUrl = buildExerciseSolutionUrl(cfg);
+
+    if (position === "HEADER" && cfg.badgePosition === "HEADER_RIGHT") {
+      return (
+        <div
+          className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-300 rounded-md px-1.5 py-0.5 shadow-2xs shrink-0 select-none avoid-break"
+          title={isFr ? "Scanner pour la solution détaillée" : "امسح للاطلاع على التصحيح النموذجي"}
+        >
+          <div
+            className="w-5 h-5 shrink-0 flex items-center justify-center"
+            dangerouslySetInnerHTML={{
+              __html: renderExerciseQrSvg(targetUrl, 20),
+            }}
+          />
+          <span className="text-[9px] font-bold text-slate-700 hidden sm:inline">
+            {isFr
+              ? cfg.customLabelFr || "Solution QR"
+              : cfg.customLabelAr || "الحل (QR)"}
+          </span>
+        </div>
+      );
+    }
+
+    if (
+      position === "BOTTOM" &&
+      (cfg.badgePosition === "BOTTOM_BANNER" ||
+        cfg.badgePosition === "INLINE_CALLOUT")
+    ) {
+      const pxSize = getQrPixelSizeFromPreset(cfg.badgeSize);
+      return (
+        <div className="avoid-break mt-3 pt-2.5 border-t border-dashed border-slate-300 select-none">
+          <div className="bg-gradient-to-r from-slate-50 via-white to-indigo-50/40 border border-slate-300 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div
+                className="bg-white p-1 rounded-lg border border-slate-400 shadow-2xs shrink-0 flex items-center justify-center"
+                dangerouslySetInnerHTML={{
+                  __html: renderExerciseQrSvg(targetUrl, pxSize),
+                }}
+              />
+              <div>
+                <div className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>
+                    {isFr
+                      ? cfg.customLabelFr || "Solution détaillée & Barème officiel :"
+                      : cfg.customLabelAr || "عناصر الإجابة وسلم التنقيط المفصل :"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-600 mt-0.5 leading-snug">
+                  {isFr
+                    ? "Scannez avec votre smartphone pour consulter la correction étape par étape."
+                    : "امسح رمز الاستجابة السريعة (QR) بكاميرا هاتفك للاطلاع الفوري على خطوات الحل والتعليل."}
+                </p>
+              </div>
+            </div>
+            <span className="text-[9.5px] font-mono font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full shrink-0">
+              Ex.{idx + 1}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   const effectiveMarginOverride =
     customPageMarginsMm !== undefined ? customPageMarginsMm : internalMarginOverride;
@@ -893,6 +1130,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   const handleToggleInteractiveQr = () => {
     if (onToggleInteractiveQrFooter) onToggleInteractiveQrFooter();
     else setInternalIncludeInteractiveQr((v) => !v);
+  };
+
+  const effectiveShowDualABSplitView =
+    showDualABSplitView ?? internalShowDualABSplitView;
+
+  const handleToggleDualABSplit = () => {
+    if (onToggleDualABSplitView) onToggleDualABSplitView();
+    else setInternalShowDualABSplitView((v) => !v);
   };
 
   const resolvedInteractiveQuizUrl = React.useMemo(() => {
@@ -1473,7 +1718,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 lesson,
                 mCode,
                 shuffleQuestions,
-                0,
+                variationSeed,
                 dsQuestionDensity
               );
             const qMetas = getQuestionBaremesAndLevels(
@@ -1612,7 +1857,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             baseDsLessons.map((lesson, idx) => {
               const abModel: "A" | "B" =
                 modelCode === "B" || modelCode === "D" ? "B" : "A";
-              const blocks = getSerieAndDMExercises(lesson, dmSubType, abModel);
+              const blocks = getSerieAndDMExercises(
+                lesson,
+                dmSubType,
+                abModel,
+                variationSeed,
+                dsQuestionDensity,
+                shuffleQuestions
+              );
               return (
                 <div key={idx} className="space-y-3 avoid-break">
                   <div className="font-black text-sm text-emerald-950 border-b border-emerald-200 pb-1">
@@ -1640,7 +1892,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   };
 
   const renderCustomEvaluationGridSheet = () => {
-    const gridData = buildCustomEvaluationGrid({
+    const rawGridData = buildCustomEvaluationGrid({
       track,
       sem,
       dsKey,
@@ -1660,6 +1912,28 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       isMission,
     });
 
+    const gridData = applyEvalGridCustomConfigToGridData(
+      rawGridData,
+      evalGridCustomConfig
+    );
+
+    const activeTplPreset = evalGridCustomConfig
+      ? getEvalGridTemplateById(evalGridCustomConfig.templateId)
+      : null;
+
+    const showCapCol = evalGridCustomConfig?.showCapacityColumn ?? true;
+    const showLevelCol = evalGridCustomConfig?.showSkillLevelColumn ?? true;
+    const showMasteryCol = evalGridCustomConfig?.showMasteryColumn ?? true;
+    const showRemediationCol = evalGridCustomConfig?.showRemediationColumn ?? true;
+    const showTaxonomicBanner =
+      evalGridCustomConfig?.showTaxonomicSummaryBanner ?? true;
+    const showInspectorFooter =
+      evalGridCustomConfig?.showInspectorVisaFooter ?? true;
+
+    const masteryCheckboxString = evalGridCustomConfig
+      ? formatMasteryScaleCheckboxText(evalGridCustomConfig, isFr)
+      : "[ ] A   [ ] EC   [ ] NA";
+
     const dynamicCols =
       evalGridGranularity === "BY_QUESTION"
         ? gridData.allQuestions.map((q) => ({
@@ -1671,21 +1945,30 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             pts: ex.totalPoints,
           }));
 
-    const rowsCount = Math.min(35, Math.max(5, evalGridStudentCount));
+    const rowsCount = Math.min(
+      35,
+      Math.max(
+        5,
+        evalGridCustomConfig?.printableMatrixRowsCount || evalGridStudentCount
+      )
+    );
+
+    const leadingColSpan =
+      2 + (showCapCol ? 1 : 0) + (showLevelCol ? 1 : 0);
 
     return (
       <div
         id="printable-evaluation-grid-section"
         className={`${onlyPrintEvalGrid ? "" : "page-break pt-4"} space-y-5`}
       >
-        {/* ترويسة شبكة التقويم المخصصة */}
-        <div className="border-2 border-indigo-950 rounded-xl p-4 bg-indigo-50/30 space-y-2">
+        {/* ترويسة وثيقة شبكة التقويم الرسمية (المذكرة 142-08) */}
+        <div className="border-2 border-indigo-950 rounded-xl p-4 bg-indigo-50/30 space-y-2.5">
           <div className="flex flex-wrap justify-between items-center text-xs border-b border-indigo-200 pb-2 gap-2">
             <div className="font-extrabold text-indigo-950">
               {isMission ? (
                 <>Enseignement Français au Maroc (AEFE / OSUI) · Mathématiques</>
               ) : isFr ? (
-                <>Royaume du Maroc · Ministère de l'Éducation Nationale · {academy}</>
+                <>Royaume du Maroc · Ministère de l&apos;Éducation Nationale · {academy}</>
               ) : (
                 <>المملكة المغربية · وزارة التربية الوطنية · {academy} · {direction}</>
               )}
@@ -1693,209 +1976,312 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 {school} · {prof} · {year}
               </div>
             </div>
-            <div>
+            <div className="flex items-center gap-1.5">
+              {activeTplPreset && (
+                <span className="inline-block bg-cyan-950 text-cyan-200 font-mono font-bold px-2.5 py-1 rounded-md text-[10.5px] border border-cyan-700/50">
+                  {isFr ? activeTplPreset.badgeFr : activeTplPreset.badgeAr}
+                </span>
+              )}
               <span className="inline-block bg-indigo-950 text-white font-extrabold px-3 py-1 rounded-md text-xs">
-                {isFr ? "Grille d'Évaluation & Dépouillement" : "شبكة التقويم والتفريغ المخصصة"}
+                {isFr
+                  ? "Document Officiel : Grille d'Évaluation (142-08)"
+                  : "وثيقة تربوية رسمية : شبكة التقويم (142-08)"}
               </span>
             </div>
           </div>
 
-          <div className="text-center py-1">
+          <div className="text-center py-1 space-y-1">
             <h2 className="text-base font-black text-indigo-950">
               {isFr ? gridData.titleFr : gridData.titleAr}
             </h2>
             <p className="text-xs text-indigo-800 font-bold tabular-nums">
               {isFr ? gridData.subtitleFr : gridData.subtitleAr}
             </p>
+            {evalGridCustomConfig &&
+              (evalGridCustomConfig.pedagogicalDirectiveAr ||
+                evalGridCustomConfig.pedagogicalDirectiveFr) && (
+                <p className="text-[11px] text-slate-700 bg-white/90 border border-indigo-200/80 rounded-lg px-3 py-1.5 mx-auto max-w-3xl font-medium">
+                  {isFr
+                    ? evalGridCustomConfig.pedagogicalDirectiveFr
+                    : evalGridCustomConfig.pedagogicalDirectiveAr}
+                </p>
+              )}
           </div>
+
+          {/* شريط حصيلة التوازن المهاري (N1 / N2 / N3) وفق المذكرة 142-08 */}
+          {showTaxonomicBanner && (
+            <div className="grid grid-cols-3 gap-2 pt-1 text-center text-[10.5px]">
+              <div className="bg-white border border-indigo-200 rounded-lg p-1.5">
+                <div className="font-bold text-slate-700">
+                  {isFr
+                    ? "Niveau N1 (Application directe)"
+                    : "المستوى المهاري الأول N1 (تطبيق مباشر)"}
+                </div>
+                <div className="font-mono font-black text-indigo-950 tabular-nums">
+                  {n1}% · {((n1 * 20) / 100).toFixed(2)} / 20
+                </div>
+              </div>
+              <div className="bg-white border border-indigo-200 rounded-lg p-1.5">
+                <div className="font-bold text-slate-700">
+                  {isFr
+                    ? "Niveau N2 (Mobilisation & Raisonnement)"
+                    : "المستوى المهاري الثاني N2 (تعبئة واستدلال)"}
+                </div>
+                <div className="font-mono font-black text-teal-900 tabular-nums">
+                  {n2}% · {((n2 * 20) / 100).toFixed(2)} / 20
+                </div>
+              </div>
+              <div className="bg-white border border-indigo-200 rounded-lg p-1.5">
+                <div className="font-bold text-slate-700">
+                  {isFr
+                    ? "Niveau N3 (Synthèse & Initiative)"
+                    : "المستوى المهاري الثالث N3 (توليف ومبادرة)"}
+                </div>
+                <div className="font-mono font-black text-amber-900 tabular-nums">
+                  {n3}% · {((n3 * 20) / 100).toFixed(2)} / 20
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 1. الجدول التحليلي التفصيلي حسب التمارين والأسئلة والقدرات */}
+        {/* 1. الجدول التحليلي أو الإجمالي لشبكة التقويم وفق القالب المختار */}
         <div className="space-y-2 avoid-break">
           <h4 className="font-extrabold text-xs text-slate-900 flex items-center justify-between">
             <span>
               {isFr
-                ? "I. Grille Analytique d'Évaluation par Exercice, Question et Capacité"
-                : "أولاً: شبكة التقويم التحليلية التفصيلية حسب التمارين والأسئلة والقدرات المستهدفة"}
+                ? "I. Grille Officielle d'Évaluation des Capacités et Barème Détaillé (Note 142-08)"
+                : "أولاً: شبكة تقويم القدرات المنتظرة وسلم التنقيط المفصل (المذكرة الوزارية 142-08)"}
             </span>
             <span className="font-mono text-[11px] text-indigo-900 font-bold tabular-nums">
-              N1: {n1}% · N2: {n2}% · N3: {n3}%
+              Σ = {gridData.totalPoints.toFixed(2)} / 20
             </span>
           </h4>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-slate-400 text-[11px] bg-white">
-              <thead>
-                <tr className="bg-slate-100 text-slate-950">
-                  <th className="border border-slate-400 p-1.5 text-center w-20">
-                    {isFr ? "Question" : "السؤال"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-start w-44">
-                    {isFr ? "Exercice & Chapitre" : "التمرين والدرس"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-start">
-                    {isFr
-                      ? "Capacité attendue & Critère d'évaluation"
-                      : "القدرة المنتظرة ومعيار التقويم في التمرين"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-center w-28">
-                    {isMission
-                      ? "Compétence"
-                      : isFr
-                      ? "Niveau (142-08)"
-                      : "المستوى المهاري"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-center w-20">
-                    {isFr ? "Barème" : "التنقيط"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-center w-32">
-                    {isFr ? "Maîtrise (A / EC / NA)" : "التحكم (أ / ج / د)"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {gridData.allQuestions.map((q, idx) => (
-                  <tr key={idx} className="border-b border-slate-300">
-                    <td className="border border-slate-400 p-1.5 text-center font-mono font-bold text-indigo-950 tabular-nums">
-                      {isFr ? q.questionLabelFr : q.questionLabelAr}
-                    </td>
-                    <td className="border border-slate-400 p-1.5 font-bold text-slate-900">
-                      {isFr ? q.exerciseTitleFr : q.exerciseTitleAr}
-                    </td>
-                    <td className="border border-slate-400 p-1.5 text-slate-700">
-                      <div className="font-semibold text-slate-900">
-                        {isFr ? q.capacityFr : q.capacityAr}
-                      </div>
-                      <div className="text-[10px] text-slate-500 truncate max-w-md">
-                        {isFr ? q.questionSnippetFr : q.questionSnippetAr}
-                      </div>
-                    </td>
-                    <td className="border border-slate-400 p-1.5 text-center font-mono text-[10.5px] font-bold">
-                      {isMission
-                        ? `${q.boenCompetencyFr} (${q.levelCode})`
-                        : isFr
-                        ? q.levelLabelFr
-                        : q.levelLabelAr}
-                    </td>
-                    <td className="border border-slate-400 p-1.5 text-center font-mono font-extrabold text-emerald-900 tabular-nums bg-emerald-50/40">
-                      {q.points.toFixed(2)} {isFr ? "pt" : "ن"}
-                    </td>
-                    <td className="border border-slate-400 p-1.5 text-center font-mono text-[10px] text-slate-500">
-                      [ ] A &nbsp; [ ] EC &nbsp; [ ] NA
-                    </td>
+            {evalGridGranularity === "BY_EXERCISE" ? (
+              <table className="w-full border-collapse border border-slate-400 text-[11px] bg-white">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-950">
+                    <th className="border border-slate-400 p-1.5 text-center w-24">
+                      {isFr ? "Exercice" : "التمرين"}
+                    </th>
+                    <th className="border border-slate-400 p-1.5 text-start w-52">
+                      {isFr ? "Chapitre & Domaine" : "الدرس والمجال الرياضياتي"}
+                    </th>
+                    {showCapCol && (
+                      <th className="border border-slate-400 p-1.5 text-start">
+                        {isFr
+                          ? "Capacités attendues ciblées"
+                          : "القدرات المنتظرة والكفايات المستهدفة"}
+                      </th>
+                    )}
+                    <th className="border border-slate-400 p-1.5 text-center w-24">
+                      {isFr ? "Barème" : "التنقيط"}
+                    </th>
+                    {showMasteryCol && (
+                      <th className="border border-slate-400 p-1.5 text-center w-44">
+                        {isFr ? "Indicateur de Maîtrise" : "مؤشر التمكن / التقويم"}
+                      </th>
+                    )}
                   </tr>
-                ))}
-                <tr className="bg-slate-100 font-extrabold">
-                  <td colSpan={4} className="border border-slate-400 p-1.5 text-end">
-                    {isFr ? "Total général de l'évaluation" : "المجموع العام للفرض"}
-                  </td>
-                  <td className="border border-slate-400 p-1.5 text-center font-mono text-indigo-950 tabular-nums">
-                    {gridData.totalPoints.toFixed(2)} / 20
-                  </td>
-                  <td className="border border-slate-400 p-1.5 text-center font-mono text-xs">
-                    {gridData.totalWeight}%
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {gridData.exercises.map((ex, idx) => (
+                    <tr key={idx} className="border-b border-slate-300">
+                      <td className="border border-slate-400 p-1.5 text-center font-mono font-bold text-indigo-950">
+                        {isFr
+                          ? `Exercice ${ex.exerciseNumber}`
+                          : `التمرين ${ex.exerciseNumber}`}
+                      </td>
+                      <td className="border border-slate-400 p-1.5 font-bold text-slate-900">
+                        <div>{isFr ? ex.titleFr : ex.titleAr}</div>
+                        <div className="text-[10px] text-slate-500 font-normal">
+                          {isFr ? ex.subCategoryFr : ex.subCategoryAr} ({ex.questionCount}{" "}
+                          {isFr ? "questions" : "أسئلة"})
+                        </div>
+                      </td>
+                      {showCapCol && (
+                        <td className="border border-slate-400 p-1.5 text-slate-700">
+                          <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
+                            {(isFr ? ex.capacitiesFr : ex.capacitiesAr)
+                              .slice(0, 3)
+                              .map((c, cIdx) => (
+                                <li key={cIdx}>{c}</li>
+                              ))}
+                          </ul>
+                        </td>
+                      )}
+                      <td className="border border-slate-400 p-1.5 text-center font-mono font-extrabold text-emerald-900 tabular-nums bg-emerald-50/40">
+                        {ex.totalPoints.toFixed(2)} {isFr ? "pts" : "ن"}
+                      </td>
+                      {showMasteryCol && (
+                        <td className="border border-slate-400 p-1.5 text-center font-mono text-[10px] text-slate-700">
+                          {masteryCheckboxString}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-100 font-extrabold">
+                    <td
+                      colSpan={2 + (showCapCol ? 1 : 0)}
+                      className="border border-slate-400 p-1.5 text-end"
+                    >
+                      {isFr
+                        ? "Total général de l'évaluation"
+                        : "المجموع العام للوثيقة التقويمية"}
+                    </td>
+                    <td className="border border-slate-400 p-1.5 text-center font-mono text-indigo-950 tabular-nums">
+                      {gridData.totalPoints.toFixed(2)} / 20
+                    </td>
+                    {showMasteryCol && (
+                      <td className="border border-slate-400 p-1.5 text-center font-mono text-xs">
+                        100%
+                      </td>
+                    )}
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full border-collapse border border-slate-400 text-[11px] bg-white">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-950">
+                    <th className="border border-slate-400 p-1.5 text-center w-20">
+                      {isFr ? "Question" : "السؤال"}
+                    </th>
+                    <th className="border border-slate-400 p-1.5 text-start w-40">
+                      {isFr ? "Exercice & Chapitre" : "التمرين والدرس"}
+                    </th>
+                    {showCapCol && (
+                      <th className="border border-slate-400 p-1.5 text-start">
+                        {isFr
+                          ? "Capacité attendue & Critère d'évaluation"
+                          : "القدرة المنتظرة ومعيار التقويم في السؤال"}
+                      </th>
+                    )}
+                    {showLevelCol && (
+                      <th className="border border-slate-400 p-1.5 text-center w-28">
+                        {isMission
+                          ? "Compétence"
+                          : isFr
+                          ? "Niveau (142-08)"
+                          : "المستوى المهاري"}
+                      </th>
+                    )}
+                    <th className="border border-slate-400 p-1.5 text-center w-20">
+                      {isFr ? "Barème" : "التنقيط"}
+                    </th>
+                    {showMasteryCol && (
+                      <th className="border border-slate-400 p-1.5 text-center w-40">
+                        {isFr ? "Degré de Maîtrise" : "درجة التمكن / التشخيص"}
+                      </th>
+                    )}
+                    {showRemediationCol && (
+                      <th className="border border-slate-400 p-1.5 text-start w-40">
+                        {isFr
+                          ? "Critère / Remédiation"
+                          : "معيار التصحيح / إرشاد الدعم"}
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {gridData.allQuestions.map((q, idx) => {
+                    const qOv =
+                      evalGridCustomConfig?.questionOverrides[q.questionCode];
+                    return (
+                      <tr key={idx} className="border-b border-slate-300">
+                        <td className="border border-slate-400 p-1.5 text-center font-mono font-bold text-indigo-950 tabular-nums">
+                          {isFr ? q.questionLabelFr : q.questionLabelAr}
+                        </td>
+                        <td className="border border-slate-400 p-1.5 font-bold text-slate-900">
+                          {isFr ? q.exerciseTitleFr : q.exerciseTitleAr}
+                        </td>
+                        {showCapCol && (
+                          <td className="border border-slate-400 p-1.5 text-slate-700">
+                            <div className="font-semibold text-slate-900">
+                              {isFr ? q.capacityFr : q.capacityAr}
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate max-w-md">
+                              {isFr ? q.questionSnippetFr : q.questionSnippetAr}
+                            </div>
+                          </td>
+                        )}
+                        {showLevelCol && (
+                          <td className="border border-slate-400 p-1.5 text-center font-mono text-[10.5px] font-bold">
+                            {isMission
+                              ? `${q.boenCompetencyFr} (${q.levelCode})`
+                              : isFr
+                              ? q.levelLabelFr
+                              : q.levelLabelAr}
+                          </td>
+                        )}
+                        <td className="border border-slate-400 p-1.5 text-center font-mono font-extrabold text-emerald-900 tabular-nums bg-emerald-50/40">
+                          {q.points.toFixed(2)} {isFr ? "pt" : "ن"}
+                        </td>
+                        {showMasteryCol && (
+                          <td className="border border-slate-400 p-1.5 text-center font-mono text-[10px] text-slate-700">
+                            {masteryCheckboxString}
+                          </td>
+                        )}
+                        {showRemediationCol && (
+                          <td className="border border-slate-400 p-1.5 text-[10px] text-slate-600">
+                            {qOv?.remediationCriterionAr?.trim()
+                              ? qOv.remediationCriterionAr
+                              : isFr
+                              ? "Démarche rigoureuse + résultat exact"
+                              : "سلامة الاستدلال + دقة النتيجة"}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-slate-100 font-extrabold">
+                    <td
+                      colSpan={leadingColSpan}
+                      className="border border-slate-400 p-1.5 text-end"
+                    >
+                      {isFr ? "Total général de l'évaluation" : "المجموع العام للفرض"}
+                    </td>
+                    <td className="border border-slate-400 p-1.5 text-center font-mono text-indigo-950 tabular-nums">
+                      {gridData.totalPoints.toFixed(2)} / 20
+                    </td>
+                    {showMasteryCol && (
+                      <td className="border border-slate-400 p-1.5 text-center font-mono text-xs">
+                        {gridData.totalWeight}%
+                      </td>
+                    )}
+                    {showRemediationCol && (
+                      <td className="border border-slate-400 p-1.5 text-center text-[10px] text-emerald-900">
+                        {isFr ? "Conforme 142-08" : "مطابق للمذكرة 142-08"}
+                      </td>
+                    )}
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
-        {/* 2. شبكة تفريغ نقط التلاميذ واستثمار النتائج + بوابة مسار (Massar) و Pronote */}
+        {/* 2. استمارة تفريغ النقط واستثمار النتائج المرفقة بملف الفرض المحروس (وثيقة جاهزة للطباعة) */}
         <div className="space-y-2 avoid-break">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
               <span>
                 {isFr
-                  ? "II. Grille de Dépouillement des Notes de la Classe (Compatible Massar & Pronote)"
-                  : "ثانياً: شبكة تفريغ نقط المتعلمين واستثمار النتائج (متوافقة مع منظومة مسار Massar و Pronote)"}
+                  ? "II. Fiche Imprimable de Dépouillement et d'Exploitation Didactique des Résultats"
+                  : "ثانياً: الوثيقة المطبوعة لتفريغ نقط الأسئلة/التمارين واستثمار النتائج الديداكتيكية"}
               </span>
               <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                 {evalGridGranularity === "BY_QUESTION"
                   ? isFr
-                    ? "Détail par Question"
+                    ? "Par Question"
                     : "تفريغ تفصيلي حسب الأسئلة"
                   : isFr
-                  ? "Synthèse par Exercice"
+                  ? "Par Exercice"
                   : "تفريغ إجمالي حسب التمارين"}
               </span>
             </h4>
-
-            {/* أزرار استيراد وتصدير لائحة مسار / Pronote (تظهر في المعاينة التفاعلية ولا تطبع) */}
-            <div className="no-print flex flex-wrap items-center gap-1.5">
-              <input
-                ref={massarCsvInputRef}
-                type="file"
-                accept=".csv,.txt"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const parsed = parseMassarPronoteCSV(String(reader.result || ""));
-                    if (parsed.length > 0) {
-                      setMassarRoster(parsed);
-                    }
-                  };
-                  reader.readAsText(file, "UTF-8");
-                  e.target.value = "";
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setMassarRoster(DEFAULT_MOROCCAN_CLASS_ROSTER)}
-                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-300 text-[10.5px] font-extrabold transition cursor-pointer"
-                title="تعبئة الجدول بلائحة قسم مغربي نموذجية بـ 15 تلميذاً مع رموز مسار (Code Massar)"
-              >
-                📋 تعبئة لائحة قسم مسار (15 تلميذاً)
-              </button>
-              <button
-                type="button"
-                onClick={() => massarCsvInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-[10.5px] font-bold transition cursor-pointer"
-                title="استيراد ملف CSV مستخرج من منظومة مسار أو Pronote يحتوي على رموز التلاميذ وأسمائهم"
-              >
-                📂 استيراد لائحة (.CSV)
-              </button>
-              {massarRoster.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setMassarRoster([])}
-                  className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-[10.5px] font-bold transition cursor-pointer"
-                >
-                  إفراغ الأسماء
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() =>
-                  exportMassarPronoteGradeSheet({
-                    gridData,
-                    school,
-                    prof,
-                    year,
-                    academy,
-                    direction,
-                    docLang,
-                    system: system || "MAROC_NATIONAL",
-                    granularity: evalGridGranularity,
-                    studentCount: rowsCount,
-                    n1,
-                    n2,
-                    n3,
-                    customStudents:
-                      massarRoster.length > 0 ? massarRoster : DEFAULT_MOROCCAN_CLASS_ROSTER,
-                    dsKey,
-                    semester: sem,
-                  })
-                }
-                className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10.5px] font-black shadow-2xs transition cursor-pointer"
-                title="تصدير ورقة تنقيط مسار و Pronote بصيغة CSV UTF-8 جاهزة للفتح في Excel"
-              >
-                📥 تصدير ملف مسار / Pronote (.CSV)
-              </button>
-            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1905,11 +2291,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   <th className="border border-slate-400 p-1 text-center w-8">
                     {isFr ? "N°" : "ر.ت"}
                   </th>
-                  <th className="border border-slate-400 p-1 text-center w-24 font-mono">
-                    {isFr ? "Code Massar" : "رمز مسار"}
-                  </th>
-                  <th className="border border-slate-400 p-1.5 text-start min-w-[140px]">
-                    {isFr ? "Nom & Prénom de l'élève" : "الاسم والنسب للمتعلم(ة)"}
+                  <th className="border border-slate-400 p-1.5 text-start min-w-[155px]">
+                    {isFr
+                      ? "Nom & Prénom / Identifiant"
+                      : "الاسم الكامل للمتعلم(ة) / الرقم الترتيبي"}
                   </th>
                   {dynamicCols.map((c, cIdx) => (
                     <th
@@ -1925,50 +2310,39 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   <th className="border border-slate-400 p-1 text-center w-16 bg-indigo-50/60 font-mono">
                     {isFr ? "Total /20" : "المجموع /20"}
                   </th>
-                  <th className="border border-slate-400 p-1 text-center w-28">
-                    {isFr ? "Décision / Soutien" : "قرار الدعم"}
+                  <th className="border border-slate-400 p-1 text-center w-36">
+                    {isFr
+                      ? "Profil & Besoin de Soutien"
+                      : "مؤشر التمكن وتوجيه وثيقة الدعم"}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {Array.from(
-                  { length: massarRoster.length > 0 ? massarRoster.length : rowsCount },
-                  (_, rIdx) => {
-                    const st = massarRoster[rIdx];
-                    return (
-                      <tr key={rIdx} className="h-6">
-                        <td className="border border-slate-400 p-1 text-center font-mono font-bold text-slate-700 tabular-nums">
-                          {rIdx + 1}
-                        </td>
-                        <td className="border border-slate-400 p-1 text-center font-mono text-[10px] font-semibold text-indigo-950 tabular-nums">
-                          {st ? st.massarCode : "...................."}
-                        </td>
-                        <td className="border border-slate-400 p-1 font-semibold text-slate-800">
-                          {st
-                            ? isFr
-                              ? st.fullNameFr
-                              : st.fullNameAr
-                            : "........................................................"}
-                        </td>
-                        {dynamicCols.map((_, cIdx) => (
-                          <td
-                            key={cIdx}
-                            className="border border-slate-400 p-1 text-center font-mono"
-                          />
-                        ))}
-                        <td className="border border-slate-400 p-1 text-center bg-indigo-50/20 font-mono font-bold" />
-                        <td className="border border-slate-400 p-1 text-center text-[9.5px] text-slate-500">
-                          [ ] A &nbsp; [ ] EC &nbsp; [ ] NA
-                        </td>
-                      </tr>
-                    );
-                  }
-                )}
+                {Array.from({ length: rowsCount }, (_, rIdx) => (
+                  <tr key={rIdx} className="h-6">
+                    <td className="border border-slate-400 p-1 text-center font-mono font-bold text-slate-700 tabular-nums">
+                      {rIdx + 1}
+                    </td>
+                    <td className="border border-slate-400 p-1 font-semibold text-slate-400">
+                      ........................................................................
+                    </td>
+                    {dynamicCols.map((_, cIdx) => (
+                      <td
+                        key={cIdx}
+                        className="border border-slate-400 p-1 text-center font-mono"
+                      />
+                    ))}
+                    <td className="border border-slate-400 p-1 text-center bg-indigo-50/20 font-mono font-bold" />
+                    <td className="border border-slate-400 p-1 text-center text-[9.5px] text-slate-600 font-mono">
+                      {masteryCheckboxString}
+                    </td>
+                  </tr>
+                ))}
                 <tr className="bg-amber-50/60 font-bold">
-                  <td colSpan={3} className="border border-slate-400 p-1.5 text-end">
+                  <td colSpan={2} className="border border-slate-400 p-1.5 text-end">
                     {isFr
-                      ? "Moyenne de la classe / Taux de réussite (%)"
-                      : "معدل القسم في كل عنصر / نسبة التحكم (%)"}
+                      ? "Taux de réussite par question/exercice (%)"
+                      : "نسبة التحكم المسجلة في كل عنصر (%) لتوجيه وثيقة الدعم"}
                   </td>
                   {dynamicCols.map((_, cIdx) => (
                     <td key={cIdx} className="border border-slate-400 p-1 text-center" />
@@ -1980,6 +2354,44 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             </table>
           </div>
         </div>
+
+        {/* 3. إطار التوثيق الرسمي وتوقيع الأستاذ وتأشيرة المفتش التربوي (المذكرة 142-08) */}
+        {showInspectorFooter && (
+          <div className="grid grid-cols-3 gap-3 pt-2 text-[11px] avoid-break">
+            <div className="border border-slate-400 rounded-xl p-3 bg-white min-h-[78px] flex flex-col justify-between">
+              <div className="font-extrabold text-slate-900">
+                {isFr ? "Signature du Professeur :" : "توقيع أستاذ(ة) المادة :"}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                {prof} · {school}
+              </div>
+            </div>
+
+            <div className="border border-slate-400 rounded-xl p-3 bg-white min-h-[78px] flex flex-col justify-between">
+              <div className="font-extrabold text-slate-900">
+                {isFr
+                  ? "Synthèse & Décision de Remédiation :"
+                  : "خلاصة الاستثمار وتاريخ حصة التصحيح والدعم :"}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                {isFr
+                  ? "Date de correction : .... / .... / 202.."
+                  : "تاريخ حصة التصحيح والدعم : .... / .... / 202.."}
+              </div>
+            </div>
+
+            <div className="border border-slate-400 rounded-xl p-3 bg-white min-h-[78px] flex flex-col justify-between">
+              <div className="font-extrabold text-slate-900">
+                {isFr
+                  ? "Visa de l'Inspecteur Pédagogique :"
+                  : "تأشيرة السيد(ة) المفتش(ة) التربوي(ة) :"}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                {isFr ? "Réf : Note 142-08" : "المذكرة الوزارية رقم 142-08"}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -2492,7 +2904,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       customLineDelta: lineDelta,
     });
 
-    const baseHeight = wsSpec.heightPx;
+    let baseHeight = wsSpec.heightPx;
     const levelStr = String(difficultyLevel).toUpperCase();
 
     // تحديد خلفية التسطير بحسب النمط المختار (أو التبديل التلقائي للورق الميليمتري في أسئلة الإنشاء الهندسي عند اختيار الكراسة)
@@ -2505,19 +2917,23 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         : studentGridStyle;
 
     switch (effectiveGridStyle) {
-      case "SEYES_FRENCH":
-        gridBackgroundStyle = {
-          backgroundImage: `
-            repeating-linear-gradient(to right, rgba(139, 92, 246, 0.22) 0px, rgba(139, 92, 246, 0.22) 1px, transparent 1px, transparent 32px),
-            repeating-linear-gradient(to bottom, rgba(139, 92, 246, 0.25) 0px, rgba(139, 92, 246, 0.25) 1px, transparent 1px, transparent 32px),
-            repeating-linear-gradient(to bottom, rgba(186, 230, 253, 0.45) 0px, rgba(186, 230, 253, 0.45) 1px, transparent 1px, transparent 8px)
-          `,
-          backgroundColor: "#fcfcff",
-        };
+      case "SEYES_HD_PRO":
+      case "SEYES_FRENCH": {
+        const isHdPro = effectiveGridStyle === "SEYES_HD_PRO";
+        const { style: seyesCss, option: seyesOpt } =
+          buildHighPrecisionSeyesCssStyle(seyesSpacingPreset, isHdPro);
+        gridBackgroundStyle = seyesCss;
+        // مواءمة ارتفاع الحيز مع تباعد الأسطر المختار للعربية/الفرنسية
+        const spacingRatio = seyesOpt.lineHeightPx / 32;
+        baseHeight = Math.max(
+          132,
+          Math.round(wsSpec.heightPx * Math.max(0.82, Math.min(1.38, spacingRatio)))
+        );
         gridLabel = isFr
-          ? `Seyès 8×8mm · ${wsSpec.recommendedLines} lignes (Réponse complète)`
-          : `تسطير Seyès 8×8mm · ${wsSpec.recommendedLines} أسطر (للإجابة الكاملة)`;
+          ? `${isHdPro ? "Seyès HD Pro" : "Seyès"} (${seyesOpt.majorStepMm}mm / ${seyesOpt.subStepMm}mm) · ${wsSpec.recommendedLines} lignes`
+          : `مسطرة السيري ${isHdPro ? "HD عالية الدقة" : "Seyès"} (${seyesOpt.majorStepMm}mm / فرعي ${seyesOpt.subStepMm}mm) · ${wsSpec.recommendedLines} أسطر`;
         break;
+      }
 
       case "LINED_RULED":
         gridBackgroundStyle = {
@@ -2893,7 +3309,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         }
       `}</style>
 
-      {/* شريط تجويد المعاينة الحية وحزم LaTeX الاحترافية + مختبر WolframAlpha */}
+      {/* شريط تجويد المعاينة الحية وحزم LaTeX الاحترافية + مختبر WolframAlpha (يُخفى تلقائياً في وضع القراءة) */}
+      {!readingModeConfig.enabled && (
       <div className="no-print bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 shadow-xs space-y-2.5">
         {/* شريط التبديل الفوري بين نماذج عرض الوثيقة والضبط التلقائي للهوامش (نموذج الفرض المحروس مقابل نموذج سلسلة التمارين وغيرها) */}
         <div className="bg-gradient-to-l from-indigo-50/90 via-slate-50 to-emerald-50/70 border border-indigo-200/80 rounded-xl p-2.5 space-y-2">
@@ -3498,38 +3915,82 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
         {/* شريط تخصيص كراسة التلميذ والتسطير تحت الأسئلة */}
         {includeAnswerWorkspace && (
-          <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-purple-50/70 border border-purple-200/80 rounded-xl text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold text-purple-950 flex items-center gap-1">
-                <span>📝</span>
-                <span>تسطير كراسة التلميذ (Cahier / Devoir) :</span>
-              </span>
-              <div className="flex flex-wrap items-center gap-1">
-                {[
-                  { id: "SEYES_FRENCH", label: "كراسة فرنسية (Seyès 8mm)" },
-                  { id: "LINED_RULED", label: "أسطر متوازية (Ligné)" },
-                  { id: "MILLIMETER_GRID", label: "ورق ميليمتري (منحنيات)" },
-                  { id: "DOTTED_BOX", label: "شبكة نقطية" },
-                  { id: "PLAIN_BOX", label: "إطار أبيض" },
-                ].map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => onChangeStudentGridStyle?.(s.id as StudentGridStyle)}
-                    className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
-                      studentGridStyle === s.id
-                        ? "bg-purple-900 text-white shadow-2xs"
-                        : "bg-white text-purple-900 border border-purple-200 hover:bg-purple-100/60"
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+          <div className="flex flex-col gap-2 p-2.5 bg-purple-50/75 border border-purple-200/90 rounded-xl text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-purple-950 flex items-center gap-1">
+                  <span>📝</span>
+                  <span>تسطير كراسة التلميذ (Cahier / Devoir) :</span>
+                </span>
+                <div className="flex flex-wrap items-center gap-1">
+                  {[
+                    {
+                      id: "SEYES_HD_PRO",
+                      label: "مسطرة السيري عالية الدقة (Seyès HD Pro)",
+                    },
+                    {
+                      id: "SEYES_FRENCH",
+                      label: "كراسة فرنسية (Seyès تقليدي)",
+                    },
+                    { id: "LINED_RULED", label: "أسطر متوازية (Ligné)" },
+                    { id: "MILLIMETER_GRID", label: "ورق ميليمتري (منحنيات)" },
+                    { id: "DOTTED_BOX", label: "شبكة نقطية" },
+                    { id: "PLAIN_BOX", label: "إطار أبيض" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() =>
+                        onChangeStudentGridStyle?.(s.id as StudentGridStyle)
+                      }
+                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                        studentGridStyle === s.id
+                          ? "bg-purple-900 text-white shadow-2xs"
+                          : "bg-white text-purple-900 border border-purple-200 hover:bg-purple-100/60"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <span className="text-[10px] text-purple-700 font-medium">
+                ارتفاع الأسطر يتكيف تلقائياً مع صعوبة السؤال (N1: 3 أسطر · N2: 6 أسطر · N3: 10 أسطر)
+              </span>
             </div>
-            <span className="text-[10px] text-purple-700 font-medium">
-              ارتفاع الأسطر يتكيف تلقائياً مع صعوبة السؤال (N1: 3 أسطر · N2: 6 أسطر · N3: 10 أسطر)
-            </span>
+
+            {(studentGridStyle === "SEYES_HD_PRO" ||
+              studentGridStyle === "SEYES_FRENCH") && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-purple-200/70">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-extrabold text-indigo-950 text-[11px]">
+                    📏 تباعد أسطر السيري (Seyès) للكتابة العربية والفرنسية:
+                  </span>
+                  {SEYES_SPACING_OPTIONS.map((sp) => (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      onClick={() => onChangeSeyesSpacingPreset?.(sp.id)}
+                      title={sp.descriptionAr}
+                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                        seyesSpacingPreset === sp.id
+                          ? "bg-indigo-900 text-white shadow-2xs"
+                          : "bg-white text-indigo-900 border border-indigo-200 hover:bg-indigo-50"
+                      }`}
+                    >
+                      {sp.shortBadgeAr}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] text-indigo-800 font-semibold">
+                  {
+                    SEYES_SPACING_OPTIONS.find(
+                      (o) => o.id === seyesSpacingPreset
+                    )?.descriptionAr
+                  }
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -3758,10 +4219,158 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             </div>
           )}
         </div>
+
+        {/* شريط الوصول السريع للابتكارات السبعة والمقارنة المزدوجة (Sujet A | Sujet B) */}
+        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleToggleDualABSplit}
+              className={`px-2.5 py-1.5 rounded-xl font-extrabold border transition flex items-center gap-1.5 cursor-pointer ${
+                effectiveShowDualABSplitView
+                  ? "bg-indigo-950 text-amber-300 border-indigo-900 shadow-xs"
+                  : "bg-indigo-50/80 text-indigo-950 border-indigo-200 hover:bg-indigo-100"
+              }`}
+              title="مقارنة فورية جنب-إلى-جنب بين النموذج A والنموذج B المضاد للغش مع قياس التكافؤ الديداكتيكي"
+            >
+              <span>⚖️</span>
+              <span>
+                {effectiveShowDualABSplitView
+                  ? "إخفاء المقارنة المزدوجة (Sujet A | Sujet B)"
+                  : "مقارنة النموذجين A | B جنب-إلى-جنب"}
+              </span>
+            </button>
+
+            {onOpenSevenStrategicProposals && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOpenSevenStrategicProposals("CURVE_DESIGNER")}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-extrabold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📈</span>
+                  <span>مصمم المنحنيات بالسحب والإفلات</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenSevenStrategicProposals("QUESTION_BANK")}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🔍</span>
+                  <span>بنك الفروض والتمارين (19 مسلكاً)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenSevenStrategicProposals("BEAMER_SLIDES")}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 font-extrabold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📽️</span>
+                  <span>عرض السبورة التفاعلية LaTeX Beamer</span>
+                </button>
+              </>
+            )}
+            {onOpenReprographicsStudio && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onToggleEcoTonerMode
+                      ? onToggleEcoTonerMode()
+                      : onOpenReprographicsStudio("ECO_TONER_SIMULATOR")
+                  }
+                  className={`px-2.5 py-1.5 rounded-xl font-extrabold border transition flex items-center gap-1.5 cursor-pointer ${
+                    bindingAndCropConfig.enableEcoTonerBlackMode
+                      ? "bg-slate-950 text-cyan-300 border-slate-900 shadow-xs"
+                      : "bg-cyan-50 hover:bg-cyan-100 text-cyan-950 border-cyan-300"
+                  }`}
+                  title="تفعيل أو تعطيل وضع الحبر الاقتصادي الأسود النقي 100% K-Black لآلات الاستنساخ RISO / Ricoh"
+                >
+                  <span>🖨️</span>
+                  <span>
+                    {bindingAndCropConfig.enableEcoTonerBlackMode
+                      ? "✓ وضع الاستنساخ RISO (100% K-Black)"
+                      : "وضع الاستنساخ RISO والحبر الاقتصادي"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenReprographicsStudio("REPROGRAPHICS_JOB_TICKET")}
+                  className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-300 font-extrabold transition flex items-center gap-1.5 cursor-pointer"
+                  title="بطاقة الأمر بالسحب لمصلحة الطبع والاستنساخ وحساب رزم الورق وهوامش التدبيس"
+                >
+                  <span>📎</span>
+                  <span>مصلحة النسخ والطبع والتدبيس</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenReprographicsStudio("QUARTER_POINT_RUBRIC")}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-950 border border-rose-300 font-extrabold transition flex items-center gap-1.5 cursor-pointer"
+                  title="سلم التنقيط الذري (0.25 ن)، جداول التغيرات بالقيم الممنوعة ||، والأمثلة المضادة"
+                >
+                  <span>📐</span>
+                  <span>سلم 0.25ن · جدول || · أمثلة مضادة</span>
+                </button>
+              </>
+            )}
+
+            {onOpenPrintLayoutTemplatesModal && (
+              <button
+                type="button"
+                onClick={onOpenPrintLayoutTemplatesModal}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-cyan-200 border border-indigo-600 font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs hover:from-indigo-800 hover:to-indigo-900"
+                title={isFr ? "Bibliothèque de gabarits et structures de mise en page (7 formats)" : "مكتبة قوالب وهياكل الطباعة للوثائق الرياضية (7 هياكل)"}
+              >
+                <LayoutTemplate className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{isFr ? activePrintTemplate.shortBadgeFr : activePrintTemplate.shortBadgeAr}</span>
+              </button>
+            )}
+
+            {onOpenExerciseSolutionQrModal && (
+              <button
+                type="button"
+                onClick={onOpenExerciseSolutionQrModal}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-950 to-slate-900 text-amber-200 border border-amber-600/70 font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs hover:from-amber-900 hover:to-slate-800"
+                title={isFr ? "Générer et personnaliser les QR codes de solutions" : "توليد وتخصيص رموز QR لحلول التمارين الفردية وإدراجها في الطباعة"}
+              >
+                <QrCode className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isFr ? "QR Solutions" : "رموز QR للحلول"}</span>
+                {exerciseSolutionQrs && (
+                  <span className="bg-amber-400 text-slate-950 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black">
+                    {Object.values(exerciseSolutionQrs).filter((c) => c.enabled).length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          {onOpenSevenStrategicProposals && (
+            <button
+              type="button"
+              onClick={() => onOpenSevenStrategicProposals("ARCHITECTURE_STORE")}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[10px] font-bold border border-slate-300 cursor-pointer"
+            >
+              ⚡ 7 Strategic Innovations Hub
+            </button>
+          )}
+        </div>
       </div>
+      )}
+
+      {/* عرض المقارنة المزدوجة للنموذجين A و B جنب-إلى-جنب المعزول بـ React.memo */}
+      {effectiveShowDualABSplitView && !readingModeConfig.enabled && (
+        <MemoizedDualModelABComparisonView
+          lessons={baseDsLessons}
+          isFr={isFr}
+          school={school}
+          prof={prof}
+          year={year}
+          trackLabel={isFr ? track.labelFr : track.labelAr}
+          onCloseSplitView={handleToggleDualABSplit}
+        />
+      )}
 
       {/* شريط الأدوات الذكي للتحرير النصي الغني والرموز الرياضية يظهر عند تفعيل التعديل المباشر */}
-      {isInlineEditable && (
+      {isInlineEditable && !readingModeConfig.enabled && (
         <div className="no-print sticky top-2 z-40 shadow-sm rounded-xl overflow-hidden">
           <RichTextMathToolbar
             isArabic={!isFr}
@@ -3781,7 +4390,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       <style>{printMediaMetrics.cssMediaPrintBlock}</style>
 
       {/* شريط محاكي استعلامات الطباعة الفوري (@media print & @page Simulator) عند تفعيله */}
-      {(simulatePrintMediaQuery || printPageSizePreset !== "A4" || effectiveShowA4Breaks) && (
+      {!readingModeConfig.enabled &&
+        (simulatePrintMediaQuery || printPageSizePreset !== "A4" || effectiveShowA4Breaks) && (
         <div
           dir="rtl"
           className="no-print bg-slate-950 text-white rounded-2xl px-3.5 py-2.5 border border-cyan-500/40 shadow-md flex flex-wrap items-center justify-between gap-2 text-[11px]"
@@ -3841,6 +4451,21 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 {simulatePrintMediaQuery ? "إيقاف محاكاة @media print" : "تفعيل محاكاة @media print"}
               </button>
             )}
+
+            {onToggleSheetViewMode && (
+              <button
+                type="button"
+                onClick={onToggleSheetViewMode}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition cursor-pointer flex items-center gap-1 ${
+                  sheetViewMode === "MULTIPAGE_CARDS"
+                    ? "bg-emerald-400 text-slate-950 border-emerald-300 shadow-sm"
+                    : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+                }`}
+                title="التبديل بين الورقة الممتدة وعرض الصفحات الفيزيائية A4 المنفصلة"
+              >
+                <span>{sheetViewMode === "MULTIPAGE_CARDS" ? "📄 صفحات منفصلة A4" : "📜 ورقة ممتدة"}</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -3851,10 +4476,37 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         contentEditable={isInlineEditable}
         suppressContentEditableWarning={true}
         style={{
-          paddingTop: `${Math.round(activeMarginModelSpec.previewPadTopPx * autoFitCompactionScale)}px`,
-          paddingBottom: `${Math.round(activeMarginModelSpec.previewPadBottomPx * autoFitCompactionScale)}px`,
-          paddingLeft: `${Math.round(activeMarginModelSpec.previewPadXPx * autoFitCompactionScale)}px`,
-          paddingRight: `${Math.round(activeMarginModelSpec.previewPadXPx * autoFitCompactionScale)}px`,
+          paddingTop: `${Math.round(
+            (smartPageBreakConfig.marginTopMm !== undefined
+              ? smartPageBreakConfig.marginTopMm * 2.2
+              : activeMarginModelSpec.previewPadTopPx) * autoFitCompactionScale
+          )}px`,
+          paddingBottom: `${Math.round(
+            (smartPageBreakConfig.marginBottomMm !== undefined
+              ? smartPageBreakConfig.marginBottomMm * 2.2
+              : activeMarginModelSpec.previewPadBottomPx) * autoFitCompactionScale
+          )}px`,
+          paddingLeft: `${Math.round(
+            ((smartPageBreakConfig.marginLeftMm !== undefined
+              ? smartPageBreakConfig.marginLeftMm * 2.25
+              : activeMarginModelSpec.previewPadXPx) +
+              (bindingAndCropConfig.enableStapleBindingGutter &&
+              (bindingAndCropConfig.stapleCorner === "TOP_LEFT_LTR" ||
+                bindingAndCropConfig.stapleCorner === "LEFT_TWO_HOLES")
+                ? bindingAndCropConfig.gutterExtraMm * 2.5
+                : 0)) *
+              autoFitCompactionScale
+          )}px`,
+          paddingRight: `${Math.round(
+            ((smartPageBreakConfig.marginRightMm !== undefined
+              ? smartPageBreakConfig.marginRightMm * 2.25
+              : activeMarginModelSpec.previewPadXPx) +
+              (bindingAndCropConfig.enableStapleBindingGutter &&
+              bindingAndCropConfig.stapleCorner === "TOP_RIGHT_RTL"
+                ? bindingAndCropConfig.gutterExtraMm * 2.5
+                : 0)) *
+              autoFitCompactionScale
+          )}px`,
           ...(printPageSizePreset !== "A4" || simulatePrintMediaQuery
             ? {
                 width: `${printMediaMetrics.widthMm}mm`,
@@ -3867,13 +4519,35 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             : {}),
         }}
         data-margin-model={activeMarginModelSpec.id}
+        data-custom-margins-mm={`${smartPageBreakConfig.marginTopMm ?? 14}/${smartPageBreakConfig.marginBottomMm ?? 14}/${smartPageBreakConfig.marginLeftMm ?? 15}/${smartPageBreakConfig.marginRightMm ?? 15}`}
+        data-vertical-density={smartPageBreakConfig.verticalDensityPreset || "BALANCED"}
         data-page-size-preset={printPageSizePreset}
         data-page-dimensions-mm={`${printMediaMetrics.widthMm}x${printMediaMetrics.heightMm}`}
         data-interactive-quiz-url={resolvedInteractiveQuizUrl}
         data-a4-auto-fit={autoFitCompactionScale < 1 ? "compacted" : "standard"}
-        className={`print-sheet ${fontClass} ${scaleClass} ${orientationClass} ${
-          selectedLatexPkg.sheetSkinClass
-        } ${selectedPaperSurf.cssClass} ${
+        data-eco-toner-mode={bindingAndCropConfig.enableEcoTonerBlackMode ? "true" : "false"}
+        data-layout-template={activePrintTemplate.id}
+        data-smart-page-break={smartPageBreakConfig.enabled ? smartPageBreakConfig.paperFormat : "off"}
+        data-reading-mode={readingModeConfig.enabled ? "true" : "false"}
+        data-reading-scale={readingModeConfig.exerciseScalePercent}
+        data-reading-spread={readingModeConfig.spreadLayoutMode || "SINGLE_PAGE"}
+        className={`print-sheet printable-document-sheet ${
+          smartPageBreakConfig.enabled ? "smart-page-guard-active" : ""
+        } ${fontClass} ${scaleClass} ${orientationClass} ${
+          activePrintTemplate.hasOfficialBorder
+            ? "border-4 border-double border-slate-950 p-2.5 ring-1 ring-slate-900/30"
+            : ""
+        } ${
+          activePrintTemplate.hasAccentRibbon
+            ? isFr
+              ? "border-l-4 border-rose-600 pl-4"
+              : "border-r-4 border-rose-600 pr-4"
+            : ""
+        } ${
+          bindingAndCropConfig.enableEcoTonerBlackMode
+            ? "bg-white text-black border-black"
+            : `${selectedLatexPkg.sheetSkinClass} ${selectedPaperSurf.cssClass}`
+        } ${
           effectiveEconomicMode ? "mode-two-up-print" : ""
         } ${
           simulatePrintMediaQuery
@@ -3887,6 +4561,102 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             : activeMarginModelSpec.verticalSpaceClass
         }`}
       >
+      {/* حقن قواعد وضع القراءة وتكبير نصوص التمارين والمعادلات عند التفعيل */}
+      {readingModeConfig.enabled && (
+        <style>{buildReadingModeStylesheet(readingModeConfig)}</style>
+      )}
+      {/* حقن قواعد منع انشطار المعادلات وأسطر الجداول وضبط مقاس A4 / US Letter والهوامش والتباعد العمودي */}
+      {smartPageBreakPlan.cssRules && (
+        <style>{smartPageBreakPlan.cssRules}</style>
+      )}
+      {/* نمط الحبر الاقتصادي الأسود النقي 100% K-Black لآلات الاستنساخ RISO / Ricoh */}
+      {bindingAndCropConfig.enableEcoTonerBlackMode && (
+        <style>{`
+          #printable-document-sheet[data-eco-toner-mode="true"],
+          #printable-document-sheet[data-eco-toner-mode="true"] * {
+            color: #000000 !important;
+            border-color: #000000 !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+          }
+          #printable-document-sheet[data-eco-toner-mode="true"] table,
+          #printable-document-sheet[data-eco-toner-mode="true"] th,
+          #printable-document-sheet[data-eco-toner-mode="true"] td,
+          #printable-document-sheet[data-eco-toner-mode="true"] div,
+          #printable-document-sheet[data-eco-toner-mode="true"] section {
+            background-color: transparent !important;
+            background-image: none !important;
+          }
+          #printable-document-sheet[data-eco-toner-mode="true"] {
+            background-color: #ffffff !important;
+          }
+        `}</style>
+      )}
+
+      {/* طبقة دلائل التدبيس الميكانيكي وخط القص بالمقصلة على ورقة A4 */}
+      <PrintableStapleAndCropMarksOverlay
+        config={bindingAndCropConfig}
+        isFr={isFr}
+      />
+
+      {/* طبقة عارض خطوط فواصل الصفحات شبه الشفافة الحية على ورقة المعاينة A4 (Live Page Break Visualizer Overlay) */}
+      {smartPageBreakConfig.enabled &&
+        smartPageBreakConfig.showLivePageBreakVisualizer !== false &&
+        visualizerOverlayLines.length > 0 && (
+          <div
+            className="no-print pointer-events-none absolute inset-0 z-20 overflow-hidden select-none"
+            aria-hidden="true"
+          >
+            {visualizerOverlayLines.map((line) => {
+              const vStyle = smartPageBreakConfig.visualizerLineStyle || "SAFETY_BAND";
+              const vOpacity = smartPageBreakConfig.visualizerOpacity ?? 0.85;
+              return (
+                <div
+                  key={line.breakIndex}
+                  style={{
+                    top: `${line.percentageOfTotalHeight}%`,
+                    opacity: vOpacity,
+                  }}
+                  className={`absolute inset-x-0 -translate-y-1/2 transition-all duration-300 ${
+                    vStyle === "SAFETY_BAND"
+                      ? "bg-gradient-to-r from-cyan-500/15 via-emerald-500/20 to-indigo-500/15 border-y-2 border-dashed border-emerald-600/80 py-1.5 px-3 backdrop-blur-[0.5px]"
+                      : vStyle === "RULER_GRID"
+                      ? "bg-amber-500/15 border-y-2 border-amber-600/80 py-1 px-3"
+                      : "border-t-2 border-dashed border-cyan-600/90 py-0.5 px-3"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 text-[9.5px] font-sans font-extrabold">
+                    <span className="bg-emerald-950/90 text-emerald-100 border border-emerald-500/50 px-2 py-0.5 rounded-full shadow-xs">
+                      ✂️ {isFr ? line.badgeLabelFr : line.badgeLabelAr}
+                    </span>
+                    <span className="bg-white/95 text-slate-900 border border-emerald-400/70 px-2 py-0.5 rounded-full font-mono text-[9px] shadow-xs">
+                      🛡️ {isFr ? line.subLabelFr : line.subLabelAr}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+      {/* بطاقة الأمر بالسحب لمصلحة الطبع والاستنساخ في أعلى الورقة عند تفعيلها */}
+      {bindingAndCropConfig.includeReprographicsJobTicket && (
+        <PrintableReprographicsJobTicketBanner
+          school={school}
+          prof={prof}
+          year={year}
+          trackLabelAr={track.labelAr}
+          trackLabelFr={track.labelFr}
+          dsKey={dsKey}
+          semester={sem}
+          groupsCount={reproGroupsCount}
+          studentsPerGroup={reproStudentsPerGroup}
+          pagesPerCopy={Math.max(1, a4LayoutReport.rawPageCount)}
+          duplexMode={reproDuplexMode}
+          ecoTonerActive={bindingAndCropConfig.enableEcoTonerBlackMode}
+          isFr={isFr}
+        />
+      )}
       {/* فواصل الصفحات الحية لمعاينة حدود @page (A4 / Letter / Custom) وتفادي تشطير المسائل والجداول */}
       {effectiveShowA4Breaks && (
         <div
@@ -4067,7 +4837,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                         let runningPointsTotal = qcmPtsTable + probPtsTable;
 
                         const rows = baseDsLessons.map((item, i) => {
-                          const v = getVariantQuestions(item, "A", false, 0, dsQuestionDensity);
+                          const v = getVariantQuestions(item, "A", false, variationSeed, dsQuestionDensity);
                           const effW = exactTableWeights[i] ?? item.weight;
                           const metas = getQuestionBaremesAndLevels(
                             effW,
@@ -4568,7 +5338,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                     </div>
                   )}
 
-                  <div className="space-y-4">
+                  <div
+                    data-sync-section="EXERCISES-CONTAINER"
+                    className={`exercises-container ${
+                      activePrintTemplate.columnsCount === 2
+                        ? "columns-1 md:columns-2 gap-5 [column-rule:1px_dashed_#cbd5e1] space-y-4"
+                        : "space-y-4"
+                    }`}
+                  >
                     {/* التمرين التمهيدي: QCM وصواب/خطأ مع التعليل (وفق المنهاج المغربي) */}
                     {qcmBlock && (
                       <div
@@ -4886,7 +5663,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                         lesson,
                         modelCode,
                         shuffleQuestions,
-                        0,
+                        variationSeed,
                         dsQuestionDensity
                       );
                       const qMetas = getQuestionBaremesAndLevels(
@@ -4927,9 +5704,13 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       );
 
                       if (isBi && bilingualLayout === "SIDE_BY_SIDE") {
+                        const resolvedBiIcon = resolveLessonHeaderIcon(lesson)?.id || "FUNCTION";
                         return (
                           <div
                             key={idx}
+                            id={`reading-mode-exercise-${idx + 1}`}
+                            data-reading-exercise-anchor={`reading-mode-exercise-${idx + 1}`}
+                            data-exercise-icon-type={resolvedBiIcon}
                             style={
                               lessonBranchTheme
                                 ? { borderColor: lessonBranchTheme.borderHex }
@@ -4994,16 +5775,69 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                     ({exPoints} pts · {effectiveWeight}%)
                                   </span>
                                 </div>
-                                <ol className="list-decimal list-inside text-xs space-y-2 text-slate-800 leading-relaxed">
+                                <ol className="list-decimal list-inside text-xs space-y-2.5 text-slate-800 leading-relaxed">
                                   {questionsFr.map((q, qIdx) => {
                                     const meta = qMetas[qIdx];
+                                    const parentPt = parseFloat(meta?.points || "1");
+                                    const decomp = decomposeQuestionIntoSubQuestions({
+                                      questionAr: questionsAr[qIdx] || q,
+                                      questionFr: q,
+                                      parentPoints: parentPt,
+                                      parentLevel: meta?.level || "N2",
+                                      mode: subQuestionDecompositionMode,
+                                      questionIndex: qIdx,
+                                      lessonTitleAr: lesson.lessonAr,
+                                      lessonTitleFr: lesson.lessonFr,
+                                    });
                                     return (
-                                      <li key={qIdx} className="space-y-1">
-                                        <span><MathText text={q} /></span>
-                                        {showQuestionBareme && meta && (
-                                          <span className="inline-block ml-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
-                                            [{meta.points} pt · {meta.level}]
-                                          </span>
+                                      <li key={qIdx} className="space-y-1.5">
+                                        {decomp.isDecomposed && decomp.subQuestions.length > 0 ? (
+                                          <>
+                                            <div className="inline">
+                                              <span className="font-semibold">
+                                                <MathText
+                                                  text={
+                                                    decomp.stemFr ||
+                                                    "Répondre aux sous-questions suivantes :"
+                                                  }
+                                                />
+                                              </span>
+                                              {showQuestionBareme && meta && (
+                                                <span className="inline-block ml-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
+                                                  [{meta.points} pt · {meta.level}]
+                                                </span>
+                                              )}
+                                            </div>
+                                            <ul className="pl-4 mt-1 space-y-1 border-l-2 border-indigo-200">
+                                              {decomp.subQuestions.map((sub) => (
+                                                <li
+                                                  key={sub.id}
+                                                  className="flex items-baseline justify-between gap-2 text-[11.5px]"
+                                                >
+                                                  <div>
+                                                    <span className="font-mono font-extrabold text-indigo-950 mr-1.5">
+                                                      {sub.labelFr})
+                                                    </span>
+                                                    <MathText text={sub.textFr} />
+                                                  </div>
+                                                  {showQuestionBareme && (
+                                                    <span className="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50/80 px-1.5 py-0.2 rounded border border-indigo-200 shrink-0 tabular-nums">
+                                                      [{sub.pointsFormatted} pt · {sub.level}]
+                                                    </span>
+                                                  )}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span><MathText text={q} /></span>
+                                            {showQuestionBareme && meta && (
+                                              <span className="inline-block ml-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
+                                                [{meta.points} pt · {meta.level}]
+                                              </span>
+                                            )}
+                                          </>
                                         )}
                                       </li>
                                     );
@@ -5036,23 +5870,83 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                     }
                                     className="inline-flex items-center gap-1.5"
                                   >
-                                    <LessonHeaderIconBadge lesson={lesson} isFr={false} />
+                                    <LessonHeaderIconBadge
+                                      lesson={lesson}
+                                      isFr={false}
+                                      showReadingModeTypeLabel={readingModeConfig.enabled}
+                                    />
                                     <span>التمرين {displayExNum} : {lesson.lessonAr}</span>
                                   </span>
-                                  <span className="font-mono tabular-nums text-xs text-indigo-950">
-                                    ({exPoints} ن · {effectiveWeight}%)
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono tabular-nums text-xs text-indigo-950">
+                                      ({exPoints} ن · {effectiveWeight}%)
+                                    </span>
+                                    {renderExerciseSolutionQrElement(`ex_${idx}`, idx, "HEADER")}
+                                  </div>
                                 </div>
-                                <ol className="list-decimal list-inside text-xs space-y-2 text-slate-800 leading-relaxed">
+                                <ol className="list-decimal list-inside text-xs space-y-2.5 text-slate-800 leading-relaxed">
                                   {questionsAr.map((q, qIdx) => {
                                     const meta = qMetas[qIdx];
+                                    const parentPt = parseFloat(meta?.points || "1");
+                                    const decomp = decomposeQuestionIntoSubQuestions({
+                                      questionAr: q,
+                                      questionFr: questionsFr[qIdx] || q,
+                                      parentPoints: parentPt,
+                                      parentLevel: meta?.level || "N2",
+                                      mode: subQuestionDecompositionMode,
+                                      questionIndex: qIdx,
+                                      lessonTitleAr: lesson.lessonAr,
+                                      lessonTitleFr: lesson.lessonFr,
+                                    });
                                     return (
-                                      <li key={qIdx} className="space-y-1">
-                                        <span><MathText text={q} /></span>
-                                        {showQuestionBareme && meta && (
-                                          <span className="inline-block mr-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
-                                            [{meta.points} ن · {meta.level}]
-                                          </span>
+                                      <li key={qIdx} className="space-y-1.5">
+                                        {decomp.isDecomposed && decomp.subQuestions.length > 0 ? (
+                                          <>
+                                            <div className="inline">
+                                              <span className="font-semibold">
+                                                <MathText
+                                                  text={
+                                                    decomp.stemAr ||
+                                                    "أجب عن الأسئلة الفرعية التالية بتدرج منهجي:"
+                                                  }
+                                                />
+                                              </span>
+                                              {showQuestionBareme && meta && (
+                                                <span className="inline-block mr-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
+                                                  [{meta.points} ن · {meta.level}]
+                                                </span>
+                                              )}
+                                            </div>
+                                            <ul className="pr-4 mt-1 space-y-1 border-r-2 border-indigo-200">
+                                              {decomp.subQuestions.map((sub) => (
+                                                <li
+                                                  key={sub.id}
+                                                  className="flex items-baseline justify-between gap-2 text-[11.5px]"
+                                                >
+                                                  <div>
+                                                    <span className="font-mono font-extrabold text-indigo-950 ml-1.5">
+                                                      {sub.labelAr})
+                                                    </span>
+                                                    <MathText text={sub.textAr} />
+                                                  </div>
+                                                  {showQuestionBareme && (
+                                                    <span className="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50/80 px-1.5 py-0.2 rounded border border-indigo-200 shrink-0 tabular-nums">
+                                                      [{sub.pointsFormatted} ن · {sub.level}]
+                                                    </span>
+                                                  )}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span><MathText text={q} /></span>
+                                            {showQuestionBareme && meta && (
+                                              <span className="inline-block mr-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
+                                                [{meta.points} ن · {meta.level}]
+                                              </span>
+                                            )}
+                                          </>
                                         )}
                                       </li>
                                     );
@@ -5119,29 +6013,50 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                             {includeDetailedSolutions &&
                               solutionDisplayMode === "INLINE_PER_EXERCISE" &&
                               renderDetailedCorrectionCard(corr, true)}
+
+                            {renderExerciseSolutionQrElement(`ex_${idx}`, idx, "BOTTOM")}
                           </div>
                         );
                       }
 
                       const activeQuestions = isFr ? questionsFr : questionsAr;
+                      const hasSmartPageBreakBefore =
+                        smartPageBreakConfig.enabled &&
+                        smartPageBreakPlan.recommendedBreakIndices.includes(idx);
 
                       return (
-                        <div
-                          key={idx}
-                          data-sync-section="EXERCISES"
-                          style={
-                            lessonBranchTheme
-                              ? { borderColor: lessonBranchTheme.borderHex }
-                              : undefined
-                          }
-                          className={`avoid-break p-4 space-y-3 ${effectiveExerciseBoxClass} ${
-                            lessonBranchTheme ? "branch-themed-card" : ""
-                          } ${
-                            activeSyncSection === "EXERCISES" && idx === 0
-                              ? "ring-2 ring-cyan-500/70 transition-all"
-                              : ""
-                          }`}
-                        >
+                        <React.Fragment key={idx}>
+                          {hasSmartPageBreakBefore && (
+                            <div className="no-print flex items-center gap-2 my-2 select-none">
+                              <div className="flex-1 border-t border-dashed border-emerald-500/70" />
+                              <span className="bg-emerald-50 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-sans shadow-2xs">
+                                {isFr
+                                  ? `✂️ Saut de page optimisé (${smartPageBreakConfig.paperFormat}) — Équations & Tableaux protégés`
+                                  : `✂️ فاصل صفحة ذكي (${smartPageBreakConfig.paperFormat}) — منع انشطار المعادلات والجداول`}
+                              </span>
+                              <div className="flex-1 border-t border-dashed border-emerald-500/70" />
+                            </div>
+                          )}
+                          <div
+                            id={`reading-mode-exercise-${idx + 1}`}
+                            data-reading-exercise-anchor={`reading-mode-exercise-${idx + 1}`}
+                            data-exercise-icon-type={resolveLessonHeaderIcon(lesson)?.id || "FUNCTION"}
+                            data-sync-section="EXERCISES"
+                            style={
+                              lessonBranchTheme
+                                ? { borderColor: lessonBranchTheme.borderHex }
+                                : undefined
+                            }
+                            className={`avoid-break p-4 space-y-3 ${effectiveExerciseBoxClass} ${
+                              hasSmartPageBreakBefore ? "smart-forced-page-break" : ""
+                            } ${
+                              lessonBranchTheme ? "branch-themed-card" : ""
+                            } ${
+                              activeSyncSection === "EXERCISES" && idx === 0
+                                ? "ring-2 ring-cyan-500/70 transition-all"
+                                : ""
+                            }`}
+                          >
                           <div
                             style={
                               lessonBranchTheme
@@ -5177,6 +6092,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                   latexPackageTheme === "TCOLORBOX"
                                 }
                                 isFr={isFr}
+                                showReadingModeTypeLabel={readingModeConfig.enabled}
                               />
                               {lessonBranchTheme && !resolveLessonHeaderIcon(lesson) && (
                                 <span
@@ -5251,22 +6167,36 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 </span>
                               )}
                             </div>
-                            <span
-                              className={`font-mono font-bold tabular-nums text-xs ${
-                                latexPackageTheme === "TCOLORBOX"
-                                  ? customTcbStyles.badgeClass
-                                  : latexPackageTheme === "EXAM_OFFICIAL"
-                                  ? "border-2 border-slate-900 px-2 py-0.5 bg-slate-50 text-slate-950"
-                                  : "text-indigo-950"
-                              }`}
-                            >
-                              {exPoints} {isFr ? "points" : "نقط"} · {effectiveWeight}%
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`font-mono font-bold tabular-nums text-xs ${
+                                  latexPackageTheme === "TCOLORBOX"
+                                    ? customTcbStyles.badgeClass
+                                    : latexPackageTheme === "EXAM_OFFICIAL"
+                                    ? "border-2 border-slate-900 px-2 py-0.5 bg-slate-50 text-slate-950"
+                                    : "text-indigo-950"
+                                }`}
+                              >
+                                {exPoints} {isFr ? "points" : "نقط"} · {effectiveWeight}%
+                              </span>
+                              {renderExerciseSolutionQrElement(`ex_${idx}`, idx, "HEADER")}
+                            </div>
                           </div>
 
                           <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-800 leading-relaxed">
                             {activeQuestions.map((q, qIdx) => {
                               const meta = qMetas[qIdx];
+                              const parentPt = parseFloat(meta?.points || "1");
+                              const decomp = decomposeQuestionIntoSubQuestions({
+                                questionAr: questionsAr[qIdx] || q,
+                                questionFr: questionsFr[qIdx] || q,
+                                parentPoints: parentPt,
+                                parentLevel: meta?.level || "N2",
+                                mode: subQuestionDecompositionMode,
+                                questionIndex: qIdx,
+                                lessonTitleAr: lesson.lessonAr,
+                                lessonTitleFr: lesson.lessonFr,
+                              });
                               const prefix =
                                 fillBlanks && idx === 0 && qIdx === 0
                                   ? isFr
@@ -5274,25 +6204,98 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                     : "(برهان موجه بملء الفراغات) "
                                   : "";
                               return (
-                                <li key={qIdx} className="space-y-1">
-                                  <div className="inline">
-                                    <span>
-                                      {prefix && <span className="font-semibold">{prefix}</span>}
-                                      <MathText text={q} />
-                                    </span>
-                                    {showQuestionBareme && meta && (
-                                      <span className="inline-block mx-2 font-mono text-[11px] font-bold text-indigo-900 tabular-nums">
-                                        [{meta.points} {isFr ? "pt" : "ن"} · {meta.level}]
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isBi && questionsFr[qIdx] && (
-                                    <div
-                                      dir="ltr"
-                                      className="text-left text-slate-600 italic mt-0.5 pl-4"
-                                    >
-                                      <MathText text={questionsFr[qIdx]} />
-                                    </div>
+                                <li key={qIdx} className="space-y-1.5">
+                                  {decomp.isDecomposed && decomp.subQuestions.length > 0 ? (
+                                    <>
+                                      <div className="inline">
+                                        <span>
+                                          {prefix && (
+                                            <span className="font-semibold">{prefix}</span>
+                                          )}
+                                          <MathText
+                                            text={
+                                              isFr
+                                                ? decomp.stemFr ||
+                                                  "Répondre méthodiquement aux sous-questions suivantes :"
+                                                : decomp.stemAr ||
+                                                  "أجب عن الأسئلة الفرعية التالية بتدرج منهجي:"
+                                            }
+                                          />
+                                        </span>
+                                        {showQuestionBareme && meta && (
+                                          <span className="inline-block mx-2 font-mono text-[11px] font-bold text-indigo-900 tabular-nums">
+                                            [{meta.points} {isFr ? "pt" : "ن"} · {meta.level} ·{" "}
+                                            {decomp.subQuestions.length}{" "}
+                                            {isFr ? "sous-questions" : "فروع"}]
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <ul
+                                        className={`mt-1.5 space-y-1.5 ${
+                                          isFr
+                                            ? "pl-4 border-l-2 border-indigo-200/90"
+                                            : "pr-4 border-r-2 border-indigo-200/90"
+                                        }`}
+                                      >
+                                        {decomp.subQuestions.map((sub) => (
+                                          <li
+                                            key={sub.id}
+                                            className="flex items-baseline justify-between gap-2 text-xs bg-slate-50/65 rounded-lg px-2.5 py-1 border border-slate-200/75"
+                                          >
+                                            <div>
+                                              <span className="font-mono font-black text-indigo-950 mx-1">
+                                                {isFr ? `${sub.labelFr})` : `${sub.labelAr})`}
+                                              </span>
+                                              <MathText
+                                                text={isFr ? sub.textFr : sub.textAr}
+                                              />
+                                              {isBi && (
+                                                <div
+                                                  dir="ltr"
+                                                  className="text-left text-slate-600 italic text-[11px] mt-0.5 pl-3"
+                                                >
+                                                  <span className="font-mono font-bold mr-1">
+                                                    {sub.labelFr})
+                                                  </span>
+                                                  <MathText text={sub.textFr} />
+                                                </div>
+                                              )}
+                                            </div>
+                                            {showQuestionBareme && (
+                                              <span className="font-mono text-[10.5px] font-bold text-indigo-900 bg-white px-2 py-0.5 rounded border border-indigo-200 shrink-0 tabular-nums">
+                                                [{sub.pointsFormatted} {isFr ? "pt" : "ن"} ·{" "}
+                                                {sub.level}]
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="inline">
+                                        <span>
+                                          {prefix && (
+                                            <span className="font-semibold">{prefix}</span>
+                                          )}
+                                          <MathText text={q} />
+                                        </span>
+                                        {showQuestionBareme && meta && (
+                                          <span className="inline-block mx-2 font-mono text-[11px] font-bold text-indigo-900 tabular-nums">
+                                            [{meta.points} {isFr ? "pt" : "ن"} · {meta.level}]
+                                          </span>
+                                        )}
+                                      </div>
+                                      {isBi && questionsFr[qIdx] && (
+                                        <div
+                                          dir="ltr"
+                                          className="text-left text-slate-600 italic mt-0.5 pl-4"
+                                        >
+                                          <MathText text={questionsFr[qIdx]} />
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                   {includeRescueHintsAndContinuity && meta?.level === "N3" && (
                                     <div className="mt-1 px-2.5 py-1 rounded-lg bg-amber-50/80 border border-amber-300/90 text-[10.5px] text-amber-950 flex flex-wrap items-center justify-between gap-2">
@@ -5362,7 +6365,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           {includeDetailedSolutions &&
                             solutionDisplayMode === "INLINE_PER_EXERCISE" &&
                             renderDetailedCorrectionCard(corr, true)}
+
+                          {renderExerciseSolutionQrElement(`ex_${idx}`, idx, "BOTTOM")}
                         </div>
+                        </React.Fragment>
                       );
                     })}
 
@@ -5375,6 +6381,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                         : null;
                       return (
                       <div
+                        id="reading-mode-synthesis-problem"
+                        data-reading-exercise-anchor="reading-mode-synthesis-problem"
+                        data-exercise-icon-type="FUNCTION"
                         data-sync-section="SYNTHESIS_PROBLEM"
                         style={
                           synthBranchTheme
@@ -5627,7 +6636,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           lesson,
                           modelCode,
                           shuffleQuestions,
-                          0,
+                          variationSeed,
                           dsQuestionDensity
                         );
                         const qMetas = getQuestionBaremesAndLevels(
@@ -5789,7 +6798,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       lesson,
                       "A",
                       false,
-                      0,
+                      variationSeed,
                       dsQuestionDensity
                     );
                     const qMetas = getQuestionBaremesAndLevels(
@@ -6077,36 +7086,102 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10.5px]">
-                      {isFr ? "Épreuve & Semestre :" : "الفرض والأسدوس:"}
+                      {isFr ? "Épreuve & Horaire Officiel :" : "الفرض والتوقيت الرسمي (08:00):"}
                     </span>
                     <span className="font-black text-slate-950 font-mono">
-                      {dsKey} ({sem}) · {isFr ? track.durationFr : track.durationAr}
+                      {dsKey} ({sem}) · 08:00 -{" "}
+                      {(track.durationAr || "").includes("ساعتان") ||
+                      (track.durationFr || "").includes("2h")
+                        ? "10:00"
+                        : "09:00"}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10.5px]">
-                      {isFr ? "Date de passation :" : "تاريخ إجراء الفرض:"}
+                      {isFr ? "Date & Séance de passation :" : "تاريخ وحصة الإجراء (08:00 صباحاً):"}
                     </span>
                     <span className="font-mono font-bold text-slate-800">
-                      .... / .... / 202..
+                      .... / .... / 202.. (08:00)
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10.5px]">
-                      {isFr ? "Date de correction :" : "تاريخ التصحيح والدعم:"}
+                      {isFr ? "Date & Séance de correction :" : "تاريخ وحصة التصحيح (دفتر النصوص):"}
                     </span>
                     <span className="font-mono font-bold text-slate-800">
-                      .... / .... / 202..
+                      .... / .... / 202.. (08:00 - 09:00)
                     </span>
                   </div>
+                </div>
+
+                {/* جدول مطابقة التمارين مع الأطر المرجعية والمذكرة 142-08 */}
+                <div className="space-y-1.5">
+                  <h4 className="font-black text-xs text-slate-950">
+                    {isFr
+                      ? "I. Matrice de Conformité Didactique des Exercices (Note 142-08) :"
+                      : "أولاً: مصفوفة مطابقة تمارين الفرض المحروس مع الأطر المرجعية والمذكرة 142-08:"}
+                  </h4>
+                  <table className="w-full border-collapse border border-slate-400 text-[10.5px] bg-white">
+                    <thead>
+                      <tr className="bg-slate-900 text-white font-bold">
+                        <th className="border border-slate-700 p-1.5 text-center">
+                          {isFr ? "Exercice" : "التمرين"}
+                        </th>
+                        <th className="border border-slate-700 p-1.5">
+                          {isFr ? "Chapitre & Domaine" : "الدرس والمجال المضموني"}
+                        </th>
+                        <th className="border border-slate-700 p-1.5">
+                          {isFr ? "Capacités Visées (OP 2007)" : "القدرات والمهارات المستهدفة"}
+                        </th>
+                        <th className="border border-slate-700 p-1.5 text-center">
+                          {isFr ? "Taxonomie" : "المستوى المهاري"}
+                        </th>
+                        <th className="border border-slate-700 p-1.5 text-center">
+                          {isFr ? "Barème" : "التنقيط"}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {baseDsLessons.map((les, idx) => (
+                        <tr key={idx} className="border-b border-slate-300">
+                          <td className="border border-slate-300 p-1.5 text-center font-mono font-black text-slate-900">
+                            Ex {idx + 1}
+                          </td>
+                          <td className="border border-slate-300 p-1.5 font-bold text-slate-900">
+                            {isFr ? les.lessonFr : les.lessonAr}
+                          </td>
+                          <td className="border border-slate-300 p-1.5 text-slate-700">
+                            {(isFr ? les.capacitiesFr : les.capacitiesAr)?.[0] ||
+                              (isFr ? les.lessonFr : les.lessonAr)}
+                          </td>
+                          <td className="border border-slate-300 p-1.5 text-center font-mono text-[10px]">
+                            {idx === 0
+                              ? isFr
+                                ? "Application (50%)"
+                                : "تطبيق مباشر (50%)"
+                              : idx === baseDsLessons.length - 1
+                              ? isFr
+                                ? "Synthèse (15%)"
+                                : "توليف ومبادرة (15%)"
+                              : isFr
+                              ? "Maîtrise (35%)"
+                              : "استحضار وترييض (35%)"}
+                          </td>
+                          <td className="border border-slate-300 p-1.5 text-center font-mono font-black text-indigo-950">
+                            {((les.weight * 20) / 100).toFixed(1)} pts ({les.weight}%)
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* جدول الإحصائيات البعدية لنتائج الفرض المحروس */}
                 <div className="space-y-2">
                   <h4 className="font-black text-xs text-slate-950">
                     {isFr
-                      ? "I. Bilan Statistique des Notes de la Classe (après correction) :"
-                      : "أولاً: الحصيلة الإحصائية لنتائج القسم بعد تصحيح الفرض المحروس:"}
+                      ? "II. Bilan Statistique des Notes de la Classe (après correction) :"
+                      : "ثانياً: الحصيلة الإحصائية لنتائج القسم بعد تصحيح الفرض المحروس:"}
                   </h4>
                   <table className="w-full border-collapse border border-slate-400 text-[11px] text-center bg-white">
                     <thead>
@@ -6144,8 +7219,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 <div className="space-y-2">
                   <h4 className="font-black text-xs text-slate-950">
                     {isFr
-                      ? "II. Répartition des élèves par tranches de notes :"
-                      : "ثانياً: توزيع المتعلمين حسب فئات النقط المحصل عليها:"}
+                      ? "III. Répartition des élèves par tranches de notes :"
+                      : "ثالثاً: توزيع المتعلمين حسب فئات النقط المحصل عليها وتفييء الدعم:"}
                   </h4>
                   <table className="w-full border-collapse border border-slate-400 text-[11px] text-center bg-white">
                     <thead>
@@ -6321,7 +7396,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       {renderDocumentHeader(isDM ? modelCode : undefined)}
                     </div>
 
-                    {/* ترويسة نمط الفرض المنزلي والأهداف التكوينية */}
+                    {/* ترويسة نمط الفرض المنزلي والأهداف التكوينية + شارة رمز QR الفريد لصفحة الحل */}
                     {isDM && !isMission && (
                       <div data-sync-section="SPEC_TABLE" className="avoid-break bg-indigo-50/50 border border-indigo-200/90 rounded-xl p-3.5 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-1.5">
@@ -6352,11 +7427,29 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                             </span>
                           </div>
                         </div>
-                        <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                          {isFr
-                            ? MOROCCAN_DM_PRESETS[moroccanDMType]?.descriptionFr
-                            : MOROCCAN_DM_PRESETS[moroccanDMType]?.descriptionAr}
-                        </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium flex-1">
+                            {isFr
+                              ? MOROCCAN_DM_PRESETS[moroccanDMType]?.descriptionFr
+                              : MOROCCAN_DM_PRESETS[moroccanDMType]?.descriptionAr}
+                          </p>
+                          <HomeworkSolutionQrCard
+                            homeworkId={activeHomeworkDocId}
+                            dmNumber={dmNumber}
+                            titleAr={customDocTitle || `الفرض المنزلي ${dmNumber}`}
+                            dueDate={dmDueDate}
+                            trackCode={track.code}
+                            trackTitleAr={track.labelAr}
+                            trackTitleFr={track.labelFr}
+                            semester={sem}
+                            moroccanDMType={moroccanDMType}
+                            docLang={isFr ? "FR" : "AR"}
+                            variationSeed={variationSeed}
+                            system={system}
+                            compactHeaderBadge={true}
+                            onOpenSolutionPage={onOpenHomeworkSolutionPage}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -6441,7 +7534,37 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       );
                     })()}
 
-                    <div data-sync-section="EXERCISES" className="space-y-6">
+                    <div
+                      data-sync-section="EXERCISES-CONTAINER"
+                      className="exercises-container space-y-6"
+                    >
+                      {!isDM && (
+                        /* كبسولة المسارات الفارقية A/B/C لتوجيه المتعلمين داخل السلسلة */
+                        <div className="avoid-break p-3 rounded-xl bg-slate-900 text-white space-y-2 border border-slate-700">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-1.5 text-xs font-black">
+                            <span className="text-amber-300 flex items-center gap-1.5">
+                              <span>🎯</span>
+                              <span>{isFr ? "Parcours d'Apprentissage Différenciés (Série TD) :" : "المسارات الفارقية الموجهة للسلسلة (حسب مستوى التحكم):"}</span>
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-400">Socle → Maîtrise → Excellence</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10.5px]">
+                            <div className="bg-slate-800/90 p-2 rounded-lg border border-sky-800 space-y-0.5">
+                              <span className="font-bold text-sky-300 block">{isFr ? "Parcours A (Socle) :" : "مسار الأساسيات (A):"}</span>
+                              <span className="text-slate-300">{isFr ? "Exercices 1, 2 et 3 — Automatismes" : "التمارين 1 و 2 و 3 — أوتوماتيزمات وتطبيق مباشر"}</span>
+                            </div>
+                            <div className="bg-slate-800/90 p-2 rounded-lg border border-emerald-800 space-y-0.5">
+                              <span className="font-bold text-emerald-300 block">{isFr ? "Parcours B (Maîtrise) :" : "مسار التمكين (B):"}</span>
+                              <span className="text-slate-300">{isFr ? "Exercices 2, 3, 4 et 5 — Méthodes types" : "التمارين 2 و 3 و 4 و 5 — طرائق ونمط الامتحان"}</span>
+                            </div>
+                            <div className="bg-slate-800/90 p-2 rounded-lg border border-amber-800 space-y-0.5">
+                              <span className="font-bold text-amber-300 block">{isFr ? "Parcours C (Excellence) :" : "مسار التميز (C):"}</span>
+                              <span className="text-slate-300">{isFr ? "Exercices 4, 5 et 6 — Défis & Olympiades" : "التمارين 4 و 5 و 6 — استمثال وتحدي الأولمبياد"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {!isDM ? (
                         /* نمط سلسلة التمارين (Série TD) : توليد وعرض التمارين بالعدد الذي حدده الأستاذ (serieExerciseCount) */
                         generateCustomCountSerieExercises(baseDsLessons, serieExerciseCount, modelCode).map((block, exIdx) => {
@@ -6473,6 +7596,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           return (
                             <div
                               key={exIdx}
+                              id={`reading-mode-exercise-${exIdx + 1}`}
+                              data-reading-exercise-anchor={`reading-mode-exercise-${exIdx + 1}`}
+                              data-exercise-icon-type={resolveLessonHeaderIcon(associatedLesson)?.id || "FUNCTION"}
                               style={
                                 serieBranchTheme
                                   ? { borderColor: serieBranchTheme.borderHex }
@@ -6514,6 +7640,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                       latexPackageTheme === "TCOLORBOX"
                                     }
                                     isFr={isFr}
+                                    showReadingModeTypeLabel={readingModeConfig.enabled}
                                   />
                                   <span className="bg-indigo-950 text-amber-300 text-[11px] font-mono px-2.5 py-0.5 rounded font-black">
                                     {isFr ? `EX ${exIdx + 1}` : `التمرين ${exIdx + 1}`}
@@ -6643,6 +7770,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                               {includeDetailedSolutions &&
                                 solutionDisplayMode === "INLINE_PER_EXERCISE" &&
                                 renderDetailedCorrectionCard(blockCorr, true)}
+
+                              {renderExerciseSolutionQrElement(`serie_ex_${exIdx}`, exIdx, "BOTTOM") ||
+                                renderExerciseSolutionQrElement(`ex_${exIdx}`, exIdx, "BOTTOM")}
                             </div>
                           );
                         })
@@ -6653,7 +7783,19 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           const blocks = getSerieAndDMExercises(
                             lesson,
                             dmSubType,
-                            modelCode
+                            modelCode,
+                            variationSeed,
+                            dsQuestionDensity,
+                            shuffleQuestions
+                          );
+                          const dmPartAMetas = getQuestionBaremesAndLevels(
+                            lesson.weight,
+                            Math.max(1, blocks[0]?.questionsFr.length || 1),
+                            n1,
+                            n2,
+                            n3,
+                            lesson.customQuestionBaremes,
+                            lesson.customQuestionLevels
                           );
                           const dmGgbResource = getAutoGeoGebraResourceForLesson(
                             lesson,
@@ -6670,6 +7812,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           return (
                             <div
                               key={idx}
+                              id={`reading-mode-exercise-${idx + 1}`}
+                              data-reading-exercise-anchor={`reading-mode-exercise-${idx + 1}`}
+                              data-exercise-icon-type={resolveLessonHeaderIcon(lesson)?.id || "FUNCTION"}
                               style={
                                 dmBranchTheme
                                   ? { borderColor: dmBranchTheme.borderHex }
@@ -6711,6 +7856,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                       latexPackageTheme === "TCOLORBOX"
                                     }
                                     isFr={isFr}
+                                    showReadingModeTypeLabel={readingModeConfig.enabled}
                                   />
                                   {dmBranchTheme && !resolveLessonHeaderIcon(lesson) && (
                                     <span className="w-6 h-6 rounded-md bg-white/20 text-amber-200 border border-white/30 inline-flex items-center justify-center font-serif text-xs font-black">
@@ -6755,6 +7901,11 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                         : dmBranchTheme.branchBadgeAr}
                                     </span>
                                   )}
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                                    {isFr
+                                      ? MOROCCAN_DM_PRESETS[moroccanDMType]?.titleFr
+                                      : MOROCCAN_DM_PRESETS[moroccanDMType]?.titleAr}
+                                  </span>
                                 </div>
                                 <span className="font-mono font-bold text-indigo-900 bg-indigo-50 px-2.5 py-0.5 rounded-md tabular-nums text-xs">
                                   {exPoints} {isFr ? "points" : "نقط"} ({lesson.weight}%)
@@ -6788,9 +7939,28 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                       </div>
 
                                       <ol className="list-decimal list-inside space-y-2 text-xs text-slate-800 leading-relaxed">
-                                        {activeQs.map((q, qIdx) => (
+                                        {activeQs.map((q, qIdx) => {
+                                          const qMeta =
+                                            bIdx === 0 ? dmPartAMetas[qIdx] : undefined;
+                                          const fallbackPts =
+                                            blockCorr.solutions[qIdx]?.bareme || "1.0";
+                                          const fallbackLvl =
+                                            bIdx === 0
+                                              ? qMeta?.level || "N1"
+                                              : bIdx === 1
+                                              ? "N2"
+                                              : "N3";
+                                          const displayPts = qMeta?.points || fallbackPts;
+                                          return (
                                           <li key={qIdx} className="space-y-1">
-                                            <span><MathText text={q} /></span>
+                                            <div className="inline">
+                                              <span><MathText text={q} /></span>
+                                              {showQuestionBareme && (
+                                                <span className="inline-block mx-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
+                                                  [{displayPts} {isFr ? "pt" : "ن"} · {fallbackLvl}]
+                                                </span>
+                                              )}
+                                            </div>
                                             {isBi && block.questionsFr[qIdx] && (
                                               <div
                                                 dir="ltr"
@@ -6801,7 +7971,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                             )}
                                             {includeAnswerWorkspace &&
                                               renderStudentAnswerWorkspace(
-                                                qIdx === 0 ? "N1" : qIdx === 1 ? "N2" : "N3",
+                                                fallbackLvl,
                                                 undefined,
                                                 true,
                                                 {
@@ -6809,12 +7979,13 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                                   solutionText: isFr
                                                     ? blockCorr.solutions[qIdx]?.solutionTextFr
                                                     : blockCorr.solutions[qIdx]?.solutionTextAr,
-                                                  points: blockCorr.solutions[qIdx]?.bareme,
+                                                  points: displayPts,
                                                   workspaceId: `dm_ex_${idx}_b_${bIdx}_q_${qIdx}`,
                                                 }
                                               )}
                                           </li>
-                                        ))}
+                                          );
+                                        })}
                                       </ol>
 
                                       {includeHints && (
@@ -6866,6 +8037,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 ))}
 
                               {renderExerciseFigureDropZone(`dm_${idx}`)}
+
+                              {renderExerciseSolutionQrElement(`dm_${idx}`, idx, "BOTTOM") ||
+                                renderExerciseSolutionQrElement(`ex_${idx}`, idx, "BOTTOM")}
                             </div>
                           );
                         })
@@ -7028,43 +8202,238 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                         </div>
                       </div>
                     )}
+                    {/* بطاقة رمز الاستجابة السريعة (QR Code) الفريد الخاص بالفرض المنزلي للولوج المباشر لصفحة الحل النموذجي */}
+                    {isDM && (
+                      <HomeworkSolutionQrCard
+                        homeworkId={activeHomeworkDocId}
+                        dmNumber={dmNumber}
+                        titleAr={customDocTitle || `الفرض المنزلي ${dmNumber}`}
+                        dueDate={dmDueDate}
+                        trackCode={track.code}
+                        trackTitleAr={track.labelAr}
+                        trackTitleFr={track.labelFr}
+                        semester={sem}
+                        moroccanDMType={moroccanDMType}
+                        docLang={isFr ? "FR" : "AR"}
+                        variationSeed={variationSeed}
+                        system={system}
+                        onOpenSolutionPage={onOpenHomeworkSolutionPage}
+                      />
+                    )}
                   </div>
                 )
               )}
 
-              {showAnswerKey && (
-                <div data-sync-section="SOLUTIONS" className="avoid-break space-y-3 pt-4 border-t-2 border-dashed border-slate-300">
+              {(showAnswerKey || onlyPrintSolutions) && (
+                <div
+                  id="homework-solution-sheet"
+                  data-sync-section="SOLUTIONS"
+                  className="avoid-break space-y-3 pt-4 border-t-2 border-dashed border-slate-300"
+                >
+                  {/* شريط ترويسة صفحة الحل النموذجي للفرض المنزلي عند فتحها مباشرة عبر مسح رمز QR */}
+                  {isDM && (
+                    <div className="bg-emerald-950 text-white rounded-xl p-3.5 border-2 border-emerald-700 flex flex-wrap items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded font-mono">
+                            {generateHomeworkAssignmentVerificationCode({
+                              homeworkId: activeHomeworkDocId,
+                              dmNumber,
+                              dueDate: dmDueDate,
+                              trackCode: track.code,
+                              semester: sem,
+                              moroccanDMType,
+                              variationSeed,
+                            })}
+                          </span>
+                          <h4 className="font-black text-sm text-white">
+                            {isFr
+                              ? `Page Officielle du Corrigé Détaillé — Devoir Maison (${dmNumber})`
+                              : `صفحة التصحيح النموذجي المفصل وسلم التنقيط — الفرض المنزلي (${dmNumber})`}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-emerald-200">
+                          {isFr
+                            ? `${track.labelFr} · Semestre ${sem} · Date de remise : ${dmDueDate}`
+                            : `${track.labelAr} · الدورة ${sem === "S1" ? "الأولى" : "الثانية"} · تاريخ الإرجاع: ${dmDueDate}`}
+                        </p>
+                      </div>
+
+                      {onlyPrintSolutions && onExitHomeworkSolutionOnlyMode && (
+                        <button
+                          type="button"
+                          onClick={onExitHomeworkSolutionOnlyMode}
+                          className="no-print px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-emerald-950 text-xs font-black transition cursor-pointer shadow-xs"
+                        >
+                          {isFr
+                            ? "← Afficher le Sujet Complet du Devoir Maison"
+                            : "← العودة لعرض موضوع الفرض المنزلي كاملاً"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isDM && isBeforeDueDate && !unlockFullSolutionEarly && (
+                    <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-slate-800 space-y-3 no-print mb-2">
+                      <div className="flex items-center justify-between gap-2 border-b border-amber-200 pb-2">
+                        <div className="flex items-center gap-2 text-amber-900 font-black text-xs sm:text-sm">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                          <span>
+                            {isFr
+                              ? `🔒 Solution complète verrouillée jusqu'au : ${dmDueDate}`
+                              : `🔒 الحل النموذجي المفصل مقفل مؤقتاً إلى غاية أجل الإرجاع: ${dmDueDate}`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUnlockFullSolutionEarly(true)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10.5px] cursor-pointer shadow-xs"
+                          title="كشف الحل النموذجي الكامل للأستاذ"
+                        >
+                          {isFr ? "Déverrouiller pour l'Enseignant" : "كشف الحل للأستاذ (Teacher Override)"}
+                        </button>
+                      </div>
+                      <p className="text-[11.5px] text-amber-950 leading-relaxed">
+                        {isFr
+                          ? "Conformément aux directives pédagogiques, les indices méthodologiques progressifs sont affichés ci-dessous pour guider l'élève dans sa recherche sans divulguer la solution complète avant la remise des copies."
+                          : "طبقاً للتوجيهات البيداغوجية، يتم عرض الإرشادات المنهجية والتلميحات المتدرجة لمساعدة التلميذ على التفكير والبحث الشخصي دون إفساد فرصة الإنجاز الذاتي للفرض المنزلي."}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+                        <div className="p-2.5 rounded-lg bg-white border border-amber-200 shadow-2xs space-y-1">
+                          <div className="font-black text-amber-900 text-[11px]">💡 إرشاد 1: فكرة الانطلاق</div>
+                          <div className="text-[10.5px] text-slate-600">حدد مجموعة التعريف وحاول كتابة المتطابقة أو التعبير بشكل مبسط قبل الحساب.</div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-white border border-amber-200 shadow-2xs space-y-1">
+                          <div className="font-black text-amber-900 text-[11px]">🔍 إرشاد 2: الخاصية المستهدفة</div>
+                          <div className="text-[10.5px] text-slate-600">استحضر مبرهنة القيم الوسيطية أو إشارة المشتقة لدراسة رتابة الدالة وتغيراتها.</div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-white border border-amber-200 shadow-2xs space-y-1">
+                          <div className="font-black text-amber-900 text-[11px]">🎯 إرشاد 3: التعليل والاستنتاج</div>
+                          <div className="text-[10.5px] text-slate-600">اربط النتيجة السابقة بفرع المنحنى اللانهائي أو بالوضع النسبي للمستقيم المقارب.</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <h4 className="font-extrabold text-sm text-emerald-950">
                     {isFr
                       ? "Éléments de correction et pistes de résolution détaillée"
                       : "عناصر الإجابة وتوجيهات الحل المفصل"}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    {baseDsLessons.map((lesson, idx) => {
-                      const exPoints = ((lesson.weight * 20) / 100).toFixed(1);
-                      return (
-                        <div
-                          key={idx}
-                          className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-1"
-                        >
-                          <div className="font-bold text-emerald-950 flex justify-between">
-                            <span>
-                              {isFr
-                                ? `Corrigé — ${lesson.lessonFr}`
-                                : `تصحيح — ${lesson.lessonAr}`}
-                            </span>
-                            <span className="font-mono font-bold tabular-nums">
-                              {isDM ? `${exPoints} pts` : `${lesson.weight}%`}
-                            </span>
-                          </div>
-                          <p className="text-slate-600 text-[11px] leading-relaxed">
-                            {isFr
-                              ? `Validation des étapes clés sur « ${lesson.capacitiesFr[0]} » et rédaction rigoureuse des justifications.`
-                              : `التحقق من المراحل الاستدلالية الأساسية حول « ${lesson.capacitiesAr[0]} » وسلامة التحرير الرياضي.`}
-                          </p>
-                        </div>
-                      );
-                    })}
+                    {!isDM
+                      ? generateCustomCountSerieExercises(
+                          baseDsLessons,
+                          serieExerciseCount,
+                          "A"
+                        ).map((block, bIdx) => {
+                          const lessonForEx =
+                            baseDsLessons[bIdx % Math.max(1, baseDsLessons.length)] ||
+                            baseDsLessons[0];
+                          const blockCorr = generateSerieBlockCorrection(
+                            block,
+                            bIdx,
+                            lessonForEx,
+                            "A"
+                          );
+                          return (
+                            <div
+                              key={bIdx}
+                              className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-1.5"
+                            >
+                              <div className="font-bold text-emerald-950 flex justify-between gap-2 border-b border-emerald-200/70 pb-1">
+                                <span>
+                                  {isFr ? block.badgeFr : block.badgeAr}
+                                </span>
+                                <span className="font-mono font-bold tabular-nums text-emerald-800">
+                                  {blockCorr.totalPoints}
+                                </span>
+                              </div>
+                              <ul className="space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                                {blockCorr.solutions.map((sol, sIdx) => (
+                                  <li key={sIdx} className="flex items-start gap-1.5">
+                                    <span className="font-mono font-bold text-emerald-800 shrink-0">
+                                      ({sol.bareme})
+                                    </span>
+                                    <span>
+                                      <MathText
+                                        text={
+                                          isFr
+                                            ? sol.solutionTextFr
+                                            : sol.solutionTextAr
+                                        }
+                                      />
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        })
+                      : baseDsLessons.map((lesson, idx) => {
+                          const exPoints = ((lesson.weight * 20) / 100).toFixed(1);
+                          const dmBlocks = getSerieAndDMExercises(
+                            lesson,
+                            dmSubType,
+                            "A",
+                            variationSeed,
+                            dsQuestionDensity,
+                            shuffleQuestions
+                          );
+                          return (
+                            <div
+                              key={idx}
+                              className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-2"
+                            >
+                              <div className="font-bold text-emerald-950 flex justify-between border-b border-emerald-200/70 pb-1">
+                                <span>
+                                  {isFr
+                                    ? `Corrigé — Problème ${idx + 1} (${lesson.lessonFr})`
+                                    : `تصحيح — التمرين التوليفي ${idx + 1} (${lesson.lessonAr})`}
+                                </span>
+                                <span className="font-mono font-bold tabular-nums">
+                                  {exPoints} pts
+                                </span>
+                              </div>
+                              {dmBlocks.map((b, bIdx) => {
+                                const corr = generateSerieBlockCorrection(
+                                  b,
+                                  bIdx,
+                                  lesson,
+                                  "A"
+                                );
+                                return (
+                                  <div key={bIdx} className="space-y-1">
+                                    <div className="text-[10.5px] font-bold text-emerald-900">
+                                      {isFr ? b.badgeFr : b.badgeAr}
+                                    </div>
+                                    <ul className="space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                                      {corr.solutions.map((sol, sIdx) => (
+                                        <li
+                                          key={sIdx}
+                                          className="flex items-start gap-1.5"
+                                        >
+                                          <span className="font-mono font-bold text-emerald-800 shrink-0">
+                                            ({sol.bareme})
+                                          </span>
+                                          <span>
+                                            <MathText
+                                              text={
+                                                isFr
+                                                  ? sol.solutionTextFr
+                                                  : sol.solutionTextAr
+                                              }
+                                            />
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                   </div>
                 </div>
               )}
@@ -7098,7 +8467,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
               {renderDocumentHeader()}
             </div>
 
-            {/* بطاقة التوصيف والترويسة البيداغوجية الرسمية للجذاذة */}
+            {/* بطاقة التوصيف والترويسة البيداغوجية الرسمية للجذاذة أو ملخص الدرس */}
             <div data-sync-section="SPEC_TABLE" className="avoid-break bg-slate-900 text-white rounded-2xl p-4 md:p-5 border border-cyan-900/50 space-y-3.5 shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -7107,7 +8476,11 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </span>
                   <div>
                     <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-wider uppercase">
-                      {isMission
+                      {ficheContentDetailLevel === "SYNTHETIC_OFFICIAL"
+                        ? isFr
+                          ? "FICHE RÉSUMÉ DE COURS, FORMULAIRE & MÉTHODES TYPES (AIDE-MÉMOIRE OFFICIEL)"
+                          : "ملخص الدرس الرسمي المركز وبطاقة الطرائق المنهجية للتحرير الرياضي (Fiche Résumé & Méthodes)"
+                        : isMission
                         ? "FICHE DE SÉQUENCE PÉDAGOGIQUE & INGÉNIERIE DIDACTIQUE (BOEN / AEFE)"
                         : isFr
                         ? "FICHE PÉDAGOGIQUE OFFICIELLE & SCÉNARIO DIDACTIQUE COMPLET"
@@ -7560,6 +8933,64 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </div>
                 </div>
               )}
+
+              {/* بطاقة الطرائق المنهجية للتحرير الرياضي وشبكة التملك الذاتي (Fiches Méthodes & Checklist) */}
+              <div className="avoid-break bg-white border-2 border-indigo-900 rounded-2xl p-4 md:p-5 space-y-3.5 shadow-2xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-950 text-amber-300 font-mono text-[11px] px-2.5 py-0.5 rounded font-black">
+                      {isFr ? "FICHES MÉTHODES & RÉDACTION" : "بطاقة الطرائق ومنهجية التحرير"}
+                    </span>
+                    <h5 className="font-black text-xs md:text-sm text-indigo-950">
+                      {isFr
+                        ? "Stratégies de Rédaction Mathématique aux Devoirs Surveillés & Examen"
+                        : "دليل الطرائق المنهجية للإجابة على الأسئلة النمطية في الفروض والامتحانات"}
+                    </h5>
+                  </div>
+                  <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded font-bold">
+                    {isFr ? "Comment démontrer que... ?" : "كيف نبرهن بدقة أن...؟"}
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-right text-[11px] border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 text-white font-bold">
+                        <th className="p-2 border-l border-slate-800">
+                          {isFr ? "Capacité / Question Type au DS" : "المهارة المستهدفة / السؤال النمطي في الفرض"}
+                        </th>
+                        <th className="p-2 border-l border-slate-800">
+                          {isFr ? "Outil & Hypothèses à vérifier" : "الأداة الرياضية والشروط القبلية اللازمة"}
+                        </th>
+                        <th className="p-2">
+                          {isFr ? "Schéma de Rédaction Officielle" : "قالب التحرير النموذجي لضمان النقطة الكاملة"}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {(isFr ? fiche.expectedCapacitiesFr : fiche.expectedCapacitiesAr)
+                        .slice(0, 4)
+                        .map((capText, cIdx) => (
+                          <tr key={cIdx} className="hover:bg-slate-50">
+                            <td className="p-2 border-l border-slate-200 font-bold text-slate-900">
+                              {cIdx + 1}. {capText}
+                            </td>
+                            <td className="p-2 border-l border-slate-200 text-slate-700">
+                              {isFr
+                                ? "Vérifier le domaine de définition et les conditions du théorème sur l'intervalle."
+                                : "التحقق الصريح من مجموعة التعريف وشروط المبرهنة على المجال المدروس."}
+                            </td>
+                            <td className="p-2 text-indigo-950 font-medium bg-indigo-50/40">
+                              {isFr
+                                ? "« On a [Hypothèses], donc d'après [Théorème], on conclut que [Résultat]. »"
+                                : "« بما أن [الشروط محققة] على المجال، فإنه حسب [المبرهنة الرسمية] نستنتج أن [النتيجة المؤطرة]. »"}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
             {/* 3. المحطة الثالثة: السيناريو الديداكتيكي وتدبير الحصص */}
@@ -7849,6 +9280,127 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 </div>
               </div>
             )}
+
+            {/* 6. المحطة السادسة: مخطط تدبير السبورة الثلاثية وملخص دفتر النصوص الرسمي (ينطلق 08:00 صباحاً) */}
+            {(() => {
+              const bbPlan = generateTriptychBlackboardPlan(ficheLesson);
+              const cahierSummary = generateCahierDeTextesSummary(ficheLesson, 4);
+              return (
+                <div className="avoid-break space-y-4 pt-2">
+                  {/* مخطط تدبير السبورة الثلاثية */}
+                  <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-5 space-y-3 border border-slate-700 shadow-md">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-serif text-amber-300 font-black text-base">☵</span>
+                        <h5 className="font-black text-xs md:text-sm text-amber-200">
+                          {isFr ? "Plan de Gestion du Tableau Noir Triptyque (Ingénierie Didactique) :" : "مخطط تدبير السبورة الثلاثية لحصة الرياضيات (الهندسة الديداكتيكية):"}
+                        </h5>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {isFr ? "Organisation visuelle de classe" : "التنظيم البصري لفضاء السبورة"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
+                      <div className="bg-emerald-950/80 border border-emerald-800/80 p-3 rounded-xl space-y-1.5">
+                        <span className="font-black text-amber-300 block border-b border-emerald-800 pb-1">
+                          1. {isFr ? bbPlan.leftPanelFr : bbPlan.leftPanelAr}
+                        </span>
+                        <ul className="space-y-0.5 text-emerald-200 text-[10.5px]">
+                          {(isFr ? bbPlan.leftPanelItemsFr : bbPlan.leftPanelItemsAr).map((item, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span>•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-700 space-y-1.5">
+                        <span className="font-black text-cyan-300 block border-b border-slate-800 pb-1">
+                          2. {isFr ? bbPlan.centerPanelFr : bbPlan.centerPanelAr}
+                        </span>
+                        <ul className="space-y-0.5 text-slate-300 text-[10.5px]">
+                          {(isFr ? bbPlan.centerPanelItemsFr : bbPlan.centerPanelItemsAr).map((item, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span>•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-indigo-950/80 border border-indigo-800/80 p-3 rounded-xl space-y-1.5">
+                        <span className="font-black text-teal-300 block border-b border-indigo-800 pb-1">
+                          3. {isFr ? bbPlan.rightPanelFr : bbPlan.rightPanelAr}
+                        </span>
+                        <ul className="space-y-0.5 text-indigo-200 text-[10.5px]">
+                          {(isFr ? bbPlan.rightPanelItemsFr : bbPlan.rightPanelItemsAr).map((item, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span>•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ملخص دفتر النصوص الرسمي (ينطلق على الساعة 08:00 صباحاً) */}
+                  <div className="bg-white border border-slate-300 rounded-2xl p-4 md:p-5 space-y-3 shadow-2xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                      <span className="font-black text-xs md:text-sm text-slate-950 flex items-center gap-1.5">
+                        <span>📖</span>
+                        <span>
+                          {isFr
+                            ? "Cahier de Textes Officiel — Synthèse des Séances (Démarrage 08:00) :"
+                            : "ملخص سجل دفتر النصوص الرسمي — توزيع الحصص والتكليفات (ينطلق 08:00 صباحاً):"}
+                        </span>
+                      </span>
+                      <span className="text-[10px] font-mono text-indigo-900 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded font-bold">
+                        {isFr ? "Horaire Officiel : dès 08:00" : "التوقيت الرسمي: ابتداءً من 08:00 صباحاً"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      {cahierSummary.map((cs) => (
+                        <div key={cs.sessionNumber} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
+                          <div className="flex flex-wrap justify-between items-center gap-1 border-b border-slate-200 pb-1 text-slate-900 font-bold">
+                            <span className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-900 text-cyan-300 font-mono text-[10px]">
+                                {cs.timeSlotLabel}
+                              </span>
+                              <span>{isFr ? cs.courseTitleFr : cs.courseTitleAr}</span>
+                            </span>
+                            <span className="font-mono text-[10px] text-indigo-800 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                              {cs.curriculumRefCode}
+                            </span>
+                          </div>
+                          <div className="text-[10.5px] font-semibold text-teal-800">
+                            {isFr ? cs.sessionTypeFr : cs.sessionTypeAr}
+                          </div>
+                          <div className="text-[11px] text-slate-700 space-y-0.5">
+                            <span className="font-semibold block">{isFr ? "Activités conduites :" : "الأنشطة المنجزة:"}</span>
+                            <ul className="list-disc list-inside text-[10.5px] text-slate-600">
+                              {(isFr ? cs.activitiesConductedFr : cs.activitiesConductedAr).map((act, idx) => (
+                                <li key={idx}>{act}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="text-[10.5px] text-indigo-900 font-medium pt-1 border-t border-slate-200/60">
+                            <strong>{isFr ? "Devoirs :" : "التكليفات:"} </strong>
+                            <span>{isFr ? cs.homeworkAssignedFr : cs.homeworkAssignedAr}</span>
+                          </div>
+                          <div className="text-[10px] text-emerald-800 font-mono">
+                            ✓ {isFr ? cs.absencesRecordFr : cs.absencesRecordAr}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
@@ -8763,6 +10315,22 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           </div>
         );
       })()}
+      {/* سلم التنقيط التفصيلي المعاير بـ 0.25 ن وجسور الإنقاذ الديداكتيكية عند تفعيله */}
+      {bindingAndCropConfig.includeQuarterPointRubric && (
+        <PrintableQuarterPointMicroRubricCard
+          lessons={baseDsLessons}
+          isFr={isFr}
+        />
+      )}
+
+      {/* بطاقة اليقظة الجبرية والأمثلة المضادة الحاسمة عند تفعيلها */}
+      {bindingAndCropConfig.includeCounterExamplesCard && (
+        <PrintableAlgebraicCounterExamplesCard
+          lessons={baseDsLessons}
+          isFr={isFr}
+        />
+      )}
+
       {/* صندوق رمز الاستجابة السريعة (QR Code) للنسخة التفاعلية الرقمية للفرض في أسفل وثيقة PDF */}
       {effectiveIncludeInteractiveQr && (
         <InteractiveExamQrFooter

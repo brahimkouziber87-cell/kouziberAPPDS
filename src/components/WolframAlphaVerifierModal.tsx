@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { evaluate as mathEvaluate } from "mathjs";
 import {
   AlertTriangle,
   BookOpen,
@@ -197,7 +198,7 @@ const WOLFRAM_PLOT_PRESETS: WolframPlotPreset[] = [
  */
 function evaluateWolframMathExpr(rawExpr: string, xVal: number): number {
   const cleaned = rawExpr.trim();
-  if (!cleaned) return NaN;
+  if (!cleaned || cleaned.length > 260) return NaN;
 
   try {
     let expr = cleaned
@@ -210,7 +211,7 @@ function evaluateWolframMathExpr(rawExpr: string, xVal: number): number {
       .replace(/\\tan/g, "tan")
       .replace(/\\sqrt\{([^}]+)\}/g, "sqrt($1)")
       .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "(($1)/($2))")
-      .replace(/π|pi\b/gi, "Math.PI")
+      .replace(/π|pi\b/gi, "pi")
       // تحويل e^(...) أو e^x إلى exp(...)
       .replace(/\be\s*\^\s*\(([^)]+)\)/g, "exp($1)")
       .replace(/\be\s*\^\s*([a-zA-Z0-9_]+)/g, "exp($1)")
@@ -221,19 +222,14 @@ function evaluateWolframMathExpr(rawExpr: string, xVal: number): number {
       .replace(/\bx\s*(\()/g, "x*$1")
       .replace(/(\d)\s*(ln|log|exp|sin|cos|tan|sqrt|abs)\b/g, "$1*$2")
       .replace(/\bx\s*(ln|log|exp|sin|cos|tan|sqrt|abs)\b/g, "x*$1")
-      .replace(/\^/g, "**")
-      .replace(/\bln\s*\(/g, "Math.log(")
-      .replace(/\blog\s*\(/g, "Math.log10(")
-      .replace(/\bexp\s*\(/g, "Math.exp(")
-      .replace(/\bsin\s*\(/g, "Math.sin(")
-      .replace(/\bcos\s*\(/g, "Math.cos(")
-      .replace(/\btan\s*\(/g, "Math.tan(")
-      .replace(/\bsqrt\s*\(/g, "Math.sqrt(")
-      .replace(/\babs\s*\(/g, "Math.abs(")
-      .replace(/\be\b/g, "Math.E");
+      .replace(/\*\*/g, "^")
+      .replace(/\bln\s*\(/g, "log(")
+      .replace(/\blog\s*\(/g, "log10(");
 
-    const fn = new Function("x", `"use strict"; return (${expr});`);
-    const y = Number(fn(xVal));
+    // Reject assignment or statement separators for strict expression-only sandbox safety
+    if (/[=;\[\]{}]/.test(expr)) return NaN;
+
+    const y = Number(mathEvaluate(expr, { x: xVal }));
     return Number.isFinite(y) ? y : NaN;
   } catch {
     return NaN;

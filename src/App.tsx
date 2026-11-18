@@ -20,6 +20,7 @@ import {
   FileCheck2,
   FileDown,
   FileJson,
+  FilePlus2,
   FileSpreadsheet,
   FileText,
   Filter,
@@ -27,6 +28,7 @@ import {
   GraduationCap,
   Highlighter,
   Layers,
+  LayoutTemplate,
   Link2,
   LogOut,
   MapPin,
@@ -34,7 +36,9 @@ import {
   Mic,
   PenLine,
   Percent,
+  Plus,
   Printer,
+  QrCode,
   RectangleHorizontal,
   RectangleVertical,
   Redo2,
@@ -55,6 +59,11 @@ import {
   Zap,
   ZoomIn,
   ZoomOut,
+  Scissors,
+  Tv2,
+  TrendingUp,
+  Star,
+  Split,
 } from "lucide-react";
 import { User } from "firebase/auth";
 import {
@@ -109,9 +118,26 @@ import {
   AppliedTitleCalligraphyConfig,
   ArabicCalligraphySimulator,
 } from "./components/ArabicCalligraphySimulator";
+import {
+  CustomUploadedFontItem,
+  deleteCustomUploadedFont,
+  injectCustomUploadedFontsToDocument,
+  loadCustomUploadedFonts,
+  readAndAddCustomFontFile,
+} from "./utils/customFontsStorage";
+import {
+  buildAllInOneDsArchivePackManifest,
+  buildIsoDifficultyModelComparison,
+  computeExamChronoDidacticReport,
+  DidacticPackPresetId,
+  getDidacticPackPresetFlags,
+  getLessonEvaluationHistoryAcrossDS,
+  SubQuestionDecompositionMode,
+} from "./utils/dsSupervisedExamEnhancements";
 import { generateOfflineSourceCode } from "./utils/docGenerator";
 import {
   exportBookletImposedPDF,
+  exportInstitutionalFoldedA5PDF,
   computePrintMediaQueryMetrics,
   exportPedagogicalAuditReportToPDF,
   exportPreviewToPDF,
@@ -125,7 +151,11 @@ import {
   exportEvaluationGridToExcel,
   exportMassarPronoteGradeSheet,
   GridGranularity,
+  EvalGridCustomConfig142_08,
+  createCustomConfigFromTemplate,
+  applyEvalGridCustomConfigToGridData,
 } from "./utils/evaluationGridExporter";
+import { EvalGridTemplates142_08Panel } from "./components/EvalGridTemplates142_08Panel";
 import {
   convertBlueprintToSimulatedLessons,
   IMPORTED_EXAMS_ARCHIVE,
@@ -143,47 +173,42 @@ import {
   PrintablePreview,
   resolveAutoDocViewMarginModel,
 } from "./components/PrintablePreview";
+import type { GenerationDiagnosticEntry } from "./components/AiGenerationDiagnosticsModal";
 import { TouchPreviewCanvas } from "./components/TouchPreviewCanvas";
 import {
   SpecMatrix2DInspectorCard,
   AdaptiveApplyPayload,
 } from "./components/SpecMatrix2DInspectorCard";
 import { TeacherLogo, TeacherLogoVariant } from "./components/TeacherLogo";
-import { SideNavigationMenu } from "./components/SideNavigationMenu";
 import { TopNavigationHeader } from "./components/TopNavigationHeader";
-import { APKInstallModal } from "./components/APKInstallModal";
-import { SmartQcmScannerModal } from "./components/SmartQcmScannerModal";
-import { IndividualRemediationStudioModal } from "./components/IndividualRemediationStudioModal";
-import { CrossPlatformSyncModal } from "./components/CrossPlatformSyncModal";
+import { OfflineStatusBanner } from "./components/OfflineStatusBanner";
 import { MathSymbolPaletteBar } from "./components/MathSymbolPaletteBar";
 import {
   DocumentVoiceDictationStudio,
   InlineVoiceDictationButton,
 } from "./components/VoiceDictationControl";
-import { ExamBaremeManagerModal } from "./components/ExamBaremeManagerModal";
-import { ExportCenterModal } from "./components/ExportCenterModal";
 import {
-  ExportDashboardModal,
   ExportHistoryEntry,
   loadExportHistory,
   recordExportHistoryEntry,
-} from "./components/ExportDashboardModal";
+  BatchPrintSharedConfig,
+} from "./utils/exportHistoryStorage";
+import type { ExamOcrScanResult } from "./components/ExamOcrCurriculumMapperModal";
 import { MoroccanDMType, MOROCCAN_DM_PRESETS } from "./utils/seriesGenerator";
 import {
   convertExercisesToInteractiveQuiz,
   InteractiveQuizData,
 } from "./utils/quizGenerator";
-import { InteractiveQuizModal } from "./components/InteractiveQuizModal";
-import { WolframAlphaVerifierModal } from "./components/WolframAlphaVerifierModal";
-import { ExamConfigStorageModal } from "./components/ExamConfigStorageModal";
 import { ExamConfigBlueprintJSON, loadSavedConfigVault } from "./utils/examConfigStorage";
-import { BatchPrintModal, BatchPrintItem, BatchPrintOptions } from "./components/BatchPrintModal";
-import { DidacticChecklistModal } from "./components/DidacticChecklistModal";
-import { RemedialExamModal } from "./components/RemedialExamModal";
+import type { BatchPrintItem, BatchPrintOptions } from "./components/BatchPrintModal";
 import {
-  AdvancedMathPedagogyModal,
-  AdvancedPedagogyTabId,
-} from "./components/AdvancedMathPedagogyModal";
+  FavoritePedagogicalItem,
+  loadPedagogicalFavorites,
+  savePedagogicalFavorites,
+  toggleFavoriteItem,
+  isItemInFavorites,
+} from "./utils/pedagogicalFavorites";
+import type { AdvancedPedagogyTabId } from "./components/AdvancedMathPedagogyModal";
 import {
   DEFAULT_TCOLORBOX_CONFIG,
   LATEX_PACKAGE_OPTIONS,
@@ -195,11 +220,45 @@ import {
   TCOLORBOX_SHADING_OPTIONS,
   TcolorboxCustomConfig,
 } from "./utils/latexPackagesAndMath";
-import { PythonAlgorithmLabModal } from "./components/PythonAlgorithmLabModal";
 import {
-  AiPedagogicalTask,
-  PedagogicalAiAssistantModal,
-} from "./components/PedagogicalAiAssistantModal";
+  SEYES_SPACING_OPTIONS,
+  SeyesSpacingPreset,
+  LatexImportMergeMode,
+  ProcessedLatexImportResult,
+  processImportedLatexFile,
+  mergeImportedLatexIntoSource,
+  convertExtractedLatexToLessonItem,
+  normalizeExternalTexToPlatformSystem,
+} from "./utils/latexImporterAndSeyesEngine";
+import type { CentralHubTabId } from "./components/CentralFirebaseExamsAndTexStudioModal";
+import {
+  cleanLatexDocument,
+  SAMPLE_DIRTY_LATEX_WITH_CONFLICTS,
+} from "./utils/latexPreambleAndSymbolCleaner";
+import {
+  PrintLayoutTemplateId,
+  getPrintLayoutTemplate,
+  SmartPageBreakConfig,
+  DEFAULT_SMART_PAGE_BREAK_CONFIG,
+  ReadingModeConfig,
+  DEFAULT_READING_MODE_CONFIG,
+  READING_MODE_SCALE_PRESETS,
+  READING_MODE_PAPER_TONES,
+  READING_MODE_EXERCISE_TYPE_SPECS,
+  ReadingModeExerciseTypeIconId,
+  buildReadingModeExerciseNavigatorItems,
+} from "./utils/printLayoutTemplates";
+import {
+  ExerciseSolutionQrMap,
+  initializeExerciseSolutionQrs,
+} from "./utils/exerciseSolutionQrEngine";
+import type { CommandItem } from "./components/CommandPaletteModal";
+import {
+  buildHomeworkSolutionLink,
+  generateHomeworkAssignmentVerificationCode,
+  renderQrSvgString,
+} from "./utils/qrCodeHelper";
+import type { AiPedagogicalTask } from "./components/PedagogicalAiAssistantModal";
 import { PythonAlgorithmPreset } from "./data/pythonAlgorithms";
 import { generateOverleafZipBundle } from "./utils/overleafZipExporter";
 import {
@@ -216,7 +275,6 @@ import {
   SyncSettingsPayload,
   uploadDocumentToDrive,
 } from "./services/googleDrive";
-import { GoogleDriveSyncModal } from "./components/GoogleDriveSyncModal";
 import {
   isLocalEncryptionEnabled,
   setLocalEncryptionEnabled,
@@ -232,151 +290,257 @@ import {
   runFullEdTechDocumentDiagnostics,
 } from "./utils/mathjsValidator";
 import type { MathInspectorStudioTabId } from "./components/MathTeacherInspectorStudioModal";
+import type { InnovationProposalTabId } from "./components/FourProposalsInnovationStudioModal";
+import type { StrategicProposalTabId } from "./components/SevenStrategicProposalsModal";
+import { PedagogicalStudioProvider } from "./context/PedagogicalStudioContext";
+import { buildPedagogicalDomainStoreSnapshot } from "./utils/sevenStrategicProposalsEngine";
 import {
-  FourProposalsInnovationStudioModal,
-  InnovationProposalTabId,
-} from "./components/FourProposalsInnovationStudioModal";
+  BindingAndCropConfig,
+  DEFAULT_BINDING_AND_CROP_CONFIG,
+} from "./utils/reprographicsAndDidacticsEngine";
+import type { ReprographicsStudioTabId } from "./components/ReprographicsAndTeacherStudioModal";
+import {
+  DOCUMENT_PREFS_STORAGE_KEY,
+  SavedPreferences,
+  DEFAULT_PREFS,
+  loadInitialPrefs,
+} from "./utils/documentPreferencesStorage";
+import {
+  loadCalligraphyFontsOnDemand,
+  shouldLoadDecorativeFonts,
+} from "./utils/lazyFontsLoader";
 
 const MathTeacherInspectorStudioModal = React.lazy(
   () => import("./components/MathTeacherInspectorStudioModal")
 );
+const AiGenerationDiagnosticsModal = React.lazy(() =>
+  import("./components/AiGenerationDiagnosticsModal").then((m) => ({
+    default: m.AiGenerationDiagnosticsModal,
+  }))
+);
+const APKInstallModal = React.lazy(() =>
+  import("./components/APKInstallModal").then((m) => ({
+    default: m.APKInstallModal,
+  }))
+);
+const SmartQcmScannerModal = React.lazy(() =>
+  import("./components/SmartQcmScannerModal").then((m) => ({
+    default: m.SmartQcmScannerModal,
+  }))
+);
+const IndividualRemediationStudioModal = React.lazy(() =>
+  import("./components/IndividualRemediationStudioModal").then((m) => ({
+    default: m.IndividualRemediationStudioModal,
+  }))
+);
+const CrossPlatformSyncModal = React.lazy(() =>
+  import("./components/CrossPlatformSyncModal").then((m) => ({
+    default: m.CrossPlatformSyncModal,
+  }))
+);
+const ExamBaremeManagerModal = React.lazy(() =>
+  import("./components/ExamBaremeManagerModal").then((m) => ({
+    default: m.ExamBaremeManagerModal,
+  }))
+);
+const ExportCenterModal = React.lazy(() =>
+  import("./components/ExportCenterModal").then((m) => ({
+    default: m.ExportCenterModal,
+  }))
+);
+const ExportDashboardModal = React.lazy(() =>
+  import("./components/ExportDashboardModal").then((m) => ({
+    default: m.ExportDashboardModal,
+  }))
+);
+const ExamOcrCurriculumMapperModal = React.lazy(() =>
+  import("./components/ExamOcrCurriculumMapperModal").then((m) => ({
+    default: m.ExamOcrCurriculumMapperModal,
+  }))
+);
+const WeeklyTimetableModal = React.lazy(() =>
+  import("./components/WeeklyTimetableModal").then((m) => ({
+    default: m.WeeklyTimetableModal,
+  }))
+);
+const InteractiveLessonPresentationModal = React.lazy(() =>
+  import("./components/InteractiveLessonPresentationModal").then((m) => ({
+    default: m.InteractiveLessonPresentationModal,
+  }))
+);
+const GeoGebraTemplatesLibraryModal = React.lazy(() =>
+  import("./components/GeoGebraTemplatesLibraryModal").then((m) => ({
+    default: m.GeoGebraTemplatesLibraryModal,
+  }))
+);
+const VoiceCommandStudioModal = React.lazy(() =>
+  import("./components/VoiceCommandStudioModal").then((m) => ({
+    default: m.VoiceCommandStudioModal,
+  }))
+);
+const InteractiveQuizModal = React.lazy(() =>
+  import("./components/InteractiveQuizModal").then((m) => ({
+    default: m.InteractiveQuizModal,
+  }))
+);
+const WolframAlphaVerifierModal = React.lazy(() =>
+  import("./components/WolframAlphaVerifierModal").then((m) => ({
+    default: m.WolframAlphaVerifierModal,
+  }))
+);
+const ExamConfigStorageModal = React.lazy(() =>
+  import("./components/ExamConfigStorageModal").then((m) => ({
+    default: m.ExamConfigStorageModal,
+  }))
+);
+const BatchPrintModal = React.lazy(() =>
+  import("./components/BatchPrintModal").then((m) => ({
+    default: m.BatchPrintModal,
+  }))
+);
+const DidacticChecklistModal = React.lazy(() =>
+  import("./components/DidacticChecklistModal").then((m) => ({
+    default: m.DidacticChecklistModal,
+  }))
+);
+const RemedialExamModal = React.lazy(() =>
+  import("./components/RemedialExamModal").then((m) => ({
+    default: m.RemedialExamModal,
+  }))
+);
+const PedagogicalFavoritesModal = React.lazy(() =>
+  import("./components/PedagogicalFavoritesModal").then((m) => ({
+    default: m.PedagogicalFavoritesModal,
+  }))
+);
+const DualExamComparisonModal = React.lazy(() =>
+  import("./components/DualExamComparisonModal").then((m) => ({
+    default: m.DualExamComparisonModal,
+  }))
+);
+const LmsExportModal = React.lazy(() =>
+  import("./components/LmsExportModal").then((m) => ({
+    default: m.LmsExportModal,
+  }))
+);
+const AdvancedMathPedagogyModal = React.lazy(() =>
+  import("./components/AdvancedMathPedagogyModal").then((m) => ({
+    default: m.AdvancedMathPedagogyModal,
+  }))
+);
+const LatexCleanerStudioModal = React.lazy(() =>
+  import("./components/LatexCleanerStudioModal").then((m) => ({
+    default: m.LatexCleanerStudioModal,
+  }))
+);
+const PrintLayoutTemplatesModal = React.lazy(() =>
+  import("./components/PrintLayoutTemplatesModal").then((m) => ({
+    default: m.PrintLayoutTemplatesModal,
+  }))
+);
+const ExerciseSolutionQrModal = React.lazy(() =>
+  import("./components/ExerciseSolutionQrModal").then((m) => ({
+    default: m.ExerciseSolutionQrModal,
+  }))
+);
+const CommandPaletteModal = React.lazy(() =>
+  import("./components/CommandPaletteModal").then((m) => ({
+    default: m.CommandPaletteModal,
+  }))
+);
+const ClassroomProjectionModal = React.lazy(() =>
+  import("./components/ClassroomProjectionModal").then((m) => ({
+    default: m.ClassroomProjectionModal,
+  }))
+);
+const MassarGradebookModal = React.lazy(() =>
+  import("./components/MassarGradebookModal").then((m) => ({
+    default: m.MassarGradebookModal,
+  }))
+);
+const CustomExamComposerModal = React.lazy(() =>
+  import("./components/CustomExamComposerModal").then((m) => ({
+    default: m.CustomExamComposerModal,
+  }))
+);
+const AsymptoteCurveVisualizerModal = React.lazy(() =>
+  import("./components/AsymptoteCurveVisualizerModal").then((m) => ({
+    default: m.AsymptoteCurveVisualizerModal,
+  }))
+);
+const PythonAlgorithmLabModal = React.lazy(() =>
+  import("./components/PythonAlgorithmLabModal").then((m) => ({
+    default: m.PythonAlgorithmLabModal,
+  }))
+);
+const PedagogicalAiAssistantModal = React.lazy(() =>
+  import("./components/PedagogicalAiAssistantModal").then((m) => ({
+    default: m.PedagogicalAiAssistantModal,
+  }))
+);
+const CompleteUnitDossierModal = React.lazy(() =>
+  import("./components/CompleteUnitDossierModal").then((m) => ({
+    default: m.CompleteUnitDossierModal,
+  }))
+);
+const CompanionPedagogicalBridgeModal = React.lazy(() =>
+  import("./components/CompanionPedagogicalBridgeModal").then((m) => ({
+    default: m.CompanionPedagogicalBridgeModal,
+  }))
+);
+const CentralFirebaseExamsAndTexStudioModal = React.lazy(() =>
+  import("./components/CentralFirebaseExamsAndTexStudioModal").then((m) => ({
+    default: m.CentralFirebaseExamsAndTexStudioModal,
+  }))
+);
+const GoogleDriveSyncModal = React.lazy(() =>
+  import("./components/GoogleDriveSyncModal").then((m) => ({
+    default: m.GoogleDriveSyncModal,
+  }))
+);
+const FourProposalsInnovationStudioModal = React.lazy(() =>
+  import("./components/FourProposalsInnovationStudioModal").then((m) => ({
+    default: m.FourProposalsInnovationStudioModal,
+  }))
+);
+const SevenStrategicProposalsModal = React.lazy(() =>
+  import("./components/SevenStrategicProposalsModal").then((m) => ({
+    default: m.SevenStrategicProposalsModal,
+  }))
+);
+const ReprographicsAndTeacherStudioModal = React.lazy(() =>
+  import("./components/ReprographicsAndTeacherStudioModal").then((m) => ({
+    default: m.ReprographicsAndTeacherStudioModal,
+  }))
+);
 
-const STORAGE_KEY = "pedagogical_math_prefs_v4";
+const HOMEWORK_DOCS_STORAGE_KEY = "math_studio_independent_homework_docs_v1";
 
-interface SavedPreferences {
-  educationSystem: EducationSystem;
-  school: string;
-  prof: string;
-  year: string;
-  academy: string;
-  direction: string;
-  headerStyle: HeaderStyle;
-  includeStudentBox: boolean;
-  includeGradeBox: boolean;
-  calculatorAllowed: boolean;
-  includeCompetencies: boolean;
-  examModel: ExamModel;
-  shuffleQuestions: boolean;
-  shuffleExercises: boolean;
-  docLang: DocLanguage;
-  bilingualLayout: BilingualLayout;
-  exportFormat: ExportFormat;
-  activeModule: ModuleType;
-  selectedTrackCode: string;
+interface IndependentHomeworkDoc {
+  id: string;
+  dmNumber: string;
+  titleAr: string;
+  dueDate: string;
+  trackCode: string;
   semester: SemesterType;
-  dsKey: string;
+  moroccanDMType: MoroccanDMType;
+  dsQuestionDensity: DSQuestionDensity;
   n1: number;
   n2: number;
   n3: number;
-  fillBlanks: boolean;
-  includeTICE: boolean;
-  dmSubType: DMSubType;
-  dmNumber: string;
-  dmDueDate: string;
-  includeHints: boolean;
-  includeTeacherLogo: boolean;
-  logoVariant: TeacherLogoVariant;
-  includeLogoWatermark: boolean;
-  customLogoUrl: string | null;
-  docFontFamily: DocFontFamily;
-  docFontSize: DocFontSize;
-  includeDetailedSolutions?: boolean;
-  solutionDisplayMode?: SolutionDisplayMode;
-  showQuestionBareme?: boolean;
-  includeAnswerWorkspace?: boolean;
-  includeGradingScaleTable?: boolean;
-  includeSelfEvalGrid?: boolean;
-  serieExerciseCount?: number;
-  isCustomLessonMode?: boolean;
-  selectedLessonIndices?: number[];
-  customWeightsMap?: Record<string, number>;
-  customLessonIconsMap?: Record<string, LessonHeaderIconId>;
-  dsStructureMode?: MoroccanDSStructureMode;
-  dsQuestionDensity?: DSQuestionDensity;
-  latexPackageTheme?: LatexPackageTheme;
-  paperSurface?: PaperSurfaceTexture;
-  enableBranchColorGradient?: boolean;
-  branchColorMode?: BranchColorGradientMode;
-  includeInteractiveQrFooter?: boolean;
-  studentGridStyle?: StudentGridStyle;
-  appliedTitleCalligraphy?: AppliedTitleCalligraphyConfig;
-}
-
-const DEFAULT_PREFS: SavedPreferences = {
-  educationSystem: "MAROC_NATIONAL",
-  school: "ROOSEVELT SCHOOL 2",
-  prof: "Prof. Brahim KOUZIBER",
-  year: "2026-2027",
-  academy: "الأكاديمية الجهوية للتربية والتكوين لجهة الدار البيضاء-سطات",
-  direction: "المديرية الإقليمية أنفا",
-  headerStyle: "OFFICIAL_AREF",
-  includeStudentBox: true,
-  includeGradeBox: true,
-  calculatorAllowed: true,
-  includeCompetencies: true,
-  examModel: "A",
-  shuffleQuestions: true,
-  shuffleExercises: false,
-  docLang: "FR",
-  bilingualLayout: "SIDE_BY_SIDE",
-  exportFormat: "PDF",
-  activeModule: "DS_142_08",
-  selectedTrackCode: "2BAC_PC",
-  semester: "S1",
-  dsKey: "DS1",
-  n1: 35,
-  n2: 45,
-  n3: 20,
-  fillBlanks: true,
-  includeTICE: true,
-  dmSubType: "DEVOIR_MAISON",
-  dmNumber: "N° 1",
-  dmDueDate: "2026-11-15",
-  serieExerciseCount: 6,
-  includeHints: true,
-  includeTeacherLogo: true,
-  logoVariant: "DOC2APP_MONO",
-  includeLogoWatermark: false,
-  customLogoUrl: null,
-  docFontFamily: "ACADEMIC_SERIF",
-  docFontSize: "NORMAL",
-  includeDetailedSolutions: false,
-  solutionDisplayMode: "SEPARATE_PAGE_ANNEXES",
-  showQuestionBareme: true,
-  includeAnswerWorkspace: false,
-  includeGradingScaleTable: true,
-  includeSelfEvalGrid: true,
-  isCustomLessonMode: false,
-  selectedLessonIndices: [0, 1],
-  customWeightsMap: {},
-  customLessonIconsMap: {},
-  dsStructureMode: "EXERCICES_ET_PROBLEME",
-  dsQuestionDensity: "INTENSIVE",
-  latexPackageTheme: "TCOLORBOX",
-  paperSurface: "PLAIN_WHITE",
-  enableBranchColorGradient: true,
-  branchColorMode: "AUTO_BY_LESSON",
-  includeInteractiveQrFooter: true,
-  studentGridStyle: "SEYES_FRENCH",
-  appliedTitleCalligraphy: {
-    fontId: "DEFAULT_DOC",
-    scale: "BALANCED",
-    ornament: "NONE",
-    scope: "HEADER_TITLES",
-    enableMoroccanHeaderOrnament: true,
-    customLetterSpacingEm: 0.025,
-  },
-};
-
-function loadInitialPrefs(): SavedPreferences {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_PREFS, ...parsed };
-  } catch {
-    return DEFAULT_PREFS;
-  }
+  isCustomLessonMode: boolean;
+  selectedLessonIndices: number[];
+  customDocTitle: string;
+  customDocSubtitle: string;
+  customHeaderNote: string;
+  customExerciseTitles: Record<number, string>;
+  customWeightsMap: Record<string, number>;
+  customLessonIconsMap: Record<string, LessonHeaderIconId>;
+  customQuestionBaremesMap: Record<string, number[]>;
+  customQuestionLevelsMap: Record<string, Array<"N1" | "N2" | "N3">>;
+  customQuestionsMap: Record<string, { ar: string[]; fr: string[] }>;
+  insertedFigures: InsertedFigure[];
+  variationSeed: number;
 }
 
 interface QuickEditorSnapshot {
@@ -470,6 +634,48 @@ export default function App() {
   const [includeLessonMemo, setIncludeLessonMemo] = useState<boolean>(true);
   const [includeDMContract, setIncludeDMContract] = useState<boolean>(true);
   const [showMathPalette, setShowMathPalette] = useState<boolean>(true);
+  const [homeworkDocs, setHomeworkDocs] = useState<IndependentHomeworkDoc[]>(() => {
+    try {
+      const raw = localStorage.getItem(HOMEWORK_DOCS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: "dm_doc_1",
+        dmNumber: initial.dmNumber || "N° 1",
+        titleAr: `الفرض المنزلي ${initial.dmNumber || "N° 1"}`,
+        dueDate: initial.dmDueDate || "2026-11-15",
+        trackCode: initial.selectedTrackCode || "2BAC_PC",
+        semester: initial.semester || "S1",
+        moroccanDMType: "RECHERCHE_SYNTHESE",
+        dsQuestionDensity: initial.dsQuestionDensity || "INTENSIVE",
+        n1: initial.n1 ?? 35,
+        n2: initial.n2 ?? 45,
+        n3: initial.n3 ?? 20,
+        isCustomLessonMode: initial.isCustomLessonMode ?? false,
+        selectedLessonIndices: initial.selectedLessonIndices || [0, 1],
+        customDocTitle: "",
+        customDocSubtitle: "",
+        customHeaderNote: "",
+        customExerciseTitles: {},
+        customWeightsMap: {},
+        customLessonIconsMap: {},
+        customQuestionBaremesMap: {},
+        customQuestionLevelsMap: {},
+        customQuestionsMap: {},
+        insertedFigures: [],
+        variationSeed: 0,
+      },
+    ];
+  });
+  const [activeHomeworkDocId, setActiveHomeworkDocId] = useState<string>("dm_doc_1");
 
   // 7. اختيار الدروس وتخصيص النسب المئوية لكل درس وتجزئة النقط والأسئلة
   const [isCustomLessonMode, setIsCustomLessonMode] = useState<boolean>(
@@ -523,7 +729,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"CODE" | "PREVIEW" | "SPLIT">("PREVIEW");
   const [syncScrollEnabled, setSyncScrollEnabled] = useState<boolean>(true);
   const [activeSyncSection, setActiveSyncSection] = useState<string | null>(null);
-  const codeScrollRef = useRef<HTMLPreElement | null>(null);
+  const codeScrollRef = useRef<HTMLTextAreaElement | null>(null);
+  const texFileInputRef = useRef<HTMLInputElement | null>(null);
   const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const isSyncingScrollRef = useRef<"CODE" | "PREVIEW" | null>(null);
   const syncTimeoutRef = useRef<number | null>(null);
@@ -548,6 +755,14 @@ export default function App() {
       }
     );
   const [isInlineEditable, setIsInlineEditable] = useState<boolean>(false);
+  const [showCompleteUnitDossierModal, setShowCompleteUnitDossierModal] =
+    useState<boolean>(false);
+  const [showCompanionBridgeModal, setShowCompanionBridgeModal] =
+    useState<boolean>(false);
+  const [showCentralFirebaseHubModal, setShowCentralFirebaseHubModal] =
+    useState<boolean>(false);
+  const [centralFirebaseHubInitialTab, setCentralFirebaseHubInitialTab] =
+    useState<CentralHubTabId>("FIREBASE_DASHBOARD");
   const [showQuickVoiceDictation, setShowQuickVoiceDictation] =
     useState<boolean>(false);
   const [customDocTitle, setCustomDocTitle] = useState<string>("");
@@ -578,11 +793,38 @@ export default function App() {
     initial.includeAnswerWorkspace ?? false
   );
   const [studentGridStyle, setStudentGridStyle] = useState<StudentGridStyle>(
-    initial.studentGridStyle || "SEYES_FRENCH"
+    initial.studentGridStyle || "SEYES_HD_PRO"
   );
+  const [seyesSpacingPreset, setSeyesSpacingPreset] =
+    useState<SeyesSpacingPreset>("BILINGUAL_10MM");
+  const [latexImportMergeMode, setLatexImportMergeMode] =
+    useState<LatexImportMergeMode>("SMART_MERGE_BODY");
+  const [lastImportedLatexReport, setLastImportedLatexReport] =
+    useState<ProcessedLatexImportResult | null>(null);
+  const [showLatexCleanerModal, setShowLatexCleanerModal] =
+    useState<boolean>(false);
+  const [printLayoutTemplateId, setPrintLayoutTemplateId] =
+    useState<PrintLayoutTemplateId>("STANDARD_ACADEMIC");
+  const [showPrintLayoutTemplatesModal, setShowPrintLayoutTemplatesModal] =
+    useState<boolean>(false);
+  const [smartPageBreakConfig, setSmartPageBreakConfig] =
+    useState<SmartPageBreakConfig>(DEFAULT_SMART_PAGE_BREAK_CONFIG);
+  const [exerciseSolutionQrs, setExerciseSolutionQrs] =
+    useState<ExerciseSolutionQrMap>({});
+  const [showExerciseSolutionQrModal, setShowExerciseSolutionQrModal] =
+    useState<boolean>(false);
   const [workspaceHeightMode, setWorkspaceHeightMode] = useState<
     "ADAPTIVE" | "COMPACT" | "GENEROUS"
   >("ADAPTIVE");
+
+  // New Quality Features & Dual UI Mode state
+  const [uiMode, setUiMode] = useState<"ESSENTIAL" | "EXPERT">("EXPERT");
+  const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [showClassroomProjection, setShowClassroomProjection] = useState<boolean>(false);
+  const [showMassarGradebook, setShowMassarGradebook] = useState<boolean>(false);
+  const [showCustomExamComposer, setShowCustomExamComposer] = useState<boolean>(false);
+  const [showAsymptoteVisualizer, setShowAsymptoteVisualizer] = useState<boolean>(false);
+  const [sheetViewMode, setSheetViewMode] = useState<"CONTINUOUS" | "MULTIPAGE_CARDS">("CONTINUOUS");
   const [isBatchPrintModalOpen, setIsBatchPrintModalOpen] = useState<boolean>(false);
   const [includeGradingScaleTable, setIncludeGradingScaleTable] = useState<boolean>(
     initial.includeGradingScaleTable ?? true
@@ -616,9 +858,34 @@ export default function App() {
   const [onlyPrintEvalGrid, setOnlyPrintEvalGrid] = useState<boolean>(false);
   const [evalGridGranularity, setEvalGridGranularity] =
     useState<GridGranularity>("BY_QUESTION");
-  const [evalGridStudentCount, setEvalGridStudentCount] = useState<number>(25);
+  const [evalGridStudentCount, setEvalGridStudentCount] = useState<number>(20);
   const [isExportingEvalGridPDF, setIsExportingEvalGridPDF] =
     useState<boolean>(false);
+  const [evalGridCustomConfig, setEvalGridCustomConfig] =
+    useState<EvalGridCustomConfig142_08>(() => {
+      try {
+        const saved = localStorage.getItem("prof_math_eval_grid_142_08_config_v1");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.templateId) return parsed;
+        }
+      } catch {
+        // ignore read error
+      }
+      return createCustomConfigFromTemplate("ANALYTIC_142_08_OFFICIAL");
+    });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "prof_math_eval_grid_142_08_config_v1",
+        JSON.stringify(evalGridCustomConfig)
+      );
+    } catch {
+      // ignore write error
+    }
+  }, [evalGridCustomConfig]);
+
   const [insertedFigures, setInsertedFigures] = useState<InsertedFigure[]>([]);
 
   // 10. أ-2: حالة محاكاة الفروض المحروسة المستوردة (Imported Exam Simulator & Cloner)
@@ -632,17 +899,68 @@ export default function App() {
     useState<ImportSimulatorTabId>("ARCHIVE");
   const [examSimulationMode, setExamSimulationMode] =
     useState<SimulationMode>("ISOMORPHIC_TWIN");
-  const [examVariationSeed, setExamVariationSeed] = useState<number>(1);
+  const [examVariationSeed, setExamVariationSeed] = useState<number>(0);
+  const [showAiDiagnosticsModal, setShowAiDiagnosticsModal] =
+    useState<boolean>(false);
+  const [aiDiagnosticsHistory, setAiDiagnosticsHistory] = useState<
+    GenerationDiagnosticEntry[]
+  >([]);
+  const skipNextOfflineOverwriteRef = useRef<boolean>(false);
   const [simulatedImportedLessons, setSimulatedImportedLessons] = useState<
     LessonItem[]
   >([]);
 
   // 10. أ-3: تبويب العمود الثالث وطي لوحة الإعدادات لتحقيق التناسق البصري
-  const [col3Tab, setCol3Tab] = useState<"EVAL_MODELS" | "GEOGEBRA" | "EVAL_GRID">(
-    "EVAL_MODELS"
-  );
+  const [col3Tab, setCol3Tab] = useState<
+    "EVAL_MODELS" | "GEOGEBRA" | "EVAL_GRID" | "FAVORITES"
+  >("EVAL_MODELS");
   const [isConfigDeckCollapsed, setIsConfigDeckCollapsed] =
     useState<boolean>(false);
+  const [favorites, setFavorites] = useState<FavoritePedagogicalItem[]>(() =>
+    loadPedagogicalFavorites()
+  );
+  const [showFavoritesModal, setShowFavoritesModal] = useState<boolean>(false);
+  const [showDualExamComparisonModal, setShowDualExamComparisonModal] =
+    useState<boolean>(false);
+  const [showLmsExportModal, setShowLmsExportModal] = useState<boolean>(false);
+  const [readingModeConfig, setReadingModeConfig] = useState<ReadingModeConfig>(
+    DEFAULT_READING_MODE_CONFIG
+  );
+
+  const handleToggleReadingMode = () => {
+    setReadingModeConfig((prev) => {
+      const nextEnabled = !prev.enabled;
+      if (nextEnabled) {
+        setViewMode("PREVIEW");
+        setMobileConfigSheetOpen(false);
+        setShowAuditPanel(false);
+        setShowImportedExamStudio(false);
+        setStatusMessage({
+          type: "info",
+          text: `تم تفعيل « وضع القراءة (Reading Mode) »: تم إخفاء كافة عناصر التحكم الجانبية وتكبير نص التمارين والمعادلات بنسبة ${prev.exerciseScalePercent}% لسهولة المراجعة التفاعلية.`,
+        });
+      } else {
+        setStatusMessage({
+          type: "info",
+          text: "تم إغلاق وضع القراءة واستعادة لوحات الإعدادات وأدوات التحكم.",
+        });
+      }
+      return { ...prev, enabled: nextEnabled };
+    });
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === "r" || e.key === "R" || e.key === "ق")) {
+        e.preventDefault();
+        handleToggleReadingMode();
+      } else if (e.key === "Escape" && readingModeConfig.enabled) {
+        setReadingModeConfig((prev) => ({ ...prev, enabled: false }));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [readingModeConfig.enabled]);
 
   // 10. أ-3 (مكرر): المقترحات البيداغوجية الأربعة المضافة للفرض المحروس وملف الأستاذ
   const [includeExamFormulaSheet, setIncludeExamFormulaSheet] =
@@ -687,15 +1005,6 @@ export default function App() {
     }
   }, [longitudinalCohortConfig]);
 
-  // 10. أ-4: شريط التنقل الجانبي الثابت والتحكم في طيه وحفظ الحالة محلياً
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("pedagogical_math_sidebar_collapsed") === "true";
-    } catch {
-      return false;
-    }
-  });
-  const [mobileNavOpen, setMobileNavOpen] = useState<boolean>(false);
   const [mobileConfigSheetOpen, setMobileConfigSheetOpen] = useState<boolean>(false);
   const [mobileActiveColumn, setMobileActiveColumn] = useState<1 | 2 | 3>(1);
 
@@ -844,8 +1153,31 @@ export default function App() {
     useState<number>(0);
   const [attachedPythonAlgorithms, setAttachedPythonAlgorithms] = useState<PythonAlgorithmPreset[]>([]);
   const [isExportDashboardOpen, setIsExportDashboardOpen] = useState<boolean>(false);
+  const [isOcrScannerModalOpen, setIsOcrScannerModalOpen] = useState<boolean>(false);
+  const [isWeeklyTimetableOpen, setIsWeeklyTimetableOpen] = useState<boolean>(false);
+  const [isLessonPresentationOpen, setIsLessonPresentationOpen] = useState<boolean>(false);
+  const [isGeoGebraLibraryOpen, setIsGeoGebraLibraryOpen] = useState<boolean>(false);
+  const [isVoiceCommandStudioOpen, setIsVoiceCommandStudioOpen] = useState<boolean>(false);
+  const [isVoiceListeningGlobal, setIsVoiceListeningGlobal] = useState<boolean>(false);
   const [showFourProposalsModal, setShowFourProposalsModal] = useState<boolean>(false);
   const [fourProposalsTab, setFourProposalsTab] = useState<InnovationProposalTabId>("INTERACTIVE_CF_SPLINE");
+  const [showSevenStrategicProposalsModal, setShowSevenStrategicProposalsModal] =
+    useState<boolean>(false);
+  const [sevenStrategicProposalsTab, setSevenStrategicProposalsTab] =
+    useState<StrategicProposalTabId>("CURVE_DESIGNER");
+  const [showDualABSplitInPreview, setShowDualABSplitInPreview] =
+    useState<boolean>(false);
+  const [showReprographicsStudioModal, setShowReprographicsStudioModal] =
+    useState<boolean>(false);
+  const [reprographicsStudioTab, setReprographicsStudioTab] =
+    useState<ReprographicsStudioTabId>("ECO_TONER_SIMULATOR");
+  const [bindingAndCropConfig, setBindingAndCropConfig] =
+    useState<BindingAndCropConfig>(DEFAULT_BINDING_AND_CROP_CONFIG);
+  const [reproGroupsCount, setReproGroupsCount] = useState<number>(3);
+  const [reproStudentsPerGroup, setReproStudentsPerGroup] = useState<number>(36);
+  const [reproDuplexMode, setReproDuplexMode] = useState<
+    "RECTO_ONLY" | "RECTO_VERSO" | "TWO_UP_A5"
+  >("RECTO_VERSO");
   const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>(() =>
     loadExportHistory(CURRICULUM_DB[initial.selectedTrackCode], initial.semester)
   );
@@ -886,16 +1218,6 @@ export default function App() {
     },
     []
   );
-
-  const handleToggleSidebar = useCallback(() => {
-    setIsSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("pedagogical_math_sidebar_collapsed", String(next));
-      } catch {}
-      return next;
-    });
-  }, []);
 
   const [statusMessage, setStatusMessage] = useState<{
     type: "info" | "error" | "success";
@@ -1461,7 +1783,7 @@ export default function App() {
           studentGridStyle,
           appliedTitleCalligraphy,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsToSave));
+        localStorage.setItem(DOCUMENT_PREFS_STORAGE_KEY, JSON.stringify(prefsToSave));
         setSaveStatus("saved");
         setLastSavedTime(new Date());
         setSavedBadge(true);
@@ -1534,8 +1856,47 @@ export default function App() {
     appliedTitleCalligraphy,
   ]);
 
+  // تحميل خطوط الزخرفة والخط اليدوي عند الحاجة فقط (On-Demand Font Loader)
+  useEffect(() => {
+    if (
+      shouldLoadDecorativeFonts({
+        docFontFamily,
+        calligraphyFontId: appliedTitleCalligraphy.fontId,
+        isCalligraphyModalOpen: showCalligraphySimulator,
+      })
+    ) {
+      loadCalligraphyFontsOnDemand();
+    }
+  }, [docFontFamily, appliedTitleCalligraphy.fontId, showCalligraphySimulator]);
+
+  // إدارة الخطوط المخصصة المرفوعة محلياً (.ttf / .otf) وحقنها في صفحة الوثيقة
+  const [customUploadedFonts, setCustomUploadedFonts] = useState<CustomUploadedFontItem[]>(() =>
+    loadCustomUploadedFonts()
+  );
+
+  // نمط تجزئة الأسئلة إلى أسئلة فرعية (أ، ب، ج / a, b, c) في الفروض المحروسة
+  const [subQuestionDecompositionMode, setSubQuestionDecompositionMode] =
+    useState<SubQuestionDecompositionMode>("STRUCTURED_ABC_ALL");
+  const [didacticPackFilter, setDidacticPackFilter] = useState<
+    "ALL" | "STUDENT_PAPER" | "INSPECTOR_DOSSIER" | "REMEDIATION"
+  >("ALL");
+  const [showIsoDifficultyPanel, setShowIsoDifficultyPanel] = useState<boolean>(false);
+
+  useEffect(() => {
+    const freshFonts = loadCustomUploadedFonts();
+    setCustomUploadedFonts(freshFonts);
+    injectCustomUploadedFontsToDocument(
+      freshFonts,
+      appliedTitleCalligraphy.customUploadedFontId
+    );
+  }, [
+    appliedTitleCalligraphy.fontId,
+    appliedTitleCalligraphy.customUploadedFontId,
+    showCalligraphySimulator,
+  ]);
+
   const handleResetPreferences = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(DOCUMENT_PREFS_STORAGE_KEY);
     setEducationSystem(DEFAULT_PREFS.educationSystem);
     setSchool(DEFAULT_PREFS.school);
     setProf(DEFAULT_PREFS.prof);
@@ -1696,24 +2057,38 @@ export default function App() {
     ];
   }, [currentTrack]);
 
-  // حساب عدد الدروس لكل تصنيف فرعي أو وسم في المسلك الحالي (تجميع أحادي المرور O(N) لتحسين الذاكرة والأداء)
+  // فهرس بحث فوري O(1) لربط اسم الدرس الفرنسي بترتيبه في المسلك وتجنب عمليات findIndex الخطية المتكررة
+  const allTrackLessonsIndexMap = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    allTrackLessons.forEach((l, idx) => {
+      if (!map.has(l.lessonFr)) {
+        map.set(l.lessonFr, idx);
+      }
+    });
+    return map;
+  }, [allTrackLessons]);
+
+  // حساب عدد الدروس لكل تصنيف فرعي أو وسم في المسلك الحالي (تجميع أحادي المرور O(N) حقيقي بدون حلقات متداخلة)
   const trackTagCounts = useMemo<Record<string, number>>(() => {
     const counts: Record<string, number> = { ALL: allTrackLessons.length };
-    const candidateTagSet = new Set<string>(
-      LESSON_TAG_OPTIONS.map((opt) => opt.id)
-    );
-    for (const l of allTrackLessons) {
-      for (const t of getLessonTags(l)) {
-        candidateTagSet.add(t);
-      }
+    for (const opt of LESSON_TAG_OPTIONS) {
+      if (opt.id !== "ALL") counts[opt.id] = 0;
     }
-    for (const tagId of candidateTagSet) {
-      if (tagId === "ALL") continue;
-      let count = 0;
-      for (const l of allTrackLessons) {
-        if (lessonMatchesTagFilter(l, tagId)) count++;
+    for (const l of allTrackLessons) {
+      const matchedTagsForLesson = new Set<string>();
+      if (l.category) matchedTagsForLesson.add(l.category);
+      if (l.subCategory) matchedTagsForLesson.add(l.subCategory);
+      if (l.subCategoryFr) matchedTagsForLesson.add(l.subCategoryFr);
+      if (Array.isArray(l.tags)) {
+        for (const t of l.tags) {
+          if (t) matchedTagsForLesson.add(t);
+        }
       }
-      counts[tagId] = count;
+      for (const tagId of matchedTagsForLesson) {
+        if (tagId !== "ALL") {
+          counts[tagId] = (counts[tagId] || 0) + 1;
+        }
+      }
     }
     return counts;
   }, [allTrackLessons]);
@@ -1852,7 +2227,20 @@ export default function App() {
       const customIcon = customLessonIconsMap[key];
       const customBaremes = customQuestionBaremesMap[key];
       const customLevels = customQuestionLevelsMap[key];
-      const customQs = customQuestionsMap[key];
+      const rawCustomQs = customQuestionsMap[key];
+      const isLessonLogarithm = /لوغاريتم|logarithm/i.test(
+        `${lesson.lessonAr} ${lesson.lessonFr}`
+      );
+      const isStaleHardcodedLn =
+        !isLessonLogarithm &&
+        rawCustomQs &&
+        Array.isArray(rawCustomQs.ar) &&
+        rawCustomQs.ar.some((q) =>
+          /x\^2\s*-\s*[23]\s*\+\s*[23]\\?ln\(x\)|x²\s*-\s*2\s*\+\s*2\s*ln\(x\)/i.test(
+            q
+          )
+        );
+      const customQs = isStaleHardcodedLn ? undefined : rawCustomQs;
       return {
         ...lesson,
         weight: customW !== undefined ? customW : lesson.weight,
@@ -1932,7 +2320,7 @@ export default function App() {
 
     activeCustomLessons.forEach((lesson, lIdx) => {
       const effectiveWeight = exactEffectiveWeights[lIdx] ?? lesson.weight;
-      const qs = getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity);
+      const qs = getVariantQuestions(lesson, "A", false, examVariationSeed, dsQuestionDensity);
       const qCount = Math.max(1, qs.questionsFr.length);
       const key = `${currentTrack.code}_${lesson.lessonFr}`;
       const metas = getQuestionBaremesAndLevels(
@@ -1977,7 +2365,167 @@ export default function App() {
     n3,
     customQuestionBaremesMap,
     customQuestionLevelsMap,
+    examVariationSeed,
   ]);
+
+  // إدارة المفضلة البيداغوجية للتمارين المخصصة ونماذج الفروض
+  const handleToggleFavoriteExercise = (lesson: LessonItem) => {
+    const favoriteItem: FavoritePedagogicalItem = {
+      id: `EX_${currentTrack.code}_${lesson.lessonFr}`,
+      type: "CUSTOM_EXERCISE",
+      titleAr: lesson.lessonAr,
+      titleFr: lesson.lessonFr,
+      trackCode: currentTrack.code,
+      trackLabelAr: currentTrack.labelAr,
+      semester,
+      createdAt: new Date().toISOString(),
+      tags: [lesson.category || "عام", ...getLessonTags(lesson)],
+      exerciseData: {
+        lessonAr: lesson.lessonAr,
+        lessonFr: lesson.lessonFr,
+        category: lesson.category,
+        weight: lesson.weight,
+        capacitiesAr: lesson.capacitiesAr,
+        capacitiesFr: lesson.capacitiesFr,
+        sampleExerciseAr: lesson.sampleExerciseAr,
+        sampleExerciseFr: lesson.sampleExerciseFr,
+        defaultBareme: Number(((lesson.weight * 20) / 100).toFixed(1)),
+        targetSkills: {
+          n1: Math.round(n1 * 0.3),
+          n2: Math.round(n2 * 0.5),
+          n3: Math.round(n3 * 0.2),
+        },
+      },
+    };
+    const updated = toggleFavoriteItem(favoriteItem);
+    setFavorites(updated);
+    const exists = updated.some((f: FavoritePedagogicalItem) => f.id === favoriteItem.id);
+    setStatusMessage({
+      type: exists ? "success" : "info",
+      text: exists
+        ? `تمت إضافة تمرين « ${lesson.lessonAr} » إلى المفضلة البيداغوجية بنجاح!`
+        : `تمت إزالة التمرين « ${lesson.lessonAr} » من المفضلة.`,
+    });
+  };
+
+  const handleToggleFavoriteExam = () => {
+    const examId = `BP_${currentTrack.code}_${semester}_${dsKey}`;
+    const favoriteItem: FavoritePedagogicalItem = {
+      id: examId,
+      type: "EXAM_BLUEPRINT",
+      titleAr: `${currentTrack.labelAr} — فرض محروس رقم ${dsKey.replace("DS", "")} (${semester})`,
+      titleFr: `${currentTrack.labelFr} — DS N°${dsKey.replace("DS", "")} (${semester})`,
+      trackCode: currentTrack.code,
+      trackLabelAr: currentTrack.labelAr,
+      semester,
+      createdAt: new Date().toISOString(),
+      tags: [currentTrack.cycle, dsKey, semester, `${activeCustomLessons.length} تمارين`, `${liveExamStats.totalPoints} ن`],
+      blueprintData: {
+        trackCode: currentTrack.code,
+        semester,
+        dsKey,
+        dsStructureMode,
+        totalDurationMinutes: currentTrack.durationFr.includes("4")
+          ? 240
+          : currentTrack.durationFr.includes("3")
+          ? 180
+          : currentTrack.durationFr.includes("1")
+          ? 60
+          : 120,
+        lessons: activeCustomLessons.map((l) => ({
+          lessonAr: l.lessonAr,
+          lessonFr: l.lessonFr,
+          weight: l.weight,
+          category: l.category,
+          subCategory: l.subCategory,
+          capacitiesAr: l.capacitiesAr,
+          capacitiesFr: l.capacitiesFr,
+        })),
+        n1Percentage: n1,
+        n2Percentage: n2,
+        n3Percentage: n3,
+      },
+    };
+    const updated = toggleFavoriteItem(favoriteItem);
+    setFavorites(updated);
+    const exists = updated.some((f: FavoritePedagogicalItem) => f.id === examId);
+    setStatusMessage({
+      type: exists ? "success" : "info",
+      text: exists
+        ? `تم حفظ نموذج الفرض المحروس كاملاً (${currentTrack.labelAr} - ${dsKey}) في المفضلة!`
+        : `تمت إزالة نموذج الفرض من المفضلة.`,
+    });
+  };
+
+  const handleApplyFavoriteBlueprint = (bp: FavoritePedagogicalItem["blueprintData"]) => {
+    if (!bp) return;
+    if (bp.trackCode && CURRICULUM_DB[bp.trackCode]) {
+      setSelectedTrackCode(bp.trackCode);
+    }
+    if (bp.semester) setSemester(bp.semester);
+    if (bp.dsKey) setDsKey(bp.dsKey);
+    if (bp.dsStructureMode) setDsStructureMode(bp.dsStructureMode as MoroccanDSStructureMode);
+    if (bp.n1Percentage !== undefined) setN1(bp.n1Percentage);
+    if (bp.n2Percentage !== undefined) setN2(bp.n2Percentage);
+    if (bp.n3Percentage !== undefined) setN3(bp.n3Percentage);
+    if (bp.lessons && bp.lessons.length > 0) {
+      const reconstructedLessons: LessonItem[] = bp.lessons.map((l) => ({
+        lessonAr: l.lessonAr,
+        lessonFr: l.lessonFr,
+        hours: "12h",
+        category: (l.category as any) || "ANALYSIS",
+        subCategory: l.subCategory,
+        weight: l.weight,
+        capacitiesAr: l.capacitiesAr || [],
+        capacitiesFr: l.capacitiesFr || [],
+      }));
+      setSimulatedImportedLessons(reconstructedLessons);
+      setIsExamSimulationActive(true);
+    }
+    setStatusMessage({
+      type: "success",
+      text: `تم استرجاع وتطبيق نموذج الفرض المحروس من المفضلة (${bp.lessons?.length || 0} تمارين)!`,
+    });
+  };
+
+  const handleInsertFavoriteExercise = (ex: FavoritePedagogicalItem["exerciseData"]) => {
+    if (!ex) return;
+    const newLesson: LessonItem = {
+      lessonAr: ex.lessonAr,
+      lessonFr: ex.lessonFr,
+      hours: "10h",
+      category: (ex.category as any) || "ANALYSIS",
+      weight: ex.weight || 25,
+      capacitiesAr: ex.capacitiesAr || [],
+      capacitiesFr: ex.capacitiesFr || [],
+      sampleExerciseAr: ex.sampleExerciseAr,
+      sampleExerciseFr: ex.sampleExerciseFr,
+      hasCustomQuestions: Boolean(ex.sampleExerciseAr || ex.sampleExerciseFr),
+    };
+    const currentList = isExamSimulationActive ? simulatedImportedLessons : activeCustomLessons;
+    const combined = [...currentList, newLesson];
+    const sumW = combined.reduce((acc, it) => acc + (it.weight || 20), 0);
+    const normalized = combined.map((it) => ({
+      ...it,
+      weight: Math.max(5, Math.round(((it.weight || 20) / sumW) * 100)),
+    }));
+    setSimulatedImportedLessons(normalized);
+    setIsExamSimulationActive(true);
+    setStatusMessage({
+      type: "success",
+      text: `تم إدراج التمرين « ${ex.lessonAr} » من المفضلة بنجاح في الفرض المحروس وتحديث السلالم!`,
+    });
+  };
+
+  const handleDeleteFavorite = (id: string) => {
+    const updated = favorites.filter((f) => f.id !== id);
+    savePedagogicalFavorites(updated);
+    setFavorites(updated);
+    setStatusMessage({
+      type: "info",
+      text: "تم حذف العنصر من المفضلة.",
+    });
+  };
 
   // حساب العناوين الافتراضية للوثيقة والتمارين وتزامنها مع محرر العناوين السريع والتحقق من صحة البيانات (Validation)
   const defaultDocTitle = useMemo(() => {
@@ -2085,6 +2633,235 @@ export default function App() {
       setCustomExerciseTitles(defaultExerciseTitles);
     }
   }, [defaultExerciseTitles, isExamSimulationActive]);
+
+  // مزامنة وحفظ التعديلات الجارية على وثيقة الفرض المنزلي المستقلة النشطة
+  useEffect(() => {
+    if (activeModule !== "DM_SERIE" || dmSubType !== "DEVOIR_MAISON") return;
+    setHomeworkDocs((prev) => {
+      const idx = prev.findIndex((d) => d.id === activeHomeworkDocId);
+      const updatedDoc: IndependentHomeworkDoc = {
+        id: activeHomeworkDocId,
+        dmNumber,
+        titleAr:
+          customDocTitle.trim() ||
+          `الفرض المنزلي ${dmNumber} (${semester === "S1" ? "الدورة 1" : "الدورة 2"})`,
+        dueDate: dmDueDate,
+        trackCode: selectedTrackCode,
+        semester,
+        moroccanDMType,
+        dsQuestionDensity,
+        n1,
+        n2,
+        n3,
+        isCustomLessonMode,
+        selectedLessonIndices,
+        customDocTitle,
+        customDocSubtitle,
+        customHeaderNote,
+        customExerciseTitles,
+        customWeightsMap,
+        customLessonIconsMap,
+        customQuestionBaremesMap,
+        customQuestionLevelsMap,
+        customQuestionsMap,
+        insertedFigures,
+        variationSeed: examVariationSeed,
+      };
+      const next =
+        idx >= 0
+          ? prev.map((item, i) => (i === idx ? updatedDoc : item))
+          : [...prev, updatedDoc];
+      try {
+        localStorage.setItem(HOMEWORK_DOCS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage quota
+      }
+      return next;
+    });
+  }, [
+    activeModule,
+    dmSubType,
+    activeHomeworkDocId,
+    dmNumber,
+    dmDueDate,
+    selectedTrackCode,
+    semester,
+    moroccanDMType,
+    dsQuestionDensity,
+    n1,
+    n2,
+    n3,
+    isCustomLessonMode,
+    selectedLessonIndices,
+    customDocTitle,
+    customDocSubtitle,
+    customHeaderNote,
+    customExerciseTitles,
+    customWeightsMap,
+    customLessonIconsMap,
+    customQuestionBaremesMap,
+    customQuestionLevelsMap,
+    customQuestionsMap,
+    insertedFigures,
+    examVariationSeed,
+  ]);
+
+  // إنشاء وثيقة فرض منزلي مستقلة جديدة بنفس خصائص التحرير الحالية
+  const handleCreateNewHomeworkDocument = useCallback(() => {
+    const existingNumbers = homeworkDocs.map((d) => {
+      const m = d.dmNumber.match(/(\d+)/);
+      return m ? parseInt(m[1], 10) : 1;
+    });
+    const nextNum =
+      existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    const nextDmNumber = `N° ${nextNum}`;
+    const newId = `dm_doc_${Date.now()}`;
+    const newSeed = Math.floor(100 + Math.random() * 899);
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 7);
+    const nextDueDate = futureDate.toISOString().slice(0, 10);
+
+    const isFrDoc = docLang === "FR" || isMission;
+    const isArDoc = docLang === "AR" && !isMission;
+    const newTitle = isFrDoc
+      ? `Devoir Maison ${nextDmNumber} (${semester})`
+      : isArDoc
+      ? `الفرض المنزلي ${nextDmNumber} (${semester === "S1" ? "الدورة 1" : "الدورة 2"})`
+      : `الفرض المنزلي ${nextDmNumber} / Devoir Maison ${nextDmNumber}`;
+    const newSubtitle = isFrDoc
+      ? `À rendre le : ${nextDueDate} · Barème : 20 points`
+      : `تاريخ الإرجاع: ${nextDueDate} · سلم التنقيط: 20 نقطة`;
+
+    const newHwDoc: IndependentHomeworkDoc = {
+      id: newId,
+      dmNumber: nextDmNumber,
+      titleAr: `الفرض المنزلي ${nextDmNumber} (${semester === "S1" ? "الدورة 1" : "الدورة 2"})`,
+      dueDate: nextDueDate,
+      trackCode: selectedTrackCode,
+      semester,
+      moroccanDMType,
+      dsQuestionDensity,
+      n1: 35,
+      n2: 45,
+      n3: 20,
+      isCustomLessonMode: false,
+      selectedLessonIndices: [0, Math.min(1, Math.max(0, allTrackLessons.length - 1))],
+      customDocTitle: newTitle,
+      customDocSubtitle: newSubtitle,
+      customHeaderNote: "",
+      customExerciseTitles: {},
+      customWeightsMap: {},
+      customLessonIconsMap: {},
+      customQuestionBaremesMap: {},
+      customQuestionLevelsMap: {},
+      customQuestionsMap: {},
+      insertedFigures: [],
+      variationSeed: newSeed,
+    };
+
+    setHomeworkDocs((prev) => {
+      const next = [...prev, newHwDoc];
+      try {
+        localStorage.setItem(HOMEWORK_DOCS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+
+    setActiveHomeworkDocId(newId);
+    setActiveModule("DM_SERIE");
+    setDmSubType("DEVOIR_MAISON");
+    setDmNumber(nextDmNumber);
+    setDmDueDate(nextDueDate);
+    setExamVariationSeed(newSeed);
+    setIsExamSimulationActive(false);
+    setIsCustomLessonMode(false);
+    setCustomWeightsMap({});
+    setCustomLessonIconsMap({});
+    setCustomQuestionBaremesMap({});
+    setCustomQuestionLevelsMap({});
+    setCustomQuestionsMap({});
+    setCustomExerciseTitles({});
+    setInsertedFigures([]);
+    setCustomHeaderNote("");
+    setCustomDocTitle(newTitle);
+    setCustomDocSubtitle(newSubtitle);
+    setViewMode("PREVIEW");
+
+    setStatusMessage({
+      type: "success",
+      text: `✓ تم إنشاء وثيقة فرض منزلي مستقلة جديدة (الفرض المنزلي ${nextDmNumber}) بجميع خصائص التحرير وتخصيص الأسئلة وسلم التنقيط!`,
+    });
+  }, [
+    homeworkDocs,
+    docLang,
+    isMission,
+    semester,
+    selectedTrackCode,
+    moroccanDMType,
+    dsQuestionDensity,
+    allTrackLessons.length,
+  ]);
+
+  // التبديل بين وثائق الفروض المنزلية المستقلة المحفوظة
+  const handleSelectHomeworkDocument = useCallback(
+    (docId: string) => {
+      const target = homeworkDocs.find((d) => d.id === docId);
+      if (!target) return;
+      skipTrackResetRef.current = true;
+      setActiveHomeworkDocId(target.id);
+      setActiveModule("DM_SERIE");
+      setDmSubType("DEVOIR_MAISON");
+      setSelectedTrackCode(target.trackCode);
+      setSemester(target.semester);
+      setDmNumber(target.dmNumber);
+      setDmDueDate(target.dueDate);
+      setMoroccanDMType(target.moroccanDMType);
+      setDsQuestionDensity(target.dsQuestionDensity);
+      setN1(target.n1);
+      setN2(target.n2);
+      setN3(target.n3);
+      setIsCustomLessonMode(target.isCustomLessonMode);
+      setSelectedLessonIndices(target.selectedLessonIndices);
+      setCustomWeightsMap(target.customWeightsMap || {});
+      setCustomLessonIconsMap(target.customLessonIconsMap || {});
+      setCustomQuestionBaremesMap(target.customQuestionBaremesMap || {});
+      setCustomQuestionLevelsMap(target.customQuestionLevelsMap || {});
+      setCustomQuestionsMap(target.customQuestionsMap || {});
+      setCustomExerciseTitles(target.customExerciseTitles || {});
+      setInsertedFigures(target.insertedFigures || []);
+      setCustomHeaderNote(target.customHeaderNote || "");
+      if (target.customDocTitle) setCustomDocTitle(target.customDocTitle);
+      if (target.customDocSubtitle) setCustomDocSubtitle(target.customDocSubtitle);
+      setExamVariationSeed(target.variationSeed || 0);
+      setIsExamSimulationActive(false);
+      setStatusMessage({
+        type: "info",
+        text: `تم فتح وثيقة « ${target.titleAr} » المستقلة بكامل إعداداتها وتعديلاتها الخاصة.`,
+      });
+    },
+    [homeworkDocs]
+  );
+
+  // حذف وثيقة فرض منزلي مستقلة
+  const handleDeleteHomeworkDocument = useCallback(
+    (docId: string) => {
+      if (homeworkDocs.length <= 1) return;
+      const remaining = homeworkDocs.filter((d) => d.id !== docId);
+      setHomeworkDocs(remaining);
+      try {
+        localStorage.setItem(HOMEWORK_DOCS_STORAGE_KEY, JSON.stringify(remaining));
+      } catch {
+        // ignore
+      }
+      if (activeHomeworkDocId === docId && remaining[0]) {
+        handleSelectHomeworkDocument(remaining[0].id);
+      }
+    },
+    [homeworkDocs, activeHomeworkDocId, handleSelectHomeworkDocument]
+  );
 
   // التحقق من صحة البيانات (Validation) في محرر العناوين السريع لمنع ترك العناوين الرئيسية فارغة
   const quickEditorValidation = useMemo(() => {
@@ -2623,7 +3400,7 @@ export default function App() {
     // 11. مدقق "العقوبة المزدوجة" الديداكتيكي الآلي وفحص سلامة التعبيرات الرياضية بـ MathJS
     const doublePenaltyList = detectDoublePenaltyInLessons(
       activeCustomLessons,
-      (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity)
+      (lesson) => getVariantQuestions(lesson, "A", false, examVariationSeed, dsQuestionDensity)
     );
     const isDoublePenaltyFree = doublePenaltyList.length === 0;
     items.push({
@@ -2710,7 +3487,7 @@ export default function App() {
     // 14. تدقيق الكثافة الإخراجية للوثيقة (A4 Page Fit) وصحة الشجرة الرياضية LaTeX AST
     const docDiagnostics = runFullEdTechDocumentDiagnostics(
       activeCustomLessons,
-      (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity),
+      (lesson) => getVariantQuestions(lesson, "A", false, examVariationSeed, dsQuestionDensity),
       longitudinalCohortConfig.includeInPrintablePreview
     );
     const isDocDensityHealthy = !docDiagnostics.hasOrphanPageRisk && docDiagnostics.latexDelimiterWarningsCount === 0;
@@ -2782,6 +3559,7 @@ export default function App() {
     includeInteractiveQrFooter,
     quickEditorValidation.hasErrors,
     handleFixEmptyQuickTitles,
+    examVariationSeed,
   ]);
 
   const [isExportingAuditPDF, setIsExportingAuditPDF] = useState<boolean>(false);
@@ -3224,6 +4002,9 @@ export default function App() {
       } else if (keyLower === "b") {
         e.preventDefault();
         setIsConfigDeckCollapsed((v) => !v);
+      } else if (keyLower === "k") {
+        e.preventDefault();
+        setShowCommandPalette((v) => !v);
       }
     };
 
@@ -3270,6 +4051,100 @@ export default function App() {
   useEffect(() => {
     if (hasHandledUrlQuizRef.current || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const hasHomeworkSolutionTrigger = params.get("dm_solution") === "1";
+    if (hasHomeworkSolutionTrigger) {
+      hasHandledUrlQuizRef.current = true;
+      skipTrackResetRef.current = true;
+
+      const hwId = params.get("hw_id") || "dm_doc_1";
+      const dmParam = params.get("dm") || "N° 1";
+      const dueParam = params.get("due");
+      const trackParam = params.get("track");
+      const semParam = params.get("sem");
+      const dmTypeParam = params.get("dm_type") as MoroccanDMType | null;
+      const seedParam = Number(params.get("seed"));
+      const lessonsParam = params.get("lessons");
+      const langParam = params.get("lang");
+      const pinParam = params.get("pin") || "";
+
+      setActiveModule("DM_SERIE");
+      setDmSubType("DEVOIR_MAISON");
+
+      const matchedDoc = homeworkDocs.find((d) => d.id === hwId);
+      if (matchedDoc) {
+        handleSelectHomeworkDocument(matchedDoc.id);
+      } else {
+        setActiveHomeworkDocId(hwId);
+        setDmNumber(dmParam);
+        if (dueParam) setDmDueDate(dueParam);
+        if (trackParam && CURRICULUM_DB[trackParam]) {
+          setSelectedTrackCode(trackParam);
+        }
+        if (semParam === "S1" || semParam === "S2") {
+          setSemester(semParam);
+        }
+        if (dmTypeParam && MOROCCAN_DM_PRESETS[dmTypeParam]) {
+          setMoroccanDMType(dmTypeParam);
+        }
+        if (!isNaN(seedParam) && seedParam >= 0) {
+          setExamVariationSeed(seedParam);
+        }
+        if (lessonsParam) {
+          const parsedIdx = lessonsParam
+            .split(",")
+            .map((x) => parseInt(x.trim(), 10))
+            .filter((idx) => !isNaN(idx) && idx >= 0);
+          if (parsedIdx.length > 0) {
+            setIsCustomLessonMode(true);
+            setSelectedLessonIndices(parsedIdx);
+          }
+        }
+      }
+
+      if (langParam === "AR" || langParam === "FR") {
+        setDocLang(langParam);
+      }
+
+      setShowAnswerKey(true);
+      setIncludeDetailedSolutions(true);
+      setOnlyPrintSolutions(true);
+      setViewMode("PREVIEW");
+
+      setStatusMessage({
+        type: "success",
+        text: `تم فتح صفحة الحل النموذجي المفصل وسلم التنقيط للفرض المنزلي (${dmParam})${
+          pinParam ? ` [رمز التحقق: ${pinParam}]` : ""
+        } مباشرة عبر رمز QR!`,
+      });
+
+      setTimeout(() => {
+        const el = document.getElementById("homework-solution-sheet");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 300);
+      return;
+    }
+
+    const hasSolutionModeTrigger = params.get("solution_mode") === "1";
+    if (hasSolutionModeTrigger) {
+      hasHandledUrlQuizRef.current = true;
+      const exTitle = params.get("title") || "التمرين المختار";
+      const customNote = params.get("custom_note")
+        ? decodeURIComponent(params.get("custom_note") || "")
+        : "";
+      setIncludeDetailedSolutions(true);
+      setSolutionDisplayMode("INLINE_PER_EXERCISE");
+      setShowAnswerKey(true);
+      setStatusMessage({
+        type: "success",
+        text: customNote
+          ? `تم فتح الحل المخصص لـ « ${exTitle} » عبر رمز QR: ${customNote}`
+          : `تم فتح التصحيح النموذجي وسلم التنقيط المفصل لـ « ${exTitle} » عبر مسح رمز QR!`,
+      });
+      return;
+    }
+
     const hasQuizTrigger = params.get("quiz") === "1" || Boolean(params.get("quizPin"));
     if (!hasQuizTrigger) return;
 
@@ -3425,11 +4300,17 @@ export default function App() {
         include2DSpecMatrix,
         includeAnswerWorkspace,
         studentGridStyle,
+        seyesSpacingPreset,
         includeInteractiveQrFooter,
         interactiveExamUrl,
         attachedPythonAlgorithms,
         appliedTitleCalligraphy,
         pageMarginsMm: customPageMarginsMm,
+        variationSeed: examVariationSeed,
+        printLayoutTemplateId,
+        exerciseSolutionQrs,
+        smartPageBreakConfig,
+        subQuestionDecompositionMode,
       });
     },
     [
@@ -3490,11 +4371,17 @@ export default function App() {
       include2DSpecMatrix,
       includeAnswerWorkspace,
       studentGridStyle,
+      seyesSpacingPreset,
       includeInteractiveQrFooter,
       interactiveExamUrl,
       attachedPythonAlgorithms,
       appliedTitleCalligraphy,
       customPageMarginsMm,
+      examVariationSeed,
+      printLayoutTemplateId,
+      exerciseSolutionQrs,
+      smartPageBreakConfig,
+      subQuestionDecompositionMode,
     ]
   );
 
@@ -3502,6 +4389,114 @@ export default function App() {
     const code = buildSourceCodeForFormat(exportFormat);
     setGeneratedCode(code);
   }, [buildSourceCodeForFormat, exportFormat]);
+
+  // استيراد ملف LaTeX خارجي (.tex) ودمجه مباشرة في محرر الكود المصدري مع معالجة تلقائية للترميز والرموز وتنسيقه لنظام المنصة
+  const handleImportExternalTexFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const processed = processImportedLatexFile(file.name, buffer);
+        const normalizedBundle = normalizeExternalTexToPlatformSystem(
+          file.name,
+          processed,
+          {
+            targetTheme: "TCOLORBOX_ROYAL",
+            subQuestionStyle:
+              docLang === "FR" || isMission ? "LATIN_ABC" : "ARABIC_ABJAD",
+            autoInjectPlatformPreamble:
+              latexImportMergeMode === "REPLACE_ENTIRE_CODE",
+            normalizeBaremePoints: true,
+            schoolName: school,
+            professorName: prof,
+            trackLabelAr: currentTrack.labelAr,
+            academicYear: year,
+          }
+        );
+
+        const baseSource =
+          generatedCode && exportFormat === "LATEX"
+            ? generatedCode
+            : buildSourceCodeForFormat("LATEX");
+        const mergedCode = mergeImportedLatexIntoSource(
+          baseSource,
+          {
+            ...processed,
+            normalizedCode: normalizedBundle.platformFormattedTex,
+          },
+          latexImportMergeMode
+        );
+
+        // تطبيق محرك تنظيف الترويسة الصارم وحل تعارضات الحزم وتطبيع الرموز
+        const cleaned = cleanLatexDocument(mergedCode);
+        setExportFormat("LATEX");
+        setGeneratedCode(cleaned.cleanedCode);
+        setLastImportedLatexReport(processed);
+        if (normalizedBundle.extractedLessonItems.length > 0) {
+          setSimulatedImportedLessons(normalizedBundle.extractedLessonItems);
+          setIsExamSimulationActive(true);
+        }
+        if (viewMode === "PREVIEW") {
+          setViewMode("SPLIT");
+        }
+        setStatusMessage({
+          type: "success",
+          text: `تم استيراد وتنسيق "${file.name}" لنظام المنصة: استخلاص ${normalizedBundle.extractedLessonItems.length} تمارين (${normalizedBundle.detectedSubQuestionsCount} سؤالاً فرعياً) وتطبيع ${cleaned.symbolReport.totalConversionsCount} رمزاً رياضياً!`,
+        });
+      } catch {
+        setStatusMessage({
+          type: "error",
+          text: "تعذر قراءة أو معالجة ملف LaTeX الخارجي (.tex).",
+        });
+      } finally {
+        if (texFileInputRef.current) {
+          texFileInputRef.current.value = "";
+        }
+      }
+    },
+    [
+      generatedCode,
+      exportFormat,
+      buildSourceCodeForFormat,
+      latexImportMergeMode,
+      viewMode,
+      docLang,
+      isMission,
+      school,
+      prof,
+      currentTrack.labelAr,
+      year,
+    ]
+  );
+
+  // معالجة وتطبيع الرموز والترميز وترتيب ترويسة الكود الحالي داخل المحرر بضغطة زر
+  const handleNormalizeCurrentEditorCode = useCallback(() => {
+    const current =
+      generatedCode || buildSourceCodeForFormat(exportFormat);
+    const cleaned = cleanLatexDocument(current);
+    setGeneratedCode(cleaned.cleanedCode);
+    setStatusMessage({
+      type: "success",
+      text: `تم تنظيف كود LaTeX: ترتيب ${cleaned.preambleReport.reorderedPackagesCount} حزمة بالترويسة وتطبيع ${cleaned.symbolReport.totalConversionsCount} رمزاً وأمراً قديماً بنجاح!`,
+    });
+  }, [generatedCode, buildSourceCodeForFormat, exportFormat]);
+
+  // تطبيق الكود المنظف القادم من نافذة استوديو التنظيف المتقدم
+  const handleApplyCleanedLatexFromModal = useCallback(
+    (cleanedCode: string, reportSummary: string) => {
+      setExportFormat("LATEX");
+      setGeneratedCode(cleanedCode);
+      if (viewMode === "PREVIEW") {
+        setViewMode("SPLIT");
+      }
+      setStatusMessage({
+        type: "success",
+        text: reportSummary,
+      });
+    },
+    [viewMode]
+  );
 
   const handleDirectExportOverleafZip = useCallback(async () => {
     try {
@@ -3587,6 +4582,7 @@ export default function App() {
     attachedPythonAlgorithms.length,
     includeAnswerWorkspace,
     includeDetailedSolutions,
+    appliedTitleCalligraphy,
   ]);
 
   const handleApplyRemedialExam = useCallback(
@@ -3604,7 +4600,7 @@ export default function App() {
       setViewMode("PREVIEW");
       setIsCustomLessonMode(true);
       const newIndices = remedialConfig.targetLessons
-        .map((tl) => allTrackLessons.findIndex((l) => l.lessonFr === tl.lessonFr))
+        .map((tl) => allTrackLessonsIndexMap.get(tl.lessonFr) ?? -1)
         .filter((idx) => idx !== -1);
       if (newIndices.length > 0) {
         setSelectedLessonIndices(newIndices);
@@ -3636,7 +4632,7 @@ export default function App() {
         text: `تم تفعيل وتوليد الفرض الاستدراكي بنجاح على ${remedialConfig.totalPoints} نقطة (${remedialConfig.durationMinutes} دقيقة)!`,
       });
     },
-    [allTrackLessons, isMission, docLang]
+    [allTrackLessonsIndexMap, isMission, docLang]
   );
 
   const handleApplyAutoConformity = useCallback(
@@ -3655,6 +4651,10 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (skipNextOfflineOverwriteRef.current) {
+      skipNextOfflineOverwriteRef.current = false;
+      return;
+    }
     const genTimer = window.setTimeout(() => {
       triggerOfflineGeneration();
     }, 90);
@@ -4060,7 +5060,7 @@ export default function App() {
   // بناء كائن إعدادات الفرض الحالي الشامل لتصديره إلى ملف JSON أو حفظه في الخزانة
   const currentExamConfigBlueprint = useMemo<ExamConfigBlueprintJSON>(() => {
     const selectedLessonRefs = activeCustomLessons.map((lesson) => {
-      const idx = allTrackLessons.findIndex((l) => l.lessonFr === lesson.lessonFr);
+      const idx = allTrackLessonsIndexMap.get(lesson.lessonFr) ?? -1;
       return {
         index: idx >= 0 ? idx : 0,
         lessonAr: lesson.lessonAr,
@@ -4205,7 +5205,7 @@ export default function App() {
     };
   }, [
     activeCustomLessons,
-    allTrackLessons,
+    allTrackLessonsIndexMap,
     customDocTitle,
     currentTrack,
     activeModule,
@@ -4618,11 +5618,107 @@ export default function App() {
     []
   );
 
+  const handleRotateVariationSeed = useCallback(() => {
+    const nextSeed =
+      Math.floor(Date.now() % 10000) + Math.floor(Math.random() * 900) + 1;
+    // مسح أي تخصيص سابق للتمارين عند طلب تدوير صريح للبذرة الرياضية لضمان تجدد المعطيات فوراً
+    setCustomQuestionsMap((prev) => {
+      const next = { ...prev };
+      activeCustomLessons.forEach((l) => {
+        delete next[`${currentTrack.code}_${l.lessonFr}`];
+      });
+      return next;
+    });
+    setExamVariationSeed(nextSeed);
+
+    const localExercisesMeta = activeCustomLessons.map((lesson, idx) => {
+      const baseLesson: LessonItem = {
+        ...lesson,
+        hasCustomQuestions: false,
+      };
+      const vQs = getVariantQuestions(
+        baseLesson,
+        examModel === "B" ? "B" : "A",
+        shuffleQuestions,
+        nextSeed + idx * 7,
+        dsQuestionDensity
+      );
+      return {
+        index: idx + 1,
+        lessonAr: lesson.lessonAr,
+        lessonFr: lesson.lessonFr,
+        weight: lesson.weight,
+        points: Number(((lesson.weight * 20) / 100).toFixed(2)),
+        detectedDomain: lesson.subCategory || lesson.category || "ANALYSE",
+        templateVariantId: `LOCAL_SEED_V${(nextSeed % 5) + 1}_EX${idx + 1}`,
+        seedUsed: nextSeed + idx * 7,
+        parametersUsed: `seedMod=${nextSeed % 5}, model=${examModel}`,
+        questionCount: vQs.questionsAr.length,
+        firstQuestionPreviewAr: vQs.questionsAr[0] || "",
+        firstQuestionPreviewFr: vQs.questionsFr[0] || "",
+      };
+    });
+
+    const newDiagEntry: GenerationDiagnosticEntry = {
+      id: `diag_${Date.now()}_${nextSeed}`,
+      timestamp: new Date().toISOString(),
+      generationSeed: nextSeed,
+      examModel,
+      exportFormat,
+      activeModule,
+      trackLabelAr: currentTrack.labelAr,
+      trackLabelFr: currentTrack.labelFr,
+      modelRequested: selectedAiModel,
+      modelUsed: `محرك القوالب المتجددة (Local Seed #${nextSeed})`,
+      generationSource: "LOCAL_VARIANT_ENGINE",
+      promptSent: `[Local Variant Engine — Instant Seed Rotation]\nSeed: #${nextSeed} | Track: ${currentTrack.labelAr} (${currentTrack.labelFr}) | Model: ${examModel}\nLessons:\n${activeCustomLessons
+        .map((l, i) => `${i + 1}. ${l.lessonAr} (${l.lessonFr}) — ${l.weight}%`)
+        .join("\n")}`,
+      exercisesMetadata: localExercisesMeta,
+    };
+
+    setAiDiagnosticsHistory((prev) => [newDiagEntry, ...prev.slice(0, 19)]);
+    console.groupCollapsed(
+      `%c[Document Generation Seed Rotated] Seed #${nextSeed}`,
+      "color: #10b981; font-weight: bold;"
+    );
+    console.table(
+      localExercisesMeta.map((m) => ({
+        Ex: m.index,
+        Lesson: m.lessonAr,
+        VariantID: m.templateVariantId,
+        Seed: m.seedUsed,
+        Preview: m.firstQuestionPreviewAr.slice(0, 80),
+      }))
+    );
+    console.groupEnd();
+
+    setStatusMessage({
+      type: "success",
+      text: `✓ تم تدوير البذرة الرياضية بنجاح (Seed #${nextSeed}) وتحديث الدوال والمعاملات العددية في جميع التمارين!`,
+    });
+  }, [
+    activeCustomLessons,
+    currentTrack.code,
+    currentTrack.labelAr,
+    currentTrack.labelFr,
+    examModel,
+    shuffleQuestions,
+    dsQuestionDensity,
+    exportFormat,
+    activeModule,
+    selectedAiModel,
+  ]);
+
   const handleAIGenerate = async () => {
     setIsGeneratingAI(true);
+    const nextSeed =
+      Math.floor(Date.now() % 10000) + Math.floor(Math.random() * 900) + 1;
+    setExamVariationSeed(nextSeed);
+
     setStatusMessage({
       type: "info",
-      text: "جاري صياغة التمارين الرياضية والحلول المفصلة وفق الدروس والنسب المختارة عبر محرك الذكاء الاصطناعي...",
+      text: `جاري صياغة التمارين الرياضية والحلول المفصلة ببذرة توليد متجددة (Seed #${nextSeed}) عبر محرك الذكاء الاصطناعي...`,
     });
 
     const targetLessons =
@@ -4682,6 +5778,7 @@ export default function App() {
           dsStructureMode,
           dsQuestionDensity,
           modelChoice: selectedAiModel,
+          generationSeed: nextSeed,
         }),
       });
 
@@ -4689,6 +5786,9 @@ export default function App() {
       if (!response.ok || !data.code) {
         throw new Error(data.error || "تعذر استلام الكود المصدري من الخادم");
       }
+
+      // منع المؤقت التلقائي (90ms) من الكتابة فوق الكود المصدري المولد من الخادم/الذكاء الاصطناعي
+      skipNextOfflineOverwriteRef.current = true;
 
       if (
         Array.isArray(data.generatedExercises) &&
@@ -4720,10 +5820,52 @@ export default function App() {
         });
       }
 
+      if (data.diagnostics) {
+        const diagEntry: GenerationDiagnosticEntry = {
+          id: `diag_${Date.now()}_${data.diagnostics.generationSeed || nextSeed}`,
+          timestamp: data.diagnostics.timestamp || new Date().toISOString(),
+          generationSeed: data.diagnostics.generationSeed || nextSeed,
+          examModel: data.diagnostics.examModel || examModel,
+          exportFormat: data.diagnostics.exportFormat || exportFormat,
+          activeModule: data.diagnostics.activeModule || activeModule,
+          trackLabelAr: data.diagnostics.trackLabelAr || currentTrack.labelAr,
+          trackLabelFr: data.diagnostics.trackLabelFr || currentTrack.labelFr,
+          modelRequested: data.diagnostics.modelRequested || selectedAiModel,
+          modelUsed: data.diagnostics.modelUsed || data.modelUsed || selectedAiModel,
+          generationSource:
+            data.diagnostics.generationSource || "SERVER_SYMBOLIC_ENGINE",
+          promptSent: data.diagnostics.promptSent || "",
+          exercisesMetadata: Array.isArray(data.diagnostics.exercisesMetadata)
+            ? data.diagnostics.exercisesMetadata
+            : [],
+        };
+        setAiDiagnosticsHistory((prev) => [diagEntry, ...prev.slice(0, 19)]);
+
+        console.groupCollapsed(
+          `%c[AI Document Generation Diagnostics] Seed #${diagEntry.generationSeed} (${diagEntry.generationSource})`,
+          "color: #38bdf8; font-weight: bold;"
+        );
+        console.info("Prompt Sent to AI:\n", diagEntry.promptSent);
+        console.table(
+          diagEntry.exercisesMetadata.map((m) => ({
+            Ex: m.index,
+            Lesson: m.lessonAr,
+            Domain: m.detectedDomain,
+            Variant: m.templateVariantId,
+            Seed: m.seedUsed,
+            Params: m.parametersUsed,
+            FirstQuestion: m.firstQuestionPreviewAr.slice(0, 85),
+          }))
+        );
+        console.groupEnd();
+      }
+
       setGeneratedCode(data.code);
       setStatusMessage({
         type: "success",
-        text: `✓ تم توليد وتحديث التمارين الرياضية والحلول المفصلة في المعاينة الورقية (A4) والكود المصدري بنجاح عبر ${
+        text: `✓ تم توليد وتحديث التمارين الرياضية (Seed #${
+          data.generationSeed || nextSeed
+        }) في المعاينة الورقية (A4) والكود المصدري بنجاح عبر ${
           data.modelUsed || selectedAiModel
         }!`,
       });
@@ -5002,6 +6144,71 @@ export default function App() {
     }
   };
 
+  // تصدير خيار «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي لتقليل استهلاك الورق بنسبة 50%
+  const handleExportInstitutionalFoldedA5 = async () => {
+    if (isExportingPDF) return;
+    setIsExportingPDF(true);
+    const previousViewMode = viewMode;
+    if (previousViewMode !== "PREVIEW") {
+      setViewMode("PREVIEW");
+    }
+
+    setStatusMessage({
+      type: "info",
+      text: "جاري توليد ملف «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي (صفحتان A5 في ورقة A4 أفقية) لتقليل استهلاك الورق بنسبة 50%...",
+    });
+
+    try {
+      await new Promise((r) => setTimeout(r, previousViewMode !== "PREVIEW" ? 280 : 80));
+      const foldedName = `${getDocumentFileTag()}_${year}_A5_Plie_Eco50.pdf`;
+      const res = await exportInstitutionalFoldedA5PDF({
+        elementId: "printable-document-sheet",
+        fileName: foldedName,
+        layoutMode: "AUTO_ECO_50",
+        bindingEdge: isMission || docLang === "FR" ? "LTR_LEFT" : "RTL_RIGHT",
+        addFoldGuides: true,
+        docTitle: customDocTitle || defaultDocTitle || getDocumentFileTag(),
+        headerMeta: `${school} · ${prof} · ${year}`,
+        isMission,
+        isFrench: isMission || docLang === "FR",
+        interactiveQuizUrl: interactiveExamUrl,
+        includeFooterQrCode: includeInteractiveQrFooter,
+      });
+
+      const updatedHist = recordExportHistoryEntry({
+        fileName: res.fileName,
+        formatLabel: `الطباعة المجمعة للمؤسسات A5 مطوي (-50% ورق · ${res.physicalA4Sheets} أوراق A4)`,
+        category: "PDF",
+        trackCode: currentTrack.code,
+        trackLabelAr: currentTrack.labelAr,
+        semester,
+        moduleType: activeModule,
+        modelCode: examModel,
+        fileSizeKb: 295.8,
+        dpiOrCompiler: `Institutional Folded A5 · -50% Paper (${res.a5PanelsCount}p A5)`,
+        includeAnswerWorkspace,
+        includeDetailedSolutions,
+      });
+      setExportHistory(updatedHist);
+
+      setStatusMessage({
+        type: "success",
+        text: `✓ تم تصدير الفرض بنمط «الطباعة المجمعة للمؤسسات» بتنسيق A5 مطوي (${res.fileName}) بنجاح — توفير 50% من استهلاك الورق (${res.physicalA4Sheets} أوراق A4 أفقية تضم ${res.a5PanelsCount} صفحات A5 مع خط الطي والقص الوسطي)!`,
+      });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "تعذر توليد ملف الطباعة المجمعة للمؤسسات بتنسيق A5 مطوي.";
+      setStatusMessage({
+        type: "error",
+        text: msg,
+      });
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const handleDownloadFile = (
     overrideFmt?: "PDF" | "LATEX" | "TYPST" | React.MouseEvent
   ) => {
@@ -5206,6 +6413,243 @@ export default function App() {
     });
   };
 
+  // تنفيذ أمر الطباعة المجمعة للمستندات المتعددة بإعدادات طابعة موحدة من لوحة التصدير
+  const handleTriggerBatchPrintWithOptions = (config: BatchPrintSharedConfig) => {
+    const hasModelA = config.selectedDocIds.includes("doc_model_a");
+    const hasModelB = config.selectedDocIds.includes("doc_model_b");
+    const hasSolutions =
+      config.selectedDocIds.includes("doc_solutions_annex") ||
+      Boolean(config.includeCorrectionKey);
+    const hasEvalGrid = config.selectedDocIds.includes("doc_eval_grid");
+    const hasRemediation = config.selectedDocIds.includes("doc_remediation_sheet");
+    const hasCover = config.selectedDocIds.includes("doc_cover_dossier");
+    const hasFormula = config.selectedDocIds.includes("doc_formula_sheet");
+
+    if (hasModelA && hasModelB) {
+      setExamModel("BOTH");
+    } else if (hasModelB && !hasModelA) {
+      setExamModel("B");
+    } else if (hasModelA) {
+      setExamModel("A");
+    }
+
+    setIncludeDetailedSolutions(hasSolutions);
+    if (hasSolutions) {
+      setSolutionDisplayMode("SEPARATE_PAGE_ANNEXES");
+    }
+    setIncludeCustomEvalGridSheet(hasEvalGrid);
+    setIncludePostExamRemediationSheet(hasRemediation);
+    setIncludeOfficialExamCoverSheet(hasCover);
+    setIncludeExamFormulaSheet(hasFormula);
+
+    setIncludeAnswerWorkspace(Boolean(config.includeWorkspace));
+    if (config.includeWorkspace && config.workspaceStyle) {
+      setStudentGridStyle(config.workspaceStyle as StudentGridStyle);
+    }
+
+    if (config.orientation === "LANDSCAPE") {
+      setPageOrientation("LANDSCAPE");
+    } else if (config.orientation === "PORTRAIT") {
+      setPageOrientation("PORTRAIT");
+    }
+
+    setViewMode("PREVIEW");
+    setIsExportDashboardOpen(false);
+
+    setStatusMessage({
+      type: "success",
+      text: `تم تجهيز ${config.selectedDocIds.length} وثائق للطباعة المجمعة (${config.copies} نسخة). يجري فتح نافذة الطابعة الموحدة...`,
+    });
+
+    setTimeout(() => {
+      window.print();
+    }, 350);
+  };
+
+  // أوامر لوحة التحكم السريعة الشاملة (Command Palette Ctrl+K)
+  const appCommandPaletteItems: CommandItem[] = useMemo(() => [
+    {
+      id: "cmd-export-pdf",
+      category: "EXPORT",
+      titleAr: "تصدير الوثيقة بصيغة PDF (A4)",
+      titleFr: "Exporter le document en PDF (A4)",
+      shortcut: "Ctrl+P",
+      icon: FileDown,
+      action: () => handleExportPDF(),
+      keywords: ["pdf", "export", "print", "تحميل", "طبع"],
+    },
+    {
+      id: "cmd-export-a5",
+      category: "EXPORT",
+      titleAr: "الطباعة المجمعة للمؤسسات (A5 مطوي -50% ورق)",
+      titleFr: "Impression groupée livret A5 plié (-50% papier)",
+      icon: BookOpen,
+      action: () => handleExportInstitutionalFoldedA5(),
+      keywords: ["a5", "livret", "economique", "مطوي", "ورق"],
+    },
+    {
+      id: "cmd-eval-grid-templates-142-08",
+      category: "CLASSROOM_DIDACTIC",
+      titleAr: "مكتبة قوالب شبكات التقويم الرسمية (المذكرة 142-08) وتعديلها المباشر",
+      titleFr: "Bibliothèque de Modèles de Grilles d'Évaluation (Note 142-08)",
+      icon: Table2,
+      action: () => {
+        setIsConfigDeckCollapsed(false);
+        setCol3Tab("EVAL_GRID");
+        setIncludeCustomEvalGridSheet(true);
+      },
+      keywords: ["grille", "142-08", "evaluation", "شبكة", "تقويم", "قوالب"],
+    },
+    {
+      id: "cmd-custom-composer",
+      category: "CLASSROOM_DIDACTIC",
+      titleAr: "تأليف وتوليد امتحان تركيبي هجين (Hybrid Exam Composer)",
+      titleFr: "Composition personnalisée d'examen hybride",
+      icon: Layers,
+      action: () => setShowCustomExamComposer(true),
+      keywords: ["composer", "synthese", "hybride", "تركيب", "تأليف"],
+    },
+    {
+      id: "cmd-asymptote-visualizer",
+      category: "CLASSROOM_DIDACTIC",
+      titleAr: "مستكشف المقاربات والفروع اللانهائية والمنحنيات C_f (LaTeX TikZ)",
+      titleFr: "Visualiseur d'asymptotes et branches infinies C_f",
+      icon: TrendingUp,
+      action: () => setShowAsymptoteVisualizer(true),
+      keywords: ["asymptote", "courbe", "tikz", "مقاربات", "منحنى"],
+    },
+    {
+      id: "cmd-toggle-ui-mode",
+      category: "MODE_SETTINGS",
+      titleAr: uiMode === "ESSENTIAL" ? "التبديل إلى نمط الاستوديو الخبير المتقدم" : "التبديل إلى النمط السريع المبسط (Mode Essentiel 3 نقرات)",
+      titleFr: uiMode === "ESSENTIAL" ? "Passer en Mode Expert Studio" : "Passer en Mode Essentiel (3 Clics)",
+      shortcut: "Alt+M",
+      icon: Zap,
+      action: () => setUiMode((prev) => (prev === "ESSENTIAL" ? "EXPERT" : "ESSENTIAL")),
+      keywords: ["mode", "essential", "expert", "نمط", "تبسيط", "3 نقرات"],
+    },
+    {
+      id: "cmd-print-layout",
+      category: "LAYOUT_PRINT",
+      titleAr: "قوالب التخطيط وهوامش الطبع (Margins & Density)",
+      titleFr: "Modèles de mise en page & Marges d'impression",
+      icon: Sliders,
+      action: () => setShowPrintLayoutTemplatesModal(true),
+      keywords: ["margins", "density", "breaks", "هوامش", "فواصل"],
+    },
+    {
+      id: "cmd-page-breaks-toggle",
+      category: "LAYOUT_PRINT",
+      titleAr: showA4LivePageBreaks ? "إخفاء فواصل الصفحات الحية" : "إظهار فواصل الصفحات الحية (A4 Break Visualizer)",
+      titleFr: "Afficher/Masquer le visualiseur de sauts de page A4",
+      icon: Scissors,
+      action: () => setShowA4LivePageBreaks((v) => !v),
+      keywords: ["breaks", "pages", "visualizer", "فواصل"],
+    },
+    {
+      id: "cmd-multipage-view-toggle",
+      category: "LAYOUT_PRINT",
+      titleAr: sheetViewMode === "MULTIPAGE_CARDS" ? "عرض الورقة الممتدة (Continuous Sheet)" : "عرض الصفحات الفيزيائية A4 المنفصلة (Multi-Page A4)",
+      titleFr: "Basculer vers vue multi-pages physiques A4",
+      icon: Layers,
+      action: () => setSheetViewMode((v) => (v === "CONTINUOUS" ? "MULTIPAGE_CARDS" : "CONTINUOUS")),
+      keywords: ["multipage", "continuous", "صفحات", "منفصلة"],
+    },
+    {
+      id: "cmd-bareme-manager",
+      category: "MODE_SETTINGS",
+      titleAr: "مدبر سلم التنقيط وتجزئة النقط وفق المذكرة 142-08",
+      titleFr: "Gestionnaire de barème détaillé (Note 142-08)",
+      icon: Scale,
+      action: () => setIsBaremeModalOpen(true),
+      keywords: ["bareme", "scale", "points", "تنقيط", "سلم"],
+    },
+    {
+      id: "cmd-ai-assistant",
+      category: "MODE_SETTINGS",
+      titleAr: "المساعد الذكي لصياغة وتكييف المسائل الرياضية",
+      titleFr: "Assistant IA de rédaction mathématique",
+      icon: Sparkles,
+      action: () => {
+        setPedagogicalAiInitialView("WORKSPACE");
+        setShowPedagogicalAiModal(true);
+      },
+      keywords: ["ai", "gemini", "ذكاء", "مساعد"],
+    },
+  ], [uiMode, showA4LivePageBreaks, sheetViewMode]);
+
+
+  // تطبيق مخرجات المسح الضوئي OCR ومطابقتها التلقائية مع منهاج الرياضيات المغربي
+  const handleApplyOcrCurriculumMapping = (
+    mapping: ExamOcrScanResult["suggestedCurriculumMapping"]
+  ) => {
+    if (mapping.trackCode && CURRICULUM_DB[mapping.trackCode]) {
+      setSelectedTrackCode(mapping.trackCode);
+    }
+
+    if (mapping.semester === "S1" || mapping.semester === "S2") {
+      setSemester(mapping.semester as SemesterType);
+    }
+
+    if (mapping.dsKey) {
+      setDsKey(mapping.dsKey);
+    }
+
+    if (mapping.cognitiveBalance) {
+      setN1(mapping.cognitiveBalance.n1Percent);
+      setN2(mapping.cognitiveBalance.n2Percent);
+      setN3(mapping.cognitiveBalance.n3Percent);
+    }
+
+    if (mapping.exercises && mapping.exercises.length > 0) {
+      const totalPoints =
+        mapping.exercises.reduce((acc, ex) => acc + (ex.points || 0), 0) || 20;
+
+      const mappedLessons: LessonItem[] = mapping.exercises.map((ex, idx) => ({
+        lessonAr: ex.titleAr || `تمرين ${idx + 1}: ${ex.category || "الرياضيات"}`,
+        lessonFr:
+          ex.titleFr || `Exercice ${idx + 1}: ${ex.category || "Mathématiques"}`,
+        hours: "12h",
+        category: ex.category || "ANALYSIS",
+        subCategory: ex.subCategory || "CALCULUS",
+        subCategoryFr: ex.subCategoryFr || "Calcul",
+        weight: ex.points
+          ? Math.round((ex.points / totalPoints) * 100)
+          : Math.round(100 / mapping.exercises.length),
+        capacitiesAr: ex.capacitiesAr || [],
+        capacitiesFr: ex.capacitiesFr || [],
+        sampleExerciseAr:
+          ex.questionsAr && ex.questionsAr.length > 0 ? ex.questionsAr : undefined,
+        sampleExerciseFr:
+          ex.questionsFr && ex.questionsFr.length > 0 ? ex.questionsFr : undefined,
+        sampleSolutionAr:
+          ex.solutionsAr && ex.solutionsAr.length > 0 ? ex.solutionsAr : undefined,
+        sampleSolutionFr:
+          ex.solutionsFr && ex.solutionsFr.length > 0 ? ex.solutionsFr : undefined,
+        customQuestionBaremes:
+          ex.questionBaremes && ex.questionBaremes.length > 0
+            ? ex.questionBaremes
+            : undefined,
+        customQuestionLevels: ex.cognitiveLevel
+          ? Array(Math.max(1, ex.questionsAr?.length || 1)).fill(ex.cognitiveLevel)
+          : undefined,
+        hasCustomQuestions: Boolean(ex.questionsAr && ex.questionsAr.length > 0),
+      }));
+
+      setSimulatedImportedLessons(mappedLessons);
+      setIsExamSimulationActive(true);
+    }
+
+    setActiveModule("DS_142_08");
+    setViewMode("PREVIEW");
+    setIsOcrScannerModalOpen(false);
+
+    setStatusMessage({
+      type: "success",
+      text: `تم بنجاح استيراد الفرض الممسوح ضوئياً وتوزيع ${mapping.exercises?.length || 0} تماريناً طبقاً للأطر المرجعية للمنهاج المغربي!`,
+    });
+  };
+
   const handleAddFigure = (fig: InsertedFigure) => {
     setInsertedFigures((prev) => [...prev, fig]);
     setStatusMessage({
@@ -5367,9 +6811,8 @@ export default function App() {
     });
   };
 
-  // دوال توليد وتصدير شبكات التقويم المخصصة (Grilles d'évaluation Excel & PDF)
-  const handleExportEvaluationGridExcel = () => {
-    const gridData = buildCustomEvaluationGrid({
+  const liveEvalGridData = useMemo(() => {
+    const baseGrid = buildCustomEvaluationGrid({
       track: currentTrack,
       sem: semester,
       dsKey,
@@ -5388,9 +6831,32 @@ export default function App() {
       dsStructureMode,
       isMission,
     });
+    return applyEvalGridCustomConfigToGridData(baseGrid, evalGridCustomConfig);
+  }, [
+    currentTrack,
+    semester,
+    dsKey,
+    dmSubType,
+    dmNumber,
+    activeModule,
+    activeCustomLessons,
+    n1,
+    n2,
+    n3,
+    examModel,
+    shuffleQuestions,
+    customExerciseTitles,
+    serieExerciseCount,
+    dsQuestionDensity,
+    dsStructureMode,
+    isMission,
+    evalGridCustomConfig,
+  ]);
 
+  // دوال توليد وتصدير شبكات التقويم المخصصة (Grilles d'évaluation Excel & PDF)
+  const handleExportEvaluationGridExcel = () => {
     exportEvaluationGridToExcel({
-      gridData,
+      gridData: liveEvalGridData,
       school,
       prof,
       year,
@@ -5403,37 +6869,18 @@ export default function App() {
       n1,
       n2,
       n3,
+      evalGridCustomConfig,
     });
 
     setStatusMessage({
       type: "success",
-      text: `تم توليد وتحميل شبكة التقويم وتفريغ النقط بصيغة Excel (.xls) بناءً على تمارين الفرض (${gridData.exercises.length} تمارين، ${gridData.allQuestions.length} أسئلة).`,
+      text: `تم توليد وتحميل وثيقة شبكة التقويم بصيغة Excel (.xls) بناءً على قالب المذكرة 142-08 المختار وتمارين الفرض (${liveEvalGridData.exercises.length} تمارين، ${liveEvalGridData.allQuestions.length} أسئلة).`,
     });
   };
 
   const handleExportEvaluationGridCSV = () => {
-    const gridData = buildCustomEvaluationGrid({
-      track: currentTrack,
-      sem: semester,
-      dsKey,
-      dmSubType,
-      dmNumber,
-      activeModule,
-      lessons: activeCustomLessons,
-      n1,
-      n2,
-      n3,
-      modelCode: examModel === "B" ? "B" : "A",
-      shuffleQuestions,
-      customExerciseTitles,
-      serieExerciseCount,
-      dsQuestionDensity,
-      dsStructureMode,
-      isMission,
-    });
-
-    exportMassarPronoteGradeSheet({
-      gridData,
+    exportEvaluationGridToCSV({
+      gridData: liveEvalGridData,
       school,
       prof,
       year,
@@ -5446,17 +6893,12 @@ export default function App() {
       n1,
       n2,
       n3,
-      customStudents: DEFAULT_MOROCCAN_CLASS_ROSTER.slice(
-        0,
-        Math.max(5, evalGridStudentCount)
-      ),
-      dsKey,
-      semester,
+      evalGridCustomConfig,
     });
 
     setStatusMessage({
       type: "success",
-      text: "تم تصدير ورقة تنقيط مسار و Pronote بصيغة CSV UTF-8 مع رموز مسار والتقديرات التربوية جاهزة للاستيراد في Excel.",
+      text: "تم تصدير وثيقة شبكة التقويم وتفريغ النقط بصيغة CSV UTF-8 متوافقة مع المذكرة 142-08 وجاهزة للفتح في Excel.",
     });
   };
 
@@ -5493,6 +6935,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen math-canvas-cool text-slate-900 flex flex-col font-sans selection:bg-cyan-200 selection:text-cyan-950">
+      <React.Suspense fallback={null}>
       {/* نافذة تثبيت التطبيق على الهاتف وتوليد حزمة أندرويد APK */}
       {showAPKModal && (
         <APKInstallModal
@@ -5525,6 +6968,8 @@ export default function App() {
           dsQuestionDensity={dsQuestionDensity}
           dsStructureMode={dsStructureMode}
           isMission={isMission}
+          subQuestionDecompositionMode={subQuestionDecompositionMode}
+          onChangeSubQuestionDecompositionMode={setSubQuestionDecompositionMode}
         />
       )}
 
@@ -5564,6 +7009,7 @@ export default function App() {
           interactiveExamUrl={interactiveExamUrl}
           includeInteractiveQrFooter={includeInteractiveQrFooter}
           onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
+          onOpenLmsExport={() => setShowLmsExportModal(true)}
           onFileExported={(fileName, category, formatLabel, fileSizeKb) => {
             const updated = recordExportHistoryEntry({
               fileName,
@@ -5591,6 +7037,60 @@ export default function App() {
                 category === "OVERLEAF_ZIP" && exportFormat === "TYPST"
                   ? buildSourceCodeForFormat("LATEX")
                   : generatedCode,
+            });
+            setExportHistory(updated);
+          }}
+        />
+      )}
+
+      {/* أستوديو التصدير التفاعلي لأنظمة إدارة التعلم LMS (Moodle XML/GIFT, Google Classroom, IMS QTI 2.1) */}
+      {showLmsExportModal && (
+        <LmsExportModal
+          isOpen={showLmsExportModal}
+          onClose={() => setShowLmsExportModal(false)}
+          config={{
+            examTitleAr: `${getDocumentFileTag()} — ${currentTrack.labelAr}`,
+            examTitleFr: `${currentTrack.labelFr} (${semester} · ${dsKey})`,
+            trackCode: currentTrack.code,
+            trackLabelAr: currentTrack.labelAr,
+            semester,
+            dsKey,
+            school,
+            prof,
+            year,
+            lessons: activeCustomLessons,
+            n1,
+            n2,
+            n3,
+            durationMinutes: currentTrack.durationFr.includes("4")
+              ? 240
+              : currentTrack.durationFr.includes("3")
+              ? 180
+              : currentTrack.durationFr.includes("1h30")
+              ? 90
+              : 120,
+            includeQcmSection:
+              dsStructureMode === "QCM_ET_EXERCICES" ||
+              dsStructureMode === "COMPLETE_EXAM_MAROC",
+            qcmQuestionCount: 4,
+            includeDetailedSolutionsAsFeedback: includeDetailedSolutions,
+            language: docLang,
+          }}
+          onNotify={(type, msg) => setStatusMessage({ type, text: msg })}
+          onFileExported={(fileName, category, formatLabel, fileSizeKb) => {
+            const updated = recordExportHistoryEntry({
+              fileName,
+              formatLabel,
+              category,
+              trackCode: currentTrack.code,
+              trackLabelAr: currentTrack.labelAr,
+              semester,
+              moduleType: activeModule,
+              modelCode: examModel,
+              fileSizeKb,
+              dpiOrCompiler: "LMS Interactive Package (UTF-8)",
+              includeAnswerWorkspace,
+              includeDetailedSolutions,
             });
             setExportHistory(updated);
           }}
@@ -5634,6 +7134,177 @@ export default function App() {
           }}
           onTriggerDownloadEvalExcel={handleExportEvaluationGridExcel}
           onOpenExportCenter={() => setIsExportCenterOpen(true)}
+          onTriggerBatchPrintWithOptions={handleTriggerBatchPrintWithOptions}
+        />
+      )}
+
+      {/* نافذة التصحيح التلقائي للأوراق الممسوحة ضوئياً (OCR) وإنتاج وثائق التصحيح ومطابقة المنهاج */}
+      {isOcrScannerModalOpen && (
+        <ExamOcrCurriculumMapperModal
+          isOpen={isOcrScannerModalOpen}
+          onClose={() => setIsOcrScannerModalOpen(false)}
+          targetTrackCode={currentTrack.code}
+          onApplyCurriculumMapping={handleApplyOcrCurriculumMapping}
+          onNotify={(type, msg) => setStatusMessage({ type, text: msg })}
+          schoolName={school}
+          profName={prof}
+          academicYear={year}
+        />
+      )}
+
+      {/* نافذة جدول الحصص الأسبوعي الرسمي للأستاذ مع التصدير المباشر إلى PDF */}
+      {isWeeklyTimetableOpen && (
+        <WeeklyTimetableModal
+          isOpen={isWeeklyTimetableOpen}
+          onClose={() => setIsWeeklyTimetableOpen(false)}
+          profName={prof}
+          schoolName={school}
+          academyName={academy}
+          directionName={direction}
+          academicYear={year}
+          currentTrackCode={currentTrack.code}
+          isMission={isMission}
+          onNotify={(type, text) => setStatusMessage({ type, text })}
+        />
+      )}
+
+      {/* نافذة العرض التقديمي التفاعلي للدرس في وضع ملء الشاشة (Beamer Mode) */}
+      {isLessonPresentationOpen && (
+        <InteractiveLessonPresentationModal
+          isOpen={isLessonPresentationOpen}
+          onClose={() => setIsLessonPresentationOpen(false)}
+          lessons={activeCustomLessons}
+          track={currentTrack}
+          profName={prof}
+          schoolName={school}
+          academicYear={year}
+          docLang={docLang}
+          isMission={isMission}
+        />
+      )}
+
+      {/* لوحة إدارة مكتبة قوالب GeoGebra التفاعلية وإدراج الأشكال الهندسية في التمارين */}
+      {isGeoGebraLibraryOpen && (
+        <GeoGebraTemplatesLibraryModal
+          isOpen={isGeoGebraLibraryOpen}
+          onClose={() => setIsGeoGebraLibraryOpen(false)}
+          activeLessons={activeCustomLessons}
+          insertedFigures={insertedFigures}
+          geoGebraResourcesMap={geoGebraResourcesMap}
+          onInsertFigureToExam={handleAddFigure}
+          onDeleteFigureFromExam={handleDeleteFigure}
+          onUpdateGeoGebraResource={handleUpdateGeoGebraResource}
+          isMission={isMission}
+          onNotify={(type, msg) => setStatusMessage({ type, text: msg })}
+        />
+      )}
+
+      {/* مركز الأوامر الصوتية للتحكم في التبويبات وإدراج العناصر الرياضية بالصوت */}
+      {isVoiceCommandStudioOpen && (
+        <VoiceCommandStudioModal
+          isOpen={isVoiceCommandStudioOpen}
+          onClose={() => setIsVoiceCommandStudioOpen(false)}
+          isListeningGlobal={isVoiceListeningGlobal}
+          onToggleListeningGlobal={() => setIsVoiceListeningGlobal((v) => !v)}
+          callbacks={{
+            onSelectModule: (mod) => {
+              setActiveModule(mod);
+              setViewMode("PREVIEW");
+            },
+            onSelectDMSubType: (sub) => {
+              setDmSubType(sub);
+            },
+            onChangeFicheLevel: (lvl) => {
+              setFicheContentDetailLevel(lvl);
+            },
+            onChangeDocLang: (lang) => {
+              setDocLang(lang);
+            },
+            onChangeExamModel: (model) => {
+              setExamModel(model);
+            },
+            onToggleSolutions: (val) => {
+              setIncludeDetailedSolutions((prev) =>
+                val !== undefined ? val : !prev
+              );
+            },
+            onToggleWorkspace: (val) => {
+              setIncludeAnswerWorkspace((prev) =>
+                val !== undefined ? val : !prev
+              );
+            },
+            onOpenWeeklyTimetable: () => {
+              setIsVoiceCommandStudioOpen(false);
+              setIsWeeklyTimetableOpen(true);
+            },
+            onOpenLessonPresentation: () => {
+              setIsVoiceCommandStudioOpen(false);
+              setIsLessonPresentationOpen(true);
+            },
+            onOpenGeoGebraLibrary: () => {
+              setIsVoiceCommandStudioOpen(false);
+              setIsGeoGebraLibraryOpen(true);
+            },
+            onOpenOcrScanner: () => {
+              setIsVoiceCommandStudioOpen(false);
+              setIsOcrScannerModalOpen(true);
+            },
+            onOpenExportDashboard: () => {
+              setIsVoiceCommandStudioOpen(false);
+              setIsExportDashboardOpen(true);
+            },
+            onInsertMathSnippet: (latexSnippet, labelAr) => {
+              const targetLesson = activeCustomLessons[0];
+              if (targetLesson) {
+                const key = `${currentTrack.code}_${targetLesson.lessonFr}`;
+                setCustomQuestionsMap((prev) => {
+                  const existingAr =
+                    prev[key]?.ar || targetLesson.sampleExerciseAr || [];
+                  const existingFr =
+                    prev[key]?.fr || targetLesson.sampleExerciseFr || [];
+                  return {
+                    ...prev,
+                    [key]: {
+                      ar: [
+                        ...existingAr,
+                        `سؤال مضاف صوتياً (${labelAr}): أدرس واحسب الصيغة التالية: $${latexSnippet}$`,
+                      ],
+                      fr: [
+                        ...existingFr,
+                        `Question ajoutée par voix (${labelAr}) : Étudier et calculer : $${latexSnippet}$`,
+                      ],
+                    },
+                  };
+                });
+              }
+            },
+            onInsertFigureToExam: handleAddFigure,
+            onAppendDictatedQuestionToExercise: (exIdx, qAr, qFr) => {
+              const targetLesson =
+                activeCustomLessons[exIdx] || activeCustomLessons[0];
+              if (targetLesson) {
+                const key = `${currentTrack.code}_${targetLesson.lessonFr}`;
+                setCustomQuestionsMap((prev) => {
+                  const existingAr =
+                    prev[key]?.ar || targetLesson.sampleExerciseAr || [];
+                  const existingFr =
+                    prev[key]?.fr || targetLesson.sampleExerciseFr || [];
+                  return {
+                    ...prev,
+                    [key]: {
+                      ar: [...existingAr, qAr],
+                      fr: [...existingFr, qFr],
+                    },
+                  };
+                });
+              }
+            },
+            onTriggerExportPDF: () => {
+              setIsVoiceCommandStudioOpen(false);
+              handleExportPDF();
+            },
+            onNotify: (type, text) => setStatusMessage({ type, text }),
+          }}
         />
       )}
 
@@ -5670,6 +7341,7 @@ export default function App() {
           examTitle={`${currentTrack.labelAr} — ${semester === "S1" ? "الدورة الأولى" : "الدورة الثانية"}`}
           trackLabel={currentTrack.labelAr}
           initialModel={examModel === "B" ? "B" : "A"}
+          loadedBaremeLessons={activeCustomLessons}
         />
       )}
 
@@ -5697,6 +7369,7 @@ export default function App() {
           }
         />
       )}
+      </React.Suspense>
 
       {/* نافذة تأكيد الحذف الإلزامية لملفات Google Drive */}
       {fileToDelete && (
@@ -5867,7 +7540,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 1. الشريط العلوي المؤسسي الموحد وشريط ضوابط الوثيقة (Executive Top Bar & Workspace Ribbon) */}
+      {/* 1. الشريط العلوي المؤسسي الموحد بلوائحه المنسدلة الخمس وشريط ضوابط الوثيقة */}
       <TopNavigationHeader
         prof={prof}
         school={school}
@@ -5878,11 +7551,24 @@ export default function App() {
         logoVariant={logoVariant}
         customLogoUrl={customLogoUrl}
         onOpenLogoStudio={() => setShowLogoStudio(true)}
-        onToggleSidebar={handleToggleSidebar}
-        onOpenMobileNav={() => setMobileNavOpen(true)}
         activeModule={activeModule}
         onSelectModule={setActiveModule}
+        dmSubType={dmSubType}
+        onSelectDmSubType={setDmSubType}
+        dmNumber={dmNumber}
+        onCreateNewHomeworkDoc={handleCreateNewHomeworkDocument}
+        homeworkDocsList={homeworkDocs.map((d) => ({
+          id: d.id,
+          dmNumber: d.dmNumber,
+          titleAr: d.titleAr,
+          dueDate: d.dueDate,
+        }))}
+        activeHomeworkDocId={activeHomeworkDocId}
+        onSelectHomeworkDoc={handleSelectHomeworkDocument}
+        ficheContentDetailLevel={ficheContentDetailLevel}
+        onChangeFicheContentDetailLevel={setFicheContentDetailLevel}
         isMission={isMission}
+        activeExercisesCount={activeCustomLessons.length}
         educationSystem={educationSystem}
         onSystemChange={handleSystemChange}
         docLang={docLang}
@@ -5894,6 +7580,8 @@ export default function App() {
           setExportFormat(fmt);
           if (fmt === "PDF") {
             setViewMode("PREVIEW");
+          } else {
+            setViewMode("SPLIT");
           }
         }}
         pageOrientation={pageOrientation}
@@ -5902,6 +7590,8 @@ export default function App() {
         }
         includeAnswerWorkspace={includeAnswerWorkspace}
         onToggleAnswerWorkspace={() => setIncludeAnswerWorkspace((v) => !v)}
+        isInlineEditable={isInlineEditable}
+        onToggleInlineEditable={() => setIsInlineEditable((v) => !v)}
         totalPoints={liveExamStats.totalPoints}
         auditScorePercent={pedagogicalAuditReport.scorePercent}
         auditIssueCount={pedagogicalAuditReport.issueCount}
@@ -5910,25 +7600,57 @@ export default function App() {
         onOpenBaremeModal={() => setIsBaremeModalOpen(true)}
         showMathPalette={showMathPalette}
         onToggleMathPalette={() => setShowMathPalette((v) => !v)}
+        onInsertMathSymbol={(glyph) => {
+          setStatusMessage({
+            type: "success",
+            text: `تم نسخ الرمز الرياضي « ${glyph} » إلى الحافظة بنجاح، يمكنك لصقه في أي حقل أو سؤال.`,
+          });
+        }}
         onOpenAdvancedPedagogyStudio={() =>
           handleOpenAdvancedPedagogyStudio("FUNCTION_PLOTTER")
         }
+        onOpenSpec2DMatrix={() => handleOpenAdvancedPedagogyStudio("SPEC_2D")}
         onOpenPythonLab={() => setShowPythonLabModal(true)}
         onOpenAiAssistant={() => {
           setPedagogicalAiInitialView("WORKSPACE");
           setShowPedagogicalAiModal(true);
         }}
+        onOpenAiPedagogicalAction={(task) =>
+          handleOpenPedagogicalAiWithTask(task, pedagogicalAiInitialLessonIdx)
+        }
         onOpenAiSettings={() => {
           setPedagogicalAiInitialView("SETTINGS_DOCS");
           setShowPedagogicalAiModal(true);
         }}
         onOpenWolframVerifier={() => setShowWolframVerifierModal(true)}
         onOpenJsonConfigModal={() => setIsJsonConfigModalOpen(true)}
-        onOpenAPKModal={() => setShowAPKModal(true)}
-        onOpenSmartQcmScanner={() => setShowSmartQcmScannerModal(true)}
-        onOpenIndividualRemediation={() => setShowIndividualRemediationModal(true)}
-        onOpenCrossPlatformSync={() => setShowCrossPlatformSyncModal(true)}
-        onOpenInteractiveQuiz={handleOpenInteractiveQuiz}
+        onOpenSignTableStudio={() => {
+          setMathInspectorStudioTab("SIGN_TABLE_STUDIO");
+          setShowMathInspectorStudioModal(true);
+        }}
+        onOpenIntegralAreaStudio={() => {
+          setMathInspectorStudioTab("INTEGRAL_AREA_STUDIO");
+          setShowMathInspectorStudioModal(true);
+        }}
+        onOpenSpaceGeometry3DStudio={() => {
+          setMathInspectorStudioTab("SPACE_GEOMETRY_3D_STUDIO");
+          setShowMathInspectorStudioModal(true);
+        }}
+        onOpenInteractiveCurveSpline={() => {
+          setFourProposalsTab("INTERACTIVE_CF_SPLINE");
+          setShowFourProposalsModal(true);
+        }}
+        onOpenPdfHighlighterStudio={() => {
+          setImportedStudioInitialTab("PDF_HIGHLIGHTER");
+          setShowImportedExamStudio(true);
+        }}
+        onOpenReprographicsStudio={() => {
+          setReprographicsStudioTab("ECO_TONER_SIMULATOR");
+          setShowReprographicsStudioModal(true);
+        }}
+        onExportCompanionBridgeJson={() => {
+          setShowCompanionBridgeModal(true);
+        }}
         selectedAiModel={selectedAiModel}
         onSelectAiModel={setSelectedAiModel}
         isExamSimulationActive={isExamSimulationActive}
@@ -5937,8 +7659,11 @@ export default function App() {
           setActiveModule("DS_142_08");
           setShowImportedExamStudio((v) => !v);
         }}
+        onOpenOcrScanner={() => setIsOcrScannerModalOpen(true)}
         isExportingPDF={isExportingPDF}
         onExportPDF={handleExportPDF}
+        onExportInstitutionalFoldedA5={handleExportInstitutionalFoldedA5}
+        onDirectExportOverleafZip={handleDirectExportOverleafZip}
         onPrintA4={() => handlePrint(false)}
         onOpenExportCenter={() => setIsExportCenterOpen(true)}
         onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
@@ -5957,106 +7682,81 @@ export default function App() {
         onToggleConfigDeck={() => setIsConfigDeckCollapsed((v) => !v)}
         onResetPreferences={handleResetPreferences}
         onOpenDidacticChecklist={() => setShowDidacticChecklistModal(true)}
-        onOpenRemedialExam={() => setShowRemedialExamModal(true)}
+        onOpenWeeklyTimetable={() => setIsWeeklyTimetableOpen(true)}
+        onOpenLessonPresentation={() => setIsLessonPresentationOpen(true)}
+        onOpenGeoGebraLibrary={() => setIsGeoGebraLibraryOpen(true)}
+        onOpenVoiceCommandStudio={() => setIsVoiceCommandStudioOpen(true)}
+        isVoiceListening={isVoiceListeningGlobal}
         showA4LivePageBreaks={showA4LivePageBreaks}
         onToggleA4LivePageBreaks={() => setShowA4LivePageBreaks((v) => !v)}
         economicTwoUpPrintMode={economicTwoUpPrintMode}
         onToggleEconomicTwoUpPrintMode={() => setEconomicTwoUpPrintMode((v) => !v)}
-      />
-
-      {/* لوحة الرموز والعمليات الرياضية السريعة بألوان باردة هادئة */}
-      <MathSymbolPaletteBar
-        isOpen={showMathPalette}
-        onToggle={() => setShowMathPalette(false)}
-        isArabic={docLang !== "FR"}
-        onInsertSymbol={(glyph) => {
+        uiMode={uiMode}
+        onToggleUiMode={() =>
+          setUiMode((prev) => (prev === "ESSENTIAL" ? "EXPERT" : "ESSENTIAL"))
+        }
+        onOpenCommandPalette={() => setShowCommandPalette(true)}
+        onOpenEvalGridTemplatesLibrary={() => {
+          setIsConfigDeckCollapsed(false);
+          setCol3Tab("EVAL_GRID");
+          setIncludeCustomEvalGridSheet(true);
           setStatusMessage({
-            type: "success",
-            text: `تم نسخ الرمز الرياضي « ${glyph} » إلى الحافظة بنجاح، يمكنك لصقه في أي حقل أو سؤال.`,
+            type: "info",
+            text: "تم فتح مكتبة قوالب شبكات التقويم الجاهزة (المذكرة 142-08) للتخصيص المباشر وإرفاق الشبكة بالوثيقة A4.",
           });
         }}
+        onOpenCustomExamComposer={() => setShowCustomExamComposer(true)}
+        onOpenAsymptoteVisualizer={() => setShowAsymptoteVisualizer(true)}
+        isReadingMode={readingModeConfig.enabled}
+        onToggleReadingMode={handleToggleReadingMode}
+        onOpenFavorites={() => setShowFavoritesModal(true)}
+        favoritesCount={favorites.length}
+        onOpenDualExamComparison={() => setShowDualExamComparisonModal(true)}
+        onOpenLmsExport={() => setShowLmsExportModal(true)}
       />
 
-      {/* هيكل لوحة التحكم مع شريط التنقل الجانبي الثابت (Persistent Side Navigation Layout) */}
+      {/* هيكل مساحة العمل بعرض كامل بدون لائحة جانبية */}
       <div className="flex-1 flex w-full min-h-0 relative">
-        <SideNavigationMenu
-          activeModule={activeModule}
-          onSelectModule={setActiveModule}
-          isMission={isMission}
-          dmSubType={dmSubType}
-          onSelectDmSubType={setDmSubType}
-          currentTrackLabel={isMission ? currentTrack.labelFr : currentTrack.labelAr}
-          currentTrackCode={currentTrack.code}
-          semester={semester}
-          dsKey={dsKey}
-          activeExercisesCount={activeCustomLessons.length}
-          totalWeightScore={totalCustomWeight}
-          isExamSimulationActive={isExamSimulationActive}
-          showImportedExamStudio={showImportedExamStudio}
-          onToggleImportedExamStudio={() => {
-            setActiveModule("DS_142_08");
-            setShowImportedExamStudio((v) => !v);
-          }}
-          onOpenLogoStudio={() => setShowLogoStudio(true)}
-          onOpenDrivePanel={() => {
-            setShowDrivePanel((v) => !v);
-            if (!showDrivePanel) fetchDriveFiles();
-          }}
-          driveConnected={!!driveToken}
-          driveUserName={driveUser?.displayName || undefined}
-          isConfigDeckCollapsed={isConfigDeckCollapsed}
-          onToggleConfigDeck={() => setIsConfigDeckCollapsed((v) => !v)}
-          isInlineEditable={isInlineEditable}
-          onToggleInlineEditable={() => setIsInlineEditable((v) => !v)}
-          pageOrientation={pageOrientation}
-          onTogglePageOrientation={() =>
-            setPageOrientation((prev) => (prev === "PORTRAIT" ? "LANDSCAPE" : "PORTRAIT"))
-          }
-          onPrint={() => handlePrint(false)}
-          onExportPDF={handleExportPDF}
-          isExportingPDF={isExportingPDF}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapsed={handleToggleSidebar}
-          mobileOpen={mobileNavOpen}
-          onCloseMobile={() => setMobileNavOpen(false)}
-          onOpenMobileConfigSheet={handleOpenMobileConfigSheet}
-          docFontFamily={docFontFamily}
-          onChangeDocFontFamily={setDocFontFamily}
-          docFontSize={docFontSize}
-          onChangeDocFontSize={setDocFontSize}
-          handwrittenSolutionsOnly={handwrittenSolutionsOnly}
-          onToggleHandwrittenSolutionsOnly={() =>
-            setHandwrittenSolutionsOnly((v) => !v)
-          }
-          onOpenAPKModal={() => setShowAPKModal(true)}
-          onOpenSmartQcmScanner={() => setShowSmartQcmScannerModal(true)}
-          onOpenIndividualRemediation={() => setShowIndividualRemediationModal(true)}
-          onOpenCrossPlatformSync={() => setShowCrossPlatformSyncModal(true)}
-          onOpenInteractiveQuiz={handleOpenInteractiveQuiz}
-          onOpenPythonLab={() => setShowPythonLabModal(true)}
-          onOpenAiAssistant={() => {
-            setPedagogicalAiInitialTask(undefined);
-            setShowPedagogicalAiModal(true);
-          }}
-          onOpenAiPedagogicalAction={(task) =>
-            handleOpenPedagogicalAiWithTask(task, pedagogicalAiInitialLessonIdx)
-          }
-          onOpenWolframVerifier={() => setShowWolframVerifierModal(true)}
-          onOpenBatchPrint={() => setIsBatchPrintModalOpen(true)}
-          onOpenExportDashboard={() => setIsExportDashboardOpen(true)}
-          exportHistoryCount={exportHistory.length}
-          onOpenAdvancedPedagogyStudio={() => handleOpenAdvancedPedagogyStudio("SPEC_2D")}
-          auditScorePercent={pedagogicalAuditReport.scorePercent}
-          onOpenAuditPanel={() => setShowAuditPanel((v) => !v)}
-          includeAnswerWorkspace={includeAnswerWorkspace}
-          onToggleAnswerWorkspace={() => setIncludeAnswerWorkspace((v) => !v)}
-          onOpenJsonConfigModal={() => setIsJsonConfigModalOpen(true)}
-        />
-
-        {/* حاوية المحتوى الرئيسي */}
         <div className="flex-1 min-w-0 flex flex-col">
-          {/* المحتوى الرئيسي */}
-          <main className="max-w-7xl w-full mx-auto px-4 md:px-8 py-4 lg:py-6 pb-24 lg:pb-6 space-y-5 flex-1">
+          {/* المحتوى الرئيسي بعرض واسع ومريح */}
+          <main className="max-w-[1440px] w-full mx-auto px-4 md:px-8 py-4 lg:py-6 pb-24 lg:pb-6 space-y-5 flex-1">
+        {/* شريط الوصول السريع للوحة القيادة المركزية (Firebase Firestore) واستيراد ملفات .tex المباشر */}
+        {!readingModeConfig.enabled && (
+          <div className="bg-gradient-to-l from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl px-4 py-3 border border-indigo-500/30 shadow-md flex flex-wrap items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black">
+                Firebase Cloud & LaTeX .tex Hub
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-slate-200">
+                لوحة القيادة المركزية للفروض المنجزة والمحفوظة في قاعدة بيانات Firebase + استيراد وتنسيق ملفات <code className="font-mono text-amber-300">.tex</code> مباشرة من جهازك
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCentralFirebaseHubInitialTab("FIREBASE_DASHBOARD");
+                  setShowCentralFirebaseHubModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                <span>☁️ لوحة قيادة الفروض المحفوظة (Firebase)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCentralFirebaseHubInitialTab("TEX_DIRECT_IMPORTER");
+                  setShowCentralFirebaseHubModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>📥 استيراد وتنسيق ملف .tex من الجهاز</span>
+              </button>
+            </div>
+          </div>
+        )}
         {/* لوحة أرشيف Google Drive السحابي مع حركة Framer Motion */}
         <AnimatePresence initial={false}>
           {showDrivePanel && (
@@ -6174,7 +7874,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* شريط اختيار مؤسسات البعثة الفرنسية بالمغرب عند تفعيل وضع البعثة */}
-        {isMission && (
+        {isMission && !readingModeConfig.enabled && (
           <section className="bg-white p-5 rounded-xl border border-slate-200 space-y-3 no-print">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-2 text-xs font-black text-slate-900">
@@ -6215,7 +7915,46 @@ export default function App() {
           </section>
         )}
 
+        {/* لافتة الوضع السريع الميسر (Mode Essentiel — 3 Clics) */}
+        {uiMode === "ESSENTIAL" && !readingModeConfig.enabled && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-sky-500/10 to-teal-500/15 border-2 border-amber-400/80 rounded-2xl p-4 shadow-sm no-print mb-3 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-sm">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <span>الوضع السريع الميسر (Mode Essentiel — 3 Clics)</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/40 text-amber-950 text-[10px] font-black">3 نقرات</span>
+                </h3>
+                <p className="text-xs text-slate-600">
+                  إنتاج فوري للوثيقة البيداغوجية: 1. اختر الشعبة والمستوى ← 2. اختر الفرض أو السلسلة ← 3. اضغط زر «تصدير PDF»!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                <FileDown className="w-4 h-4" />
+                <span>تصدير فوري PDF (A4)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUiMode("EXPERT")}
+                className="h-9 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>التبديل للاستوديو الخبير</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* شريط السياق البيداغوجي الحي ومنصة المختبرات التخصصية الموحدة (Unified Context & Didactic Labs Dock) */}
+        {!readingModeConfig.enabled && (
         <section className="bg-white px-4 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs no-print">
           {/* الصف العلوي: مسار الوثيقة الحية (Unboxed Breadcrumb) + ضوابط المعاينة والتدقيق الأساسية */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -6336,225 +8075,12 @@ export default function App() {
               </button>
             </div>
           </div>
-
-          {/* الصف السفلي الموحد: رصيف المختبرات الديداكتيكية واستوديوهات المفتش والأستاذ (Unified Segmented Lab Dock) */}
-          <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <span className="text-[10.5px] font-black text-slate-400 whitespace-nowrap shrink-0 pl-1">
-              المختبرات التخصصية:
-            </span>
-
-            {/* زر تحويل التمارين الحالية إلى اختبار تفاعلي مع تصحيح آلي فوري (Interactive Quiz) */}
-            <button
-              type="button"
-              onClick={handleOpenInteractiveQuiz}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-amber-600 shadow-2xs whitespace-nowrap shrink-0"
-              title="تحويل التمارين الحالية إلى اختبار تفاعلي (Interactive Quiz) مع تصحيح آلي فوري وسجل نقط عبر مكتبة quizGenerator"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-100 fill-current shrink-0" />
-              <span>اختبار تفاعلي وتصحيح آلي (Quiz /20)</span>
-            </button>
-
-            {activeModule === "DS_142_08" && (
-              <button
-                type="button"
-                onClick={() => handleOpenAdvancedPedagogyStudio("SPEC_2D")}
-                className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 text-cyan-300 border-slate-800 hover:bg-slate-800 whitespace-nowrap shrink-0"
-                title="فتح مصفوفة التخصيص 2D وتقييم المهارات المكتسبة للتلاميذ والتقرير البيداغوجي المدمج"
-              >
-                <Table2 className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                <span>مصفوفة التخصيص 2D</span>
-              </button>
-            )}
-
-            {activeModule === "DS_142_08" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setImportedStudioInitialTab("ARCHIVE");
-                  setShowImportedExamStudio((v) => !v);
-                }}
-                className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
-                  isExamSimulationActive
-                    ? "bg-teal-700 text-white border-teal-800"
-                    : showImportedExamStudio && importedStudioInitialTab !== "PDF_HIGHLIGHTER"
-                    ? "bg-slate-900 text-cyan-300 border-slate-800"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
-                }`}
-              >
-                <Sparkles className="w-3 h-3 text-cyan-700 shrink-0" />
-                <span>
-                  {showImportedExamStudio && importedStudioInitialTab !== "PDF_HIGHLIGHTER"
-                    ? "إخفاء استوديو المحاكاة"
-                    : isExamSimulationActive
-                    ? `الفرض المحاكى (#${examVariationSeed})`
-                    : "محاكاة فرض خارجي"}
-                </span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                if (showImportedExamStudio && importedStudioInitialTab === "PDF_HIGHLIGHTER") {
-                  setShowImportedExamStudio(false);
-                } else {
-                  setImportedStudioInitialTab("PDF_HIGHLIGHTER");
-                  setShowImportedExamStudio(true);
-                }
-              }}
-              className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
-                showImportedExamStudio && importedStudioInitialTab === "PDF_HIGHLIGHTER"
-                  ? "bg-slate-900 text-amber-300 border-slate-800"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
-              }`}
-              title="فتح عارض PDF التفاعلي وتظليل المقاطع بالماوس لتوليد تمارين رياضية موازية بالذكاء الاصطناعي"
-            >
-              <Highlighter className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>عارض PDF والتوليد بالتظليل</span>
-            </button>
-
-            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("SIGN_TABLE_STUDIO");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="مولد جدول الإشارة ومجموعة التعريف الآلي (Tableaux de Signes & D_f) عبر MathJS"
-            >
-              <span className="font-mono text-indigo-700 font-black">±||</span>
-              <span>جدول الإشارة و D_f</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("INTEGRAL_AREA_STUDIO");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="مختبر حساب التكامل والمساحات المظللة بين منحنيين (Calcul Intégral & Aires Hachurées)"
-            >
-              <span className="font-serif text-emerald-700 font-black">∫</span>
-              <span>التكامل والمساحة المظللة</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("SPACE_GEOMETRY_3D_STUDIO");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="مكتبة الأشكال الهندسية الفضائية ثلاثية الأبعاد (مكعب، رباعي أوجه، هرم، فلكة ومستوٍ قاطع)"
-            >
-              <span className="font-mono text-cyan-800 font-black">3D</span>
-              <span>الهندسة الفضائية SVG</span>
-            </button>
-
-            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("DOUBLE_PENALTY_DETECTOR");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="النقطة 2 للمفتش التربوي: مدقق العقوبة المزدوجة (3 أنماط إصلاح) + التدرج الديداكتيكي وميزانية الزمن (1×3)"
-            >
-              <span className="font-mono text-amber-700 font-black">1×3</span>
-              <span>مدقق المفتش (العقوبة المزدوجة)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("LONGITUDINAL_COHORT");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="النقطة 3 للمفتش التربوي: لوحة التتبع الطولي (DS1→DS2→DS3) ومبيان التطور ومصنف نقط مسار"
-            >
-              <span className="font-mono text-teal-800 font-black">DS1→3</span>
-              <span>التتبع الطولي ومسار</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMathInspectorStudioTab("EDTECH_DEV_STUDIO");
-                setShowMathInspectorStudioModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 hover:bg-slate-800 text-cyan-300 border-slate-800 whitespace-nowrap shrink-0"
-              title="مقترحات مطور البرامج التربوية: مولد النماذج البارامترية المتكافئة A/B/C/D + مدقق كثافة A4 + تصدير Moodle XML"
-            >
-              <span className="font-mono text-amber-300 font-black">A/B/C/D</span>
-              <span>مختبر النماذج و Moodle XML</span>
-            </button>
-
-            <div className="w-px h-4 bg-slate-200 shrink-0 mx-0.5" aria-hidden="true" />
-
-            {/* أزرار الوصول الفوري للمقترحات العملية الأربعة الجديدة */}
-            <button
-              type="button"
-              onClick={() => {
-                setFourProposalsTab("INTERACTIVE_CF_SPLINE");
-                setShowFourProposalsModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-900 hover:bg-slate-800 text-cyan-300 border-slate-800 whitespace-nowrap shrink-0"
-              title="المقترح 1: محرر المنحنيات البيانية التفاعلي باللمس والماوس (C_f Interactive Spline) مع استنتاج الصيغة وجدول التغيرات"
-            >
-              <span className="font-serif text-cyan-300 font-black">C_f</span>
-              <span>محرر المنحنى بالماوس</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFourProposalsTab("MASSAR_XLSX_STUDIO");
-                setShowFourProposalsModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="المقترح 2: استيراد وتصدير مباشر لملفات منظومة «مسار» الرسمية (Excel / CSV) مع التقديرات التربوية الآلية"
-            >
-              <span className="font-mono text-emerald-700 font-black">.XLS</span>
-              <span>مصنف مسار الرسمي</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFourProposalsTab("BIOF_ERRORS_CATALOG");
-                setShowFourProposalsModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="المقترح 3: بنك الأخطاء الشائعة للمتعلمين والعوائق الإبستيمولوجية حسب كل درس (BIOF)"
-            >
-              <span className="font-mono text-amber-700 font-black">BIOF</span>
-              <span>بنك الأخطاء الشائعة</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFourProposalsTab("QR_PROGRESSIVE_HINTS");
-                setShowFourProposalsModal(true);
-              }}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 whitespace-nowrap shrink-0"
-              title="المقترح 4: مولد أوراق التصحيح الذاتي والتلميحات التدريجية بالرمز المربع (Auto-Évaluation par QR Code)"
-            >
-              <span className="font-mono text-indigo-700 font-black">QR</span>
-              <span>تلميحات التصحيح الذاتي</span>
-            </button>
-          </div>
         </section>
+        )}
 
         {/* مرصد التدقيق البيداغوجي الشامل واقتراح النقائص (Pedagogical & Technical Diagnostic Panel) */}
         <AnimatePresence initial={false}>
-          {showAuditPanel && (
+          {showAuditPanel && !readingModeConfig.enabled && (
             <motion.section
               key="pedagogical-audit-panel"
               initial={{ height: 0, opacity: 0, y: -8 }}
@@ -6687,7 +8213,8 @@ export default function App() {
                 </div>
 
                 {/* مكون مصفوفة التخصيص ثنائية الأبعاد (2D) لتدقيق المفتش التربوي (الدروس × المهارات N1/N2/N3) */}
-                {activeModule === "DS_142_08" && (
+                {(activeModule === "DS_142_08" ||
+                  (activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON")) && (
                   <SpecMatrix2DInspectorCard
                     lessons={activeCustomLessons}
                     n1={n1}
@@ -6831,7 +8358,7 @@ export default function App() {
 
         {/* استوديو محاكاة واستنساخ الفروض المحروسة المستوردة وعارض PDF التفاعلي مع حركات Framer Motion */}
         <AnimatePresence initial={false}>
-          {showImportedExamStudio && (
+          {showImportedExamStudio && !readingModeConfig.enabled && (
             <motion.section
               key="imported-exam-studio-panel"
               initial={{ height: 0, opacity: 0, y: -10 }}
@@ -6864,6 +8391,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* شريط وصول سريع على الجوال يبقي معاينة الورقة A4 في صدارة الشاشة ويفتح الإعدادات في درج سفلي (Bottom-Sheet Drawer) */}
+        {!readingModeConfig.enabled && (
         <div className="lg:hidden no-print bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <FileCheck2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
@@ -6898,9 +8426,10 @@ export default function App() {
             </button>
           </div>
         </div>
+        )}
 
         {/* خلفية معتمة للدرج السفلي على الجوال والألواح الإلكترونية */}
-        {mobileConfigSheetOpen && (
+        {mobileConfigSheetOpen && !readingModeConfig.enabled && (
           <div
             className={`${
               isConfigDeckCollapsed ? "" : "lg:hidden "
@@ -6911,7 +8440,7 @@ export default function App() {
 
         {/* لوحة الإعدادات الثلاثية: على الحاسوب 3 أعمدة، وعلى الجوال/اللوح درج سفلي (Bottom-Sheet Drawer) */}
         <AnimatePresence initial={false}>
-          {(!isConfigDeckCollapsed || mobileConfigSheetOpen) && (
+          {(!isConfigDeckCollapsed || mobileConfigSheetOpen) && !readingModeConfig.enabled && (
             <motion.section
               key="three-column-config-deck"
               initial={{ opacity: 0, y: 16 }}
@@ -7344,6 +8873,131 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+
+                  {/* بطاقة رفع وإدارة ملفات الخطوط المخصصة (.ttf / .otf) مع التخزين المحلي */}
+                  <div className="bg-emerald-50/90 border border-emerald-200 rounded-xl p-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                        خط مخصص للترويسة والعناوين (.ttf / .otf)
+                      </span>
+                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold shadow-xs transition">
+                        <Upload className="w-3 h-3" />
+                        <span>رفع خط (.ttf/.otf)</span>
+                        <input
+                          type="file"
+                          accept=".ttf,.otf,font/ttf,font/otf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (!file) return;
+                            const res = await readAndAddCustomFontFile(file);
+                            if (!res.success || !res.font) {
+                              setStatusMessage({
+                                type: "error",
+                                text: res.errorAr || "تعذر رفع ملف الخط.",
+                              });
+                              return;
+                            }
+                            const updated = loadCustomUploadedFonts();
+                            setCustomUploadedFonts(updated);
+                            injectCustomUploadedFontsToDocument(updated, res.font.id);
+                            setAppliedTitleCalligraphy((prev) => ({
+                              ...prev,
+                              fontId: "CUSTOM_UPLOADED_FONT",
+                              customUploadedFontId: res.font!.id,
+                              customUploadedFontName: res.font!.name,
+                            }));
+                            setStatusMessage({
+                              type: "success",
+                              text: `تم رفع وحفظ الخط «${res.font.name}» (${res.font.format === "opentype" ? "OTF" : "TTF"}) محلياً وتطبيقه على ترويسة وعناوين الفرض!`,
+                            });
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {customUploadedFonts.length === 0 ? (
+                      <p className="text-[10px] text-emerald-800 leading-relaxed">
+                        ارفع ملف خط من حاسوبك بصيغة <span className="font-mono font-bold">.ttf</span> أو{" "}
+                        <span className="font-mono font-bold">.otf</span> ليُحفظ محلياً في المتصفح ويُطبَّق فوراً على ترويسة وعناوين الفرض المحروس.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {customUploadedFonts.map((cFont) => {
+                          const isSelected =
+                            appliedTitleCalligraphy.fontId === "CUSTOM_UPLOADED_FONT" &&
+                            (appliedTitleCalligraphy.customUploadedFontId === cFont.id ||
+                              (!appliedTitleCalligraphy.customUploadedFontId &&
+                                customUploadedFonts[0]?.id === cFont.id));
+                          return (
+                            <div
+                              key={cFont.id}
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] transition ${
+                                isSelected
+                                  ? "bg-emerald-800 text-white border-emerald-900 font-bold shadow-xs"
+                                  : "bg-white text-slate-800 border-emerald-300 hover:bg-emerald-100"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  injectCustomUploadedFontsToDocument(
+                                    customUploadedFonts,
+                                    cFont.id
+                                  );
+                                  setAppliedTitleCalligraphy((prev) => ({
+                                    ...prev,
+                                    fontId: "CUSTOM_UPLOADED_FONT",
+                                    customUploadedFontId: cFont.id,
+                                    customUploadedFontName: cFont.name,
+                                  }));
+                                  setStatusMessage({
+                                    type: "success",
+                                    text: `تم تفعيل الخط المحلي المخصص «${cFont.name}» لترويسة وعناوين الفرض.`,
+                                  });
+                                }}
+                                className="flex items-center gap-1 text-right"
+                              >
+                                <Check className={`w-3 h-3 ${isSelected ? "opacity-100" : "opacity-30"}`} />
+                                <span>{cFont.name}</span>
+                                <span className="text-[9px] font-mono uppercase opacity-75">
+                                  ({cFont.format})
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                title="حذف هذا الخط من التخزين المحلي"
+                                onClick={() => {
+                                  const remaining = deleteCustomUploadedFont(cFont.id);
+                                  setCustomUploadedFonts(remaining);
+                                  const nextDefault = remaining[0];
+                                  injectCustomUploadedFontsToDocument(
+                                    remaining,
+                                    nextDefault?.id
+                                  );
+                                  if (appliedTitleCalligraphy.customUploadedFontId === cFont.id) {
+                                    setAppliedTitleCalligraphy((prev) => ({
+                                      ...prev,
+                                      fontId: nextDefault ? "CUSTOM_UPLOADED_FONT" : "DEFAULT_DOC",
+                                      customUploadedFontId: nextDefault?.id,
+                                      customUploadedFontName: nextDefault?.name,
+                                    }));
+                                  }
+                                }}
+                                className={`p-0.5 rounded hover:bg-red-500/20 ${
+                                  isSelected ? "text-emerald-200 hover:text-white" : "text-slate-400 hover:text-red-600"
+                                }`}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
                   {/* قسم إعدادات الخط الأندلسي المغربي (Maghribi Script): زر التفعيل + زر تبديل الزخرفة (Toggle) مع أيقونة مصغرة + شريط تمرير التباعد الأفقي بين الحروف (Letter Spacing Slider) */}
                   {(() => {
@@ -8218,9 +9872,46 @@ export default function App() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        رقم الفرض / DS
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600">
+                          رقم الفرض / DS
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleToggleFavoriteExam}
+                          className={`text-[10px] font-bold flex items-center gap-1 px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            isItemInFavorites(
+                              favorites,
+                              "EXAM_BLUEPRINT",
+                              `BP_${currentTrack.code}_${semester}_${dsKey}`
+                            )
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "text-slate-500 hover:text-amber-800 hover:bg-amber-50"
+                          }`}
+                          title="إضافة أو إزالة هذا النموذج من المفضلة للوصول السريع"
+                        >
+                          <Star
+                            className={`w-3 h-3 ${
+                              isItemInFavorites(
+                                favorites,
+                                "EXAM_BLUEPRINT",
+                                `BP_${currentTrack.code}_${semester}_${dsKey}`
+                              )
+                                ? "text-amber-500 fill-amber-400"
+                                : "text-slate-400"
+                            }`}
+                          />
+                          <span>
+                            {isItemInFavorites(
+                              favorites,
+                              "EXAM_BLUEPRINT",
+                              `BP_${currentTrack.code}_${semester}_${dsKey}`
+                            )
+                              ? "في المفضلة"
+                              : "حفظ كنموذج"}
+                          </span>
+                        </button>
+                      </div>
                       <select
                         value={dsKey}
                         onChange={(e) => setDsKey(e.target.value)}
@@ -8431,7 +10122,11 @@ export default function App() {
                                 onChange={(e) =>
                                   setDraftQcmStmtAr(e.target.value)
                                 }
-                                placeholder="نص السؤال (مثال: قيمة النهاية lim_{x→+∞} ln(x)/x هي...)"
+                                placeholder={
+                                  activeCustomLessons[0]?.lessonAr
+                                    ? `نص السؤال (مثال في ${activeCustomLessons[0].lessonAr}: اختر الجواب الصحيح...)`
+                                    : "نص السؤال (مثال: قيمة النهاية، إحداثيات نقطة، أو خاصية مميزة...)"
+                                }
                                 className="w-full border border-slate-300 rounded px-2 py-1 bg-white font-semibold"
                               />
                               <div className="grid grid-cols-2 gap-1.5">
@@ -8540,8 +10235,131 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* التحكم في تجزئة السؤال إلى أسئلة فرعية متدرجة (أ، ب، ج / a, b, c) */}
+                    <div className="bg-indigo-50/90 border border-indigo-200 rounded-xl p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-indigo-950 flex items-center gap-1.5">
+                          <span className="bg-indigo-900 text-amber-300 font-mono text-[9.5px] px-1.5 py-0.5 rounded">
+                            أ·ب·ج
+                          </span>
+                          <span>تجزئة الأسئلة إلى أسئلة فرعية (أ، ب، ج):</span>
+                        </span>
+                        <span className="text-[9.5px] font-mono font-bold text-indigo-800 bg-white px-1.5 py-0.5 rounded border border-indigo-200">
+                          {subQuestionDecompositionMode === "STRUCTURED_ABC_ALL"
+                            ? "مفعل لكل الأسئلة"
+                            : subQuestionDecompositionMode === "AUTO_DETECT_ONLY"
+                            ? "للأسئلة المركبة"
+                            : "معطل"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 bg-white p-0.5 rounded-lg border border-indigo-200 text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSubQuestionDecompositionMode("STRUCTURED_ABC_ALL");
+                            setStatusMessage({
+                              type: "success",
+                              text: "تم تفعيل التجزئة المنهجية الشاملة لكل سؤال إلى أسئلة فرعية (أ، ب، ج / a, b, c) مع توزيع النقط الجزئية!",
+                            });
+                          }}
+                          className={`py-1 px-1.5 rounded transition cursor-pointer ${
+                            subQuestionDecompositionMode === "STRUCTURED_ABC_ALL"
+                              ? "bg-indigo-950 text-white font-black"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          شامل (أ، ب، ج)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSubQuestionDecompositionMode("AUTO_DETECT_ONLY");
+                            setStatusMessage({
+                              type: "info",
+                              text: "تم تفعيل تجزئة الأسئلة المركبة فقط (التي تتضمن «ثم استنتج» أو شطوراً متعددة).",
+                            });
+                          }}
+                          className={`py-1 px-1.5 rounded transition cursor-pointer ${
+                            subQuestionDecompositionMode === "AUTO_DETECT_ONLY"
+                              ? "bg-indigo-950 text-white font-black"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          تلقائي للمركبة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSubQuestionDecompositionMode("NONE");
+                            setStatusMessage({
+                              type: "info",
+                              text: "تم إيقاف تجزئة الأسئلة الفرعية؛ ستظهر الأسئلة كفقرات موحدة.",
+                            });
+                          }}
+                          className={`py-1 px-1.5 rounded transition cursor-pointer ${
+                            subQuestionDecompositionMode === "NONE"
+                              ? "bg-indigo-950 text-white font-black"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          سؤال موحد
+                        </button>
+                      </div>
+                    </div>
+
                     {!isMission && (
                       <>
+                      {/* المقترح 1: محرك التقدير الزمني الدقيق لإنجاز الفرض والأسئلة الفرعية (Smart Chrono-Didactic Engine) */}
+                      {(() => {
+                        const chrono = computeExamChronoDidacticReport({
+                          lessons: activeCustomLessons,
+                          officialDurationStr: currentTrack.durationAr || currentTrack.durationFr,
+                          hasQcm:
+                            dsStructureMode === "QCM_ET_EXERCICES" ||
+                            dsStructureMode === "COMPLETE_EXAM_MAROC",
+                          qcmQuestionCount,
+                          hasSynthesisProblem:
+                            dsStructureMode === "EXERCICES_ET_PROBLEME" ||
+                            dsStructureMode === "COMPLETE_EXAM_MAROC",
+                          decompositionMode: subQuestionDecompositionMode,
+                        });
+                        return (
+                          <div className="bg-slate-900 text-white rounded-xl p-2.5 space-y-2 border border-slate-700 shadow-2xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-black text-amber-300 flex items-center gap-1.5">
+                                <span>⏱️ الموازنة الزمنية للفرض (Chrono-Didactic):</span>
+                              </span>
+                              <span
+                                className={`text-[9.5px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                  chrono.status === "OPTIMAL_FIT"
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                    : chrono.status === "OVERLOAD_WARNING"
+                                    ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                                    : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                }`}
+                              >
+                                {chrono.totalRequiredMinutes} د / {chrono.officialDurationMinutes} د ({chrono.utilizationRatioPct}%)
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {chrono.exerciseMinutesBreakdown.map((exB) => (
+                                <span
+                                  key={exB.exerciseIndex}
+                                  className="text-[9.5px] font-mono bg-slate-800 text-cyan-200 px-1.5 py-0.5 rounded border border-slate-700"
+                                >
+                                  ت{exB.exerciseIndex}: ~{exB.estimatedMinutes}د ({exB.subQuestionsCount} شطور)
+                                </span>
+                              ))}
+                              <span className="text-[9.5px] font-mono bg-slate-800/70 text-slate-300 px-1.5 py-0.5 rounded">
+                                + مراجعة: {chrono.readingAndReviewBufferMinutes}د
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-300 leading-relaxed">
+                              {chrono.recommendationAr}
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {/* بارومتر المطابقة البيداغوجية وتوجيهات مفتش مادة الرياضيات بألوان هادئة وباردة (Note 142-08) */}
                       <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/80 text-white rounded-xl p-3 space-y-2.5 shadow-xs border border-cyan-900/40">
@@ -8619,6 +10437,30 @@ export default function App() {
                           </button>
                         </div>
                       </div>
+
+                      {/* مكتبة قوالب شبكات التقويم الجاهزة المتوافقة مع المذكرة 142-08 في لوحة إعدادات التقويم */}
+                      <EvalGridTemplates142_08Panel
+                        config={evalGridCustomConfig}
+                        onChangeConfig={setEvalGridCustomConfig}
+                        gridData={liveEvalGridData}
+                        includeCustomEvalGridSheet={includeCustomEvalGridSheet}
+                        onToggleIncludeSheet={setIncludeCustomEvalGridSheet}
+                        evalGridGranularity={evalGridGranularity}
+                        onChangeGranularity={setEvalGridGranularity}
+                        evalGridStudentCount={evalGridStudentCount}
+                        onChangeStudentCount={setEvalGridStudentCount}
+                        onApplyRecommendedTaxonomicWeights={(recN1, recN2, recN3) => {
+                          setN1(recN1);
+                          setN2(recN2);
+                          setN3(recN3);
+                        }}
+                        onExportPDF={handleExportEvaluationGridPDF}
+                        onExportExcel={handleExportEvaluationGridExcel}
+                        isExportingPDF={isExportingEvalGridPDF}
+                        isFr={docLang === "FR" || isMission}
+                        compactMode={true}
+                        onNotify={(type, text) => setStatusMessage({ type, text })}
+                      />
                       </>
                     )}
                   </div>
@@ -8651,6 +10493,195 @@ export default function App() {
                     </button>
                   </div>
 
+                  {dmSubType === "DEVOIR_MAISON" && (
+                    <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-2.5 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-sky-950 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                          <span>وثائق الفروض المنزلية المستقلة ({homeworkDocs.length}):</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCreateNewHomeworkDocument}
+                          className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[10.5px] font-black flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                        >
+                          <FilePlus2 className="w-3 h-3" />
+                          <span>+ إضافة فرض منزلي جديد</span>
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {homeworkDocs.map((hwDoc) => {
+                          const isCurrent = hwDoc.id === activeHomeworkDocId;
+                          const hwPin = generateHomeworkAssignmentVerificationCode({
+                            homeworkId: hwDoc.id,
+                            dmNumber: hwDoc.dmNumber,
+                            dueDate: hwDoc.dueDate,
+                            trackCode: hwDoc.trackCode,
+                            semester: hwDoc.semester,
+                            moroccanDMType: hwDoc.moroccanDMType,
+                            variationSeed: hwDoc.variationSeed,
+                            lessonIndices: hwDoc.selectedLessonIndices,
+                          });
+                          return (
+                            <div
+                              key={hwDoc.id}
+                              className={`inline-flex items-center rounded-lg border text-[11px] transition ${
+                                isCurrent
+                                  ? "bg-slate-900 text-sky-200 border-slate-900 font-black shadow-2xs"
+                                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100 font-bold"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSelectHomeworkDocument(hwDoc.id)}
+                                className="px-2.5 py-1 flex items-center gap-1.5 cursor-pointer"
+                                title={`رمز QR الفريد لصفحة الحل: ${hwPin}`}
+                              >
+                                <QrCode className="w-3 h-3 text-emerald-400 shrink-0" />
+                                <span className="font-mono text-[10px] text-sky-400">
+                                  {hwDoc.dmNumber}
+                                </span>
+                                <span className="truncate max-w-[115px]">
+                                  {hwDoc.titleAr}
+                                </span>
+                              </button>
+                              {homeworkDocs.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteHomeworkDocument(hwDoc.id)}
+                                  className={`px-1.5 py-1 border-r ${
+                                    isCurrent
+                                      ? "border-slate-700 text-slate-400 hover:text-rose-300"
+                                      : "border-slate-200 text-slate-400 hover:text-rose-600"
+                                  } cursor-pointer`}
+                                  title="حذف وثيقة الفرض المنزلي هذه"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* بطاقة رمز QR الفريد الخاص بالفرض المنزلي النشط للولوج المباشر لصفحة الحل */}
+                      {(() => {
+                        const activeHwUrl = buildHomeworkSolutionLink({
+                          homeworkId: activeHomeworkDocId,
+                          dmNumber,
+                          titleAr: customDocTitle || `الفرض المنزلي ${dmNumber}`,
+                          dueDate: dmDueDate,
+                          system: educationSystem,
+                          trackCode: selectedTrackCode,
+                          semester,
+                          moroccanDMType,
+                          docLang,
+                          variationSeed: examVariationSeed,
+                          lessonIndices: selectedLessonIndices,
+                        });
+                        const activeHwPin = generateHomeworkAssignmentVerificationCode({
+                          homeworkId: activeHomeworkDocId,
+                          dmNumber,
+                          dueDate: dmDueDate,
+                          trackCode: selectedTrackCode,
+                          semester,
+                          moroccanDMType,
+                          variationSeed: examVariationSeed,
+                          lessonIndices: selectedLessonIndices,
+                        });
+                        const qrSvgMarkup = renderQrSvgString(
+                          activeHwUrl,
+                          56,
+                          "#064e3b",
+                          "#ffffff"
+                        );
+
+                        return (
+                          <div className="bg-white border border-emerald-300 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className="w-14 h-14 rounded-lg border border-emerald-700 p-0.5 bg-white shrink-0 flex items-center justify-center"
+                                dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
+                              />
+                              <div className="space-y-0.5">
+                                <div className="text-[11px] font-black text-emerald-950 flex items-center gap-1">
+                                  <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+                                  <span>
+                                    رمز QR الفريد لصفحة حل ({dmNumber})
+                                  </span>
+                                </div>
+                                <div className="text-[9.5px] font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded inline-block">
+                                  PIN: {activeHwPin}
+                                </div>
+                                <div className="text-[10px] text-slate-600">
+                                  يوجه التلميذ مباشرة لصفحة التصحيح النموذجي للفرض
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(activeHwUrl);
+                                  setStatusMessage({
+                                    type: "success",
+                                    text: `تم نسخ رابط صفحة الحل النموذجي الفريد للفرض المنزلي (${dmNumber}) [PIN: ${activeHwPin}]!`,
+                                  });
+                                }}
+                                className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black flex items-center gap-1 transition cursor-pointer"
+                                title="نسخ رابط QR المباشر لصفحة الحل النموذجي"
+                              >
+                                <Copy className="w-3 h-3 text-emerald-700" />
+                                <span>نسخ رابط الحل</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nextOnlySol = !onlyPrintSolutions;
+                                  setShowAnswerKey(true);
+                                  setIncludeDetailedSolutions(true);
+                                  setOnlyPrintSolutions(nextOnlySol);
+                                  setStatusMessage({
+                                    type: "info",
+                                    text: nextOnlySol
+                                      ? `تم فتح صفحة الحل النموذجي المستقلة للفرض المنزلي (${dmNumber}) كما تظهر للتلميذ عند مسح رمز QR!`
+                                      : `تمت العودة لعرض موضوع الفرض المنزلي (${dmNumber}) مع عناصر الإجابة.`,
+                                  });
+                                  setTimeout(() => {
+                                    const el = document.getElementById(
+                                      "homework-solution-sheet"
+                                    );
+                                    if (el) {
+                                      el.scrollIntoView({
+                                        behavior: "smooth",
+                                        block: "start",
+                                      });
+                                    }
+                                  }, 120);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition cursor-pointer ${
+                                  onlyPrintSolutions
+                                    ? "bg-amber-500 text-slate-950 shadow-2xs"
+                                    : "bg-emerald-700 hover:bg-emerald-800 text-white"
+                                }`}
+                              >
+                                <FileCheck2 className="w-3 h-3" />
+                                <span>
+                                  {onlyPrintSolutions
+                                    ? "عرض الفرض كاملاً"
+                                    : "معاينة صفحة الحل"}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -8665,6 +10696,12 @@ export default function App() {
                         <option value="N° 2">N° 2 (الثاني)</option>
                         <option value="N° 3">N° 3 (الثالث)</option>
                         <option value="N° 4">N° 4 (الرابع)</option>
+                        <option value="N° 5">N° 5 (الخامس)</option>
+                        <option value="N° 6">N° 6 (السادس)</option>
+                        <option value="N° 7">N° 7 (السابع)</option>
+                        <option value="N° 8">N° 8 (الثامن)</option>
+                        <option value="N° 9">N° 9 (التاسع)</option>
+                        <option value="N° 10">N° 10 (العاشر)</option>
                       </select>
                     </div>
                     {dmSubType === "DEVOIR_MAISON" ? (
@@ -8696,6 +10733,38 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
+                  {dmSubType === "DEVOIR_MAISON" && (
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        كثافة أسئلة كل تمرين في الفرض المنزلي:
+                      </span>
+                      <div className="grid grid-cols-2 gap-1 bg-white p-0.5 rounded-lg border border-indigo-200 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setDsQuestionDensity("STANDARD")}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            dsQuestionDensity === "STANDARD"
+                              ? "bg-indigo-950 text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          قياسي (5 أسئلة)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDsQuestionDensity("INTENSIVE")}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            dsQuestionDensity === "INTENSIVE"
+                              ? "bg-indigo-950 text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          مكثف وشامل (+N3)
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* النمط البيداغوجي للفرض المنزلي وفق التوجيهات الرسمية */}
                   {dmSubType === "DEVOIR_MAISON" && !isMission && (
@@ -9245,13 +11314,57 @@ export default function App() {
                       <div key={idx} className="py-3 first:pt-0 last:pb-0 space-y-2">
                         <div className="flex justify-between items-start text-xs font-black text-slate-950 gap-2">
                           <div className="space-y-1">
-                            <span className="block">
-                              {idx + 1}.{" "}
-                              {isMission || docLang === "FR"
-                                ? item.lessonFr
-                                : `${item.lessonAr} · ${item.lessonFr}`}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleFavoriteExercise(item)}
+                                className="p-0.5 rounded hover:bg-amber-50 cursor-pointer transition shrink-0"
+                                title={
+                                  isItemInFavorites(
+                                    favorites,
+                                    "CUSTOM_EXERCISE",
+                                    `EX_${currentTrack.code}_${item.lessonFr}`
+                                  )
+                                    ? "إزالة التمرين من المفضلة"
+                                    : "إضافة التمرين إلى المفضلة البيداغوجية"
+                                }
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${
+                                    isItemInFavorites(
+                                      favorites,
+                                      "CUSTOM_EXERCISE",
+                                      `EX_${currentTrack.code}_${item.lessonFr}`
+                                    )
+                                      ? "text-amber-500 fill-amber-400"
+                                      : "text-slate-300 hover:text-amber-400"
+                                  }`}
+                                />
+                              </button>
+                              <span className="block">
+                                {idx + 1}.{" "}
+                                {isMission || docLang === "FR"
+                                  ? item.lessonFr
+                                  : `${item.lessonAr} · ${item.lessonFr}`}
+                              </span>
+                            </div>
                             <div className="flex flex-wrap items-center gap-1">
+                              {(() => {
+                                const covStatus = getLessonEvaluationHistoryAcrossDS(
+                                  currentTrack.code,
+                                  semester,
+                                  dsKey,
+                                  item.lessonFr
+                                );
+                                return (
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${covStatus.badgeColorClass}`}
+                                    title="سجل تقويم هذا الدرس عبر فروض الأسدوس (DS1 / DS2 / DS3)"
+                                  >
+                                    ✓ {covStatus.badgeTextAr}
+                                  </span>
+                                );
+                              })()}
                               {itemTags.map((tag) => (
                                 <button
                                   key={tag}
@@ -9561,42 +11674,54 @@ export default function App() {
 
                 {/* شريط تبويبات العمود الثالث لمنع التكدس العمودي وتحقيق التناسق */}
                 {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
-                  <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-[11px] font-black">
+                  <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-[10.5px] font-black">
                     <button
                       type="button"
                       onClick={() => setCol3Tab("EVAL_MODELS")}
-                      className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
                         col3Tab === "EVAL_MODELS"
                           ? "bg-white text-indigo-950 shadow-2xs"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
                       <Layers className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
-                      <span>النماذج والتصحيح</span>
+                      <span className="truncate">النماذج</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setCol3Tab("GEOGEBRA")}
-                      className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
                         col3Tab === "GEOGEBRA"
                           ? "bg-white text-teal-950 shadow-2xs"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
                       <Compass className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                      <span>هندسة GeoGebra</span>
+                      <span className="truncate">GeoGebra</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setCol3Tab("EVAL_GRID")}
-                      className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
                         col3Tab === "EVAL_GRID"
-                          ? "bg-white text-indigo-950 shadow-2xs"
+                          ? "bg-white text-emerald-950 shadow-2xs"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
                       <Table2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                      <span>شبكة التقويم</span>
+                      <span className="truncate">الشبكة</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCol3Tab("FAVORITES")}
+                      className={`py-1.5 px-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                        col3Tab === "FAVORITES"
+                          ? "bg-white text-amber-950 shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
+                      <span className="truncate">المفضلة ({favorites.length})</span>
                     </button>
                   </div>
                 )}
@@ -9675,8 +11800,9 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* منزلقات المستويات المهارية */}
-                    {activeModule === "DS_142_08" && (
+                    {/* منزلقات المستويات المهارية وتجزئة النقط (للفروض المحروسة والفروض المنزلية المستقلة) */}
+                    {(activeModule === "DS_142_08" ||
+                      (activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON")) && (
                       <div className="space-y-2.5 text-xs border-b border-slate-200/80 pb-3.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-bold text-slate-800">
@@ -9839,14 +11965,212 @@ export default function App() {
                               مختبر MathJS وأدوات الأستاذ والمفتش (المنحنيات + المتتاليات + العقوبة المزدوجة)
                             </span>
                           </button>
+
+                          {/* المقترح 2 و 6: فاحص تكافؤ النماذج (A/B) + تصدير حقيبة الفرض المحروس الشاملة (All-in-One DS Pack) */}
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setShowIsoDifficultyPanel((prev) => !prev)}
+                              className="py-1.5 px-2 rounded-lg text-[10.5px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200 flex items-center justify-center gap-1 transition cursor-pointer"
+                            >
+                              <Scale className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                              <span>تكافؤ النماذج A/B (100%)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const manifest = buildAllInOneDsArchivePackManifest({
+                                  trackCode: currentTrack.code,
+                                  trackLabelAr: currentTrack.labelAr,
+                                  semester,
+                                  dsKey,
+                                  schoolName: school,
+                                  professorName: prof,
+                                  academicYear: year,
+                                  officialDurationStr:
+                                    currentTrack.durationAr || currentTrack.durationFr,
+                                  lessons: activeCustomLessons,
+                                  decompositionMode: subQuestionDecompositionMode,
+                                  hasQcm:
+                                    dsStructureMode === "QCM_ET_EXERCICES" ||
+                                    dsStructureMode === "COMPLETE_EXAM_MAROC",
+                                  qcmQuestionCount,
+                                  hasSynthesisProblem:
+                                    dsStructureMode === "EXERCICES_ET_PROBLEME" ||
+                                    dsStructureMode === "COMPLETE_EXAM_MAROC",
+                                });
+                                const blob = new Blob([JSON.stringify(manifest, null, 2)], {
+                                  type: "application/json;charset=utf-8",
+                                });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `${manifest.packId}_AllInOne_DS_Pack.json`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                setStatusMessage({
+                                  type: "success",
+                                  text: `تم توليد وتنزيل حقيبة الفرض المحروس الشاملة (${manifest.packId}) شاملةً ${manifest.totalMainQuestions} أسئلة رئيسية و ${manifest.totalSubQuestions} أسئلة فرعية (أ، ب، ج)!`,
+                                });
+                              }}
+                              className="py-1.5 px-2 rounded-lg text-[10.5px] font-black bg-emerald-700 hover:bg-emerald-600 text-white flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                            >
+                              <Download className="w-3.5 h-3.5 shrink-0" />
+                              <span>حقيبة الفرض الشاملة</span>
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowCompleteUnitDossierModal(true)}
+                            className="w-full py-1.5 px-2.5 rounded-lg text-[10.5px] font-black bg-indigo-900 hover:bg-indigo-800 text-white flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                            <span>استوديو الوثائق المتكاملة وحقيبة الدرس (5×1: جذاذة + ملخص + سلسلة + DM + DS)</span>
+                          </button>
+
+                          {showIsoDifficultyPanel && (() => {
+                            const isoReport = buildIsoDifficultyModelComparison(activeCustomLessons);
+                            return (
+                              <div className="bg-white border border-indigo-200 rounded-lg p-2 space-y-1.5 text-[10px]">
+                                <div className="flex items-center justify-between font-black text-indigo-950 border-b border-indigo-100 pb-1">
+                                  <span>مصفوفة تكافؤ المعاملات العددية بين النموذج (أ) والنموذج (ب)</span>
+                                  <span className="font-mono text-emerald-700">
+                                    تكافؤ {isoReport.overallParityPct}% ✓
+                                  </span>
+                                </div>
+                                <div className="max-h-36 overflow-y-auto space-y-1">
+                                  {isoReport.rows.slice(0, 6).map((r, rIdx) => (
+                                    <div
+                                      key={rIdx}
+                                      className="p-1.5 rounded bg-slate-50 border border-slate-200/80 space-y-0.5"
+                                    >
+                                      <div className="flex items-center justify-between font-bold text-slate-900">
+                                        <span>
+                                          {r.questionNumber} — {r.lessonTitleAr}
+                                        </span>
+                                        <span className="text-[9px] text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                          {r.algebraicInvariantAr}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
 
-                    {/* خيارات بيداغوجية إضافية */}
-                    <div className="space-y-1.5 text-[11.5px]">
-                      {activeModule === "DS_142_08" && (
+                    {/* المقترح 3: نظام الباقات البيداغوجية الذكية والمجموعات المطوية للخيارات الـ 12 */}
+                    <div className="space-y-2 text-[11.5px]">
+                      {(activeModule === "DS_142_08" ||
+                        (activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON")) && (
                         <>
+                          <div className="bg-indigo-50/70 border border-indigo-200/90 rounded-xl p-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10.5px] font-black text-indigo-950">
+                                ⚡ باقات التفعيل السريع للخيارات الديداكتيكية (142-08):
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 text-[10px] font-bold">
+                              {(
+                                [
+                                  {
+                                    id: "OFFICIAL_MINISTERIAL_142_08" as DidacticPackPresetId,
+                                    label: "الباقة الرسمية (142-08)",
+                                  },
+                                  {
+                                    id: "FULL_INSPECTOR_PORTFOLIO" as DidacticPackPresetId,
+                                    label: "ملف التفتيش الكامل",
+                                  },
+                                  {
+                                    id: "STUDENT_SUPPORT_MAX" as DidacticPackPresetId,
+                                    label: "باقة دعم المتعلم",
+                                  },
+                                  {
+                                    id: "MINIMAL_CLEAN_PAPER" as DidacticPackPresetId,
+                                    label: "ورقة مختصرة صافية",
+                                  },
+                                ]
+                              ).map((pack) => (
+                                <button
+                                  key={pack.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const flags = getDidacticPackPresetFlags(pack.id);
+                                    setDifferentiatedPathConfig((prev) => ({
+                                      ...prev,
+                                      enabled: flags.differentiatedPathEnabled,
+                                    }));
+                                    setLongitudinalCohortConfig((prev) => ({
+                                      ...prev,
+                                      includeInPrintablePreview:
+                                        flags.longitudinalCohortIncluded,
+                                    }));
+                                    setShowQuestionBareme(flags.showQuestionBareme);
+                                    setIncludeGradingScaleTable(
+                                      flags.includeGradingScaleTable
+                                    );
+                                    setInclude2DSpecMatrix(flags.include2DSpecMatrix);
+                                    setIncludeMoroccanExamDirectives(
+                                      flags.includeMoroccanExamDirectives
+                                    );
+                                    setIncludeExamFormulaSheet(
+                                      flags.includeExamFormulaSheet
+                                    );
+                                    setIncludeDSStudentSelfCheck(
+                                      flags.includeDSStudentSelfCheck
+                                    );
+                                    setIncludePostExamRemediationSheet(
+                                      flags.includePostExamRemediationSheet
+                                    );
+                                    setIncludeOfficialExamCoverSheet(
+                                      flags.includeOfficialExamCoverSheet
+                                    );
+                                    setIncludeIndividualGradingStrip(
+                                      flags.includeIndividualGradingStrip
+                                    );
+                                    setIncludeRescueHintsAndContinuity(
+                                      flags.includeRescueHintsAndContinuity
+                                    );
+                                    setStatusMessage({
+                                      type: "success",
+                                      text: `تم تفعيل «${pack.label}» وضبط الخيارات البيداغوجية للفرض المحروس!`,
+                                    });
+                                  }}
+                                  className="py-1 px-2 rounded-lg bg-white hover:bg-indigo-900 hover:text-white text-indigo-950 border border-indigo-200 transition cursor-pointer shadow-2xs"
+                                >
+                                  {pack.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* شريط تصفية المجموعات الثلاث */}
+                            <div className="grid grid-cols-4 gap-1 pt-1 border-t border-indigo-200/60 text-[9.5px] font-extrabold">
+                              {[
+                                { id: "ALL" as const, label: "الكل (12)" },
+                                { id: "STUDENT_PAPER" as const, label: "ورقة التلميذ" },
+                                { id: "INSPECTOR_DOSSIER" as const, label: "ملف المفتش" },
+                                { id: "REMEDIATION" as const, label: "الدعم الذاتي" },
+                              ].map((tab) => (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  onClick={() => setDidacticPackFilter(tab.id)}
+                                  className={`py-1 rounded transition cursor-pointer ${
+                                    didacticPackFilter === tab.id
+                                      ? "bg-indigo-900 text-white"
+                                      : "bg-white/80 text-slate-600 hover:bg-white"
+                                  }`}
+                                >
+                                  {tab.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -10024,7 +12348,11 @@ export default function App() {
                               <div className="flex flex-wrap items-center gap-1">
                                 <span className="font-bold text-purple-950">نمط التسطير:</span>
                                 {[
-                                  { id: "SEYES_FRENCH", label: "Seyès 8mm" },
+                                  {
+                                    id: "SEYES_HD_PRO",
+                                    label: "Seyès HD Pro (سيري عالي الدقة)",
+                                  },
+                                  { id: "SEYES_FRENCH", label: "Seyès تقليدي" },
                                   { id: "LINED_RULED", label: "مسطر Ligné" },
                                   { id: "MILLIMETER_GRID", label: "ميليمتري" },
                                   { id: "DOTTED_BOX", label: "نقطي" },
@@ -10035,12 +12363,7 @@ export default function App() {
                                     type="button"
                                     onClick={() =>
                                       setStudentGridStyle(
-                                        st.id as
-                                          | "SEYES_FRENCH"
-                                          | "LINED_RULED"
-                                          | "MILLIMETER_GRID"
-                                          | "DOTTED_BOX"
-                                          | "PLAIN_BOX"
+                                        st.id as StudentGridStyle
                                       )
                                     }
                                     className={`px-1.5 py-0.5 rounded font-bold transition cursor-pointer ${
@@ -10053,6 +12376,31 @@ export default function App() {
                                   </button>
                                 ))}
                               </div>
+                              {(studentGridStyle === "SEYES_HD_PRO" ||
+                                studentGridStyle === "SEYES_FRENCH") && (
+                                <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-purple-200/70">
+                                  <span className="font-bold text-indigo-950">
+                                    تباعد أسطر السيري (عربي/فرنسي):
+                                  </span>
+                                  {SEYES_SPACING_OPTIONS.map((sp) => (
+                                    <button
+                                      key={sp.id}
+                                      type="button"
+                                      onClick={() =>
+                                        setSeyesSpacingPreset(sp.id)
+                                      }
+                                      title={sp.descriptionAr}
+                                      className={`px-1.5 py-0.5 rounded font-bold transition cursor-pointer ${
+                                        seyesSpacingPreset === sp.id
+                                          ? "bg-indigo-900 text-white"
+                                          : "bg-white text-indigo-900 border border-indigo-200 hover:bg-indigo-100"
+                                      }`}
+                                    >
+                                      {sp.shortBadgeAr}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                               <div className="flex flex-wrap items-center gap-1">
                                 <span className="font-bold text-purple-950">ارتفاع الحيز:</span>
                                 {[
@@ -10312,6 +12660,40 @@ export default function App() {
                         >
                           ⚠️ بنك الأخطاء الشائعة
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCompleteUnitDossierModal(true)}
+                          className="p-2 rounded-lg border border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-amber-950 text-right transition cursor-pointer"
+                        >
+                          📁 ملف الوحدة المتكامل (6 وثائق)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCompanionBridgeModal(true)}
+                          className="p-2 rounded-lg border border-teal-300 bg-teal-50/80 hover:bg-teal-100 text-teal-950 text-right transition cursor-pointer"
+                        >
+                          🔗 جسر التتبع ودفتر النصوص
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCentralFirebaseHubInitialTab("FIREBASE_DASHBOARD");
+                            setShowCentralFirebaseHubModal(true);
+                          }}
+                          className="p-2 rounded-lg border border-indigo-300 bg-indigo-100/80 hover:bg-indigo-200 text-indigo-950 text-right transition cursor-pointer"
+                        >
+                          ☁️ لوحة قيادة الفروض (Firebase)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCentralFirebaseHubInitialTab("TEX_DIRECT_IMPORTER");
+                            setShowCentralFirebaseHubModal(true);
+                          }}
+                          className="p-2 rounded-lg border border-emerald-300 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-950 text-right transition cursor-pointer"
+                        >
+                          📥 استيراد وتنسيق ملف .tex
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -10474,6 +12856,17 @@ export default function App() {
                             )}
                           </div>
 
+                          <button
+                            type="button"
+                            onClick={() => setIsGeoGebraLibraryOpen(true)}
+                            className="w-full justify-center bg-gradient-to-l from-cyan-600 to-indigo-700 hover:from-cyan-500 hover:to-indigo-600 text-white rounded-lg px-3 py-2 text-xs font-black transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <Compass className="w-3.5 h-3.5 text-cyan-200" />
+                            <span>
+                              فتح مكتبة قوالب GeoGebra التفاعلية وإدراج الأشكال مع معاينة مصغرة
+                            </span>
+                          </button>
+
                           <label className="cursor-pointer w-full justify-center bg-white hover:bg-teal-100/70 text-teal-950 border border-teal-300 rounded-lg px-3 py-2 text-xs font-black transition flex items-center gap-1.5 shadow-2xs">
                             <Upload className="w-3.5 h-3.5 text-teal-700" />
                             <span>
@@ -10557,104 +12950,150 @@ export default function App() {
                     </div>
                   )}
 
-                {/* التبويب 3: مولد شبكات التقويم والتفريغ المخصصة (Excel & PDF) */}
+                {/* التبويب 3: مكتبة قوالب شبكات التقويم الجاهزة (المذكرة 142-08) وتعديلها المباشر */}
                 {col3Tab === "EVAL_GRID" &&
                   (activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
+                    <EvalGridTemplates142_08Panel
+                      config={evalGridCustomConfig}
+                      onChangeConfig={setEvalGridCustomConfig}
+                      gridData={liveEvalGridData}
+                      includeCustomEvalGridSheet={includeCustomEvalGridSheet}
+                      onToggleIncludeSheet={setIncludeCustomEvalGridSheet}
+                      evalGridGranularity={evalGridGranularity}
+                      onChangeGranularity={setEvalGridGranularity}
+                      evalGridStudentCount={evalGridStudentCount}
+                      onChangeStudentCount={setEvalGridStudentCount}
+                      onApplyRecommendedTaxonomicWeights={(recN1, recN2, recN3) => {
+                        setN1(recN1);
+                        setN2(recN2);
+                        setN3(recN3);
+                      }}
+                      onExportPDF={handleExportEvaluationGridPDF}
+                      onExportExcel={handleExportEvaluationGridExcel}
+                      isExportingPDF={isExportingEvalGridPDF}
+                      isFr={docLang === "FR" || isMission}
+                      compactMode={false}
+                      onNotify={(type, text) => setStatusMessage({ type, text })}
+                    />
+                  )}
+
+                {/* التبويب 4: مكتبة العناصر المفضلة (نماذج الفروض والتمارين المخصصة) */}
+                {col3Tab === "FAVORITES" &&
+                  (activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-black text-indigo-950">
-                          <Table2 className="w-4 h-4 text-indigo-700 shrink-0" />
-                          <span>شبكة التقويم وتفريغ النقط (Grille d&apos;évaluation)</span>
+                      <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200/90 rounded-xl p-2.5">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" />
+                          <div>
+                            <h3 className="text-xs font-black text-amber-950">
+                              المفضلة البيداغوجية
+                            </h3>
+                            <p className="text-[10px] text-amber-800">
+                              {favorites.length} عناصر محفوظة
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-mono font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                          Excel & PDF
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowFavoritesModal(true)}
+                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[10.5px] font-black transition cursor-pointer shadow-2xs"
+                        >
+                          المكتبة الكاملة ↗
+                        </button>
                       </div>
 
-                      <div className="bg-indigo-50/50 border border-indigo-200/90 rounded-xl p-3.5 space-y-3 text-xs">
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              تفصيل الشبكة:
-                            </label>
-                            <select
-                              value={evalGridGranularity}
-                              onChange={(e) =>
-                                setEvalGridGranularity(e.target.value as GridGranularity)
-                              }
-                              className="w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-xs bg-white font-bold text-slate-900"
-                            >
-                              <option value="BY_QUESTION">تفصيلي حسب كل سؤال وقدرة</option>
-                              <option value="BY_EXERCISE">إجمالي حسب التمارين</option>
-                            </select>
+                      {/* زر حفظ الفرض الحالي في المفضلة */}
+                      <button
+                        type="button"
+                        onClick={handleToggleFavoriteExam}
+                        className="w-full py-2 px-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 text-amber-950 text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer"
+                      >
+                        <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-300 shrink-0" />
+                        <span>
+                          {isItemInFavorites(
+                            favorites,
+                            "EXAM_BLUEPRINT",
+                            `BP_${currentTrack.code}_${semester}_${dsKey}`
+                          )
+                            ? "✓ الفرض الحالي محفوظ في المفضلة"
+                            : "★ حفظ نموذج وهيكلة الفرض الحالي في المفضلة"}
+                        </span>
+                      </button>
+
+                      {/* قائمة العناصر المفضلة */}
+                      <div className="space-y-2 max-h-[350px] overflow-y-auto studio-scroll pr-1">
+                        {favorites.length === 0 ? (
+                          <div className="text-center py-6 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-xs">
+                            لا توجد عناصر محفوظة حتى الآن. اضغط على أيقونة النجمة (★) بجوار أي تمرين أو فرض لحفظه هنا.
                           </div>
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              عدد تلاميذ القسم:
-                            </label>
-                            <select
-                              value={evalGridStudentCount}
-                              onChange={(e) =>
-                                setEvalGridStudentCount(Number(e.target.value))
-                              }
-                              className="w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-xs bg-white font-bold text-slate-900 tabular-nums"
-                            >
-                              <option value={15}>15 تلميذاً</option>
-                              <option value={25}>25 تلميذاً</option>
-                              <option value={30}>30 تلميذاً</option>
-                              <option value={35}>35 تلميذاً</option>
-                              <option value={40}>40 تلميذاً</option>
-                            </select>
-                          </div>
-                        </div>
+                        ) : (
+                          favorites.map((fav) => {
+                            const isCurrentTrack = fav.trackCode === currentTrack.code;
+                            return (
+                              <div
+                                key={fav.id}
+                                className={`p-2.5 rounded-xl border text-xs transition space-y-1.5 ${
+                                  isCurrentTrack
+                                    ? "bg-white border-amber-200 shadow-2xs"
+                                    : "bg-slate-50/70 border-slate-200 opacity-80"
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-1.5">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span
+                                        className={`px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold ${
+                                          fav.type === "EXAM_BLUEPRINT"
+                                            ? "bg-indigo-100 text-indigo-900"
+                                            : "bg-emerald-100 text-emerald-900"
+                                        }`}
+                                      >
+                                        {fav.type === "EXAM_BLUEPRINT" ? "نموذج فرض" : "تمرين مخصص"}
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 font-bold">
+                                        {fav.trackLabelAr}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-black text-slate-900 text-xs line-clamp-1">
+                                      {fav.titleAr}
+                                    </h4>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFavorite(fav.id)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded transition cursor-pointer"
+                                    title="حذف من المفضلة"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
 
-                        <label className="flex items-center gap-2 text-xs font-bold text-indigo-950 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={includeCustomEvalGridSheet}
-                            onChange={(e) =>
-                              setIncludeCustomEvalGridSheet(e.target.checked)
-                            }
-                            className="rounded text-indigo-700 w-4 h-4"
-                          />
-                          <span>
-                            إرفاق صفحة شبكة التقويم وتفريغ النقط أسفل المعاينة الورقية (A4)
-                          </span>
-                        </label>
-
-                        <div className="space-y-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={handleExportEvaluationGridExcel}
-                            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                          >
-                            <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                            <span>تصدير شبكة التقويم والتفريغ بصيغة Excel (.xls)</span>
-                          </button>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={handleExportEvaluationGridPDF}
-                              disabled={isExportingEvalGridPDF}
-                              className="bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-black py-2 px-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                            >
-                              <FileDown className="w-3.5 h-3.5 shrink-0" />
-                              <span>
-                                {isExportingEvalGridPDF ? "جاري التصدير..." : "تصدير الشبكة PDF"}
-                              </span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={handleExportEvaluationGridCSV}
-                              className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold py-2 px-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
-                              <span>ملف مسار / CSV</span>
-                            </button>
-                          </div>
-                        </div>
+                                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                                  <span className="text-[10px] text-slate-500">
+                                    {fav.semester || "عام"} · {fav.tags.slice(0, 2).join(" · ")}
+                                  </span>
+                                  {fav.type === "EXAM_BLUEPRINT" ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApplyFavoriteBlueprint(fav.blueprintData)}
+                                      className="px-2 py-0.5 rounded bg-indigo-700 hover:bg-indigo-800 text-white text-[10.5px] font-black transition cursor-pointer"
+                                    >
+                                      تطبيق النموذج
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleInsertFavoriteExercise(fav.exerciseData)}
+                                      className="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[10.5px] font-black transition cursor-pointer"
+                                    >
+                                      + إدراج في الفرض
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   )}
@@ -10691,20 +13130,32 @@ export default function App() {
 
               {/* أزرار التوليد في أسفل العمود الثالث */}
               <div className="space-y-2 pt-3 border-t border-slate-200 mt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerOfflineGeneration();
-                    setStatusMessage({
-                      type: "success",
-                      text: `تم تحديث الوثيقة والنماذج المختارة فوراً (${activeCustomLessons.length} دروس فعالة).`,
-                    });
-                  }}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 px-4 rounded-xl transition text-xs flex justify-center items-center gap-2 whitespace-nowrap active:scale-98 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-                  <span>تحديث فوري للوثيقة والنماذج</span>
-                </button>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleRotateVariationSeed}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 px-3 rounded-xl transition text-xs flex justify-center items-center gap-1.5 whitespace-nowrap active:scale-98 cursor-pointer"
+                    title="توليد صيغة رياضية متجددة بمعاملات ودوال جديدة"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                    <span>تدوير البذرة (Seed #{examVariationSeed})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (aiDiagnosticsHistory.length === 0) {
+                        handleRotateVariationSeed();
+                      }
+                      setShowAiDiagnosticsModal(true);
+                    }}
+                    className="bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-600/50 font-black py-2 px-3 rounded-xl transition text-xs flex justify-center items-center gap-1.5 whitespace-nowrap active:scale-98 cursor-pointer"
+                    title="معاينة الـ Prompt المرسل للذكاء الاصطناعي والبيانات الوصفية للتمارين المولدة"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>مرصد تشخيص التوليد ({aiDiagnosticsHistory.length})</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
@@ -10821,7 +13272,336 @@ export default function App() {
         )}
 
         {/* منطقة المخرجات: استوديو المعاينة الورقية A4 أو الكود المصدري */}
-        <section className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
+        <section
+          className={`rounded-2xl border transition-all duration-300 space-y-5 ${
+            readingModeConfig.enabled
+              ? "bg-slate-900/95 p-3 md:p-6 border-amber-500/40 shadow-2xl ring-2 ring-amber-400/30"
+              : "bg-white p-5 md:p-6 border-slate-200/90 shadow-2xs"
+          }`}
+        >
+          {/* شريط وضع القراءة والمراجعة التفاعلية (Reading Mode Control Bar) عند التفعيل */}
+          {readingModeConfig.enabled && (
+            <div
+              id="reading-mode-interactive-toolbar"
+              className="no-print bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 text-white p-3.5 rounded-2xl border border-amber-400/50 shadow-xl flex flex-wrap items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-sm shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs md:text-sm font-black text-amber-300">
+                      وضع القراءة والمراجعة التفاعلية (Reading Mode)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-200 font-mono text-[10px] font-black">
+                      تكبير التمارين {readingModeConfig.exerciseScalePercent}%
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    تم إخفاء كافة عناصر التحكم والإعدادات الجانبية مع تكبير نص التمارين والصيغ الرياضية لراحة العين والمراجعة الدقيقة.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* التحكم في نسبة تكبير نص التمارين والمعادلات */}
+                <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700">
+                  <span className="text-[10.5px] font-bold text-slate-300 px-2">
+                    تكبير النص:
+                  </span>
+                  {READING_MODE_SCALE_PRESETS.map((preset) => {
+                    const active =
+                      readingModeConfig.exerciseScalePercent === preset.scale;
+                    return (
+                      <button
+                        key={preset.scale}
+                        type="button"
+                        onClick={() =>
+                          setReadingModeConfig((prev) => ({
+                            ...prev,
+                            exerciseScalePercent: preset.scale,
+                          }))
+                        }
+                        title={preset.descAr}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-black transition cursor-pointer ${
+                          active
+                            ? "bg-amber-400 text-slate-950 shadow-xs"
+                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        }`}
+                      >
+                        {preset.badgeAr}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* تبويب نمط عرض الصفحات: صفحة واحدة أو عرض الصفحات المتقابل لتحسين تجربة المراجعة على الأجهزة اللوحية */}
+                <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700">
+                  <span className="text-[10.5px] font-bold text-slate-300 px-1.5 hidden sm:inline">
+                    تنسيق العرض:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReadingModeConfig((prev) => ({
+                        ...prev,
+                        spreadLayoutMode: "SINGLE_PAGE",
+                      }))
+                    }
+                    title="عرض الصفحة الواحدة العمودي المتسلسل القياسي"
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      readingModeConfig.spreadLayoutMode === "SINGLE_PAGE"
+                        ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    <RectangleVertical className="w-3.5 h-3.5" />
+                    <span>صفحة واحدة</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReadingModeConfig((prev) => ({
+                        ...prev,
+                        spreadLayoutMode: "FACING_PAGES",
+                      }))
+                    }
+                    title="عرض الصفحات المتقابل جنباً إلى جنب (Dual Spread) المخصص لشاشات الحواسيب والألواح اللمسية (Tablets & iPad)"
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      readingModeConfig.spreadLayoutMode === "FACING_PAGES"
+                        ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>صفحات متقابلة (لوحي)</span>
+                  </button>
+                </div>
+
+                {/* اختيار خلفية الورقة المريحة للعين */}
+                <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700">
+                  <span className="text-[10.5px] font-bold text-slate-300 px-1.5">
+                    خلفية القراءة:
+                  </span>
+                  {READING_MODE_PAPER_TONES.map((tone) => {
+                    const active = readingModeConfig.paperTone === tone.id;
+                    return (
+                      <button
+                        key={tone.id}
+                        type="button"
+                        onClick={() =>
+                          setReadingModeConfig((prev) => ({
+                            ...prev,
+                            paperTone: tone.id,
+                          }))
+                        }
+                        className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          active
+                            ? "bg-white text-slate-950 font-black shadow-xs"
+                            : "text-slate-300 hover:bg-slate-800"
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-slate-400 shrink-0"
+                          style={{ backgroundColor: tone.bgHex }}
+                        />
+                        <span>{tone.labelAr}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* إظهار/إخفاء التصحيح التفصيلي أثناء وضع القراءة */}
+                {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
+                  <button
+                    type="button"
+                    onClick={() => setIncludeDetailedSolutions((v) => !v)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-black border transition flex items-center gap-1.5 cursor-pointer ${
+                      includeDetailedSolutions
+                        ? "bg-emerald-500 text-slate-950 border-emerald-300"
+                        : "bg-slate-900 text-slate-200 border-slate-700 hover:bg-slate-800"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>
+                      {includeDetailedSolutions
+                        ? "✓ التصحيح التفصيلي معروض"
+                        : "إظهار التصحيح التفصيلي"}
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handlePrint(false)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-200 border border-slate-600 text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>طباعة A4</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleReadingMode}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="إغلاق وضع القراءة واستعادة لوحات الإعدادات الجانبية (Esc)"
+                >
+                  <span>إغلاق وضع القراءة (Esc)</span>
+                </button>
+              </div>
+
+              {/* شريط التنقل البصري السريع بين التمارين بأيقونات مخصصة لكل نوع رياضي */}
+              {(() => {
+                const readingNavItems = buildReadingModeExerciseNavigatorItems(
+                  activeCustomLessons,
+                  {
+                    customExerciseTitles,
+                    customLessonIconsMap,
+                    customWeightsMap,
+                    hasSynthesisProblem:
+                      activeModule === "DS_142_08" &&
+                      dsStructureMode === "EXERCICES_ET_PROBLEME",
+                  }
+                );
+                if (readingNavItems.length === 0) return null;
+
+                const distinctIconTypes = Array.from(
+                  new Set(readingNavItems.map((item) => item.iconId))
+                );
+                const activeFilter =
+                  readingModeConfig.activeExerciseFilterIconId || "ALL";
+
+                const scrollToExerciseAnchor = (anchorId: string) => {
+                  const targetEl = document.getElementById(anchorId);
+                  if (targetEl) {
+                    targetEl.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }
+                };
+
+                return (
+                  <div
+                    id="reading-mode-exercise-type-navigator"
+                    className="w-full pt-3 mt-1 border-t border-slate-800/90 flex flex-col gap-2.5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
+                        <span>التنقل السريع حسب نوع التمرين الرياضي:</span>
+                        <span className="text-[11px] font-normal text-slate-400">
+                          (انقر على أي تمرين للانتقال المباشر إليه مع أيقونته التخصصية)
+                        </span>
+                      </div>
+
+                      {/* أزرار تصفية وإبراز نوع التمرين الرياضي */}
+                      {distinctIconTypes.length > 1 && (
+                        <div className="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                          <span className="text-[10px] text-slate-400 px-1.5">
+                            تركيز المحور:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReadingModeConfig((prev) => ({
+                                ...prev,
+                                activeExerciseFilterIconId: "ALL",
+                              }))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                              activeFilter === "ALL"
+                                ? "bg-amber-400 text-slate-950 font-black"
+                                : "text-slate-300 hover:bg-slate-800"
+                            }`}
+                          >
+                            كل التمارين ({readingNavItems.length})
+                          </button>
+                          {distinctIconTypes.map((iconType: ReadingModeExerciseTypeIconId) => {
+                            const spec = READING_MODE_EXERCISE_TYPE_SPECS[iconType];
+                            const isSelected = activeFilter === iconType;
+                            return (
+                              <button
+                                key={iconType}
+                                type="button"
+                                onClick={() =>
+                                  setReadingModeConfig((prev) => ({
+                                    ...prev,
+                                    activeExerciseFilterIconId:
+                                      prev.activeExerciseFilterIconId === iconType
+                                        ? "ALL"
+                                        : iconType,
+                                  }))
+                                }
+                                title={spec.pedagogicalRoleAr}
+                                className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                                  isSelected
+                                    ? "bg-amber-400 text-slate-950 font-black"
+                                    : "text-slate-300 hover:bg-slate-800"
+                                }`}
+                              >
+                                <LessonHeaderIconSvg
+                                  iconId={iconType}
+                                  className="w-3.5 h-3.5 shrink-0"
+                                />
+                                <span>{spec.shortNavLabelAr}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* بطاقات التمارين التفاعلية مع أيقوناتها الرياضية */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {readingNavItems.map((navItem) => (
+                        <button
+                          key={navItem.domAnchorId}
+                          type="button"
+                          onClick={() => scrollToExerciseAnchor(navItem.domAnchorId)}
+                          title={`${navItem.typeLabelAr} — ${navItem.titleAr} (${navItem.points} نقط)`}
+                          className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700/90 hover:border-amber-400/70 transition cursor-pointer text-right shrink-0"
+                        >
+                          <span
+                            style={{
+                              backgroundColor: navItem.softBgHex,
+                              color: navItem.accentHex,
+                              borderColor: navItem.borderHex,
+                            }}
+                            className="w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs"
+                          >
+                            <LessonHeaderIconSvg
+                              iconId={navItem.iconId}
+                              className="w-4 h-4 shrink-0"
+                            />
+                          </span>
+                          <div className="flex flex-col items-start leading-tight">
+                            <div className="flex items-center gap-1.5 text-[11px] font-black text-white group-hover:text-amber-300">
+                              <span>
+                                {navItem.isSynthesisProblem
+                                  ? "المسألة التوليفية"
+                                  : `التمرين ${navItem.exerciseNumber}`}
+                              </span>
+                              <span className="text-slate-500">·</span>
+                              <span className="font-mono text-[10.5px] text-amber-300">
+                                {navItem.shortNavLabelAr}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 max-w-[180px] truncate">
+                              {navItem.titleAr} ({navItem.points} ن)
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {!readingModeConfig.enabled && (
           <div className="flex flex-nowrap justify-between items-center border-b border-slate-200 pb-3.5 gap-2.5 overflow-x-auto studio-scroll no-print">
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shrink-0">
@@ -10868,6 +13648,17 @@ export default function App() {
                   <span>عرض مزدوج متزامن (الكود + الورقة)</span>
                 </button>
               </div>
+
+              {/* زر تفعيل وضع القراءة والمراجعة التفاعلية (Reading Mode) */}
+              <button
+                type="button"
+                onClick={handleToggleReadingMode}
+                title="تفعيل وضع القراءة (Reading Mode): إخفاء كافة عناصر التحكم والإعدادات الجانبية مع تكبير نص التمارين لسهولة المراجعة التفاعلية (Alt+R)"
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-400/20 hover:bg-amber-400/35 text-amber-950 border border-amber-400 transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-800" />
+                <span>وضع القراءة (تكبير التمارين)</span>
+              </button>
 
               {/* زر تفعيل/إيقاف التمرير المتزامن والتركيز التلقائي بين الكود والورقة */}
               <button
@@ -11061,6 +13852,17 @@ export default function App() {
 
               <button
                 type="button"
+                onClick={handleExportInstitutionalFoldedA5}
+                disabled={isExportingPDF}
+                title="الطباعة المجمعة للمؤسسات: تصدير الفرض بتنسيق A5 مطوي لتقليل استهلاك الورق بنسبة 50%"
+                className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white border border-emerald-800 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-emerald-200" />
+                <span>الطباعة المجمعة للمؤسسات (A5 مطوي -50%)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleSaveToGoogleDrive}
                 disabled={isUploadingDrive}
                 className="bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-800 border border-slate-300 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
@@ -11092,6 +13894,59 @@ export default function App() {
                 </button>
               )}
 
+              <input
+                ref={texFileInputRef}
+                type="file"
+                accept=".tex,text/x-tex,text/plain"
+                onChange={handleImportExternalTexFile}
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => texFileInputRef.current?.click()}
+                title="استيراد ملف LaTeX خارجي (.tex) ودمجه مباشرة في محرر الكود المصدري مع معالجة تلقائية للرموز والترميز وحل تعارض الحزم"
+                className="bg-indigo-950 hover:bg-indigo-900 text-amber-200 border border-indigo-700 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5 text-amber-400" />
+                <span>استيراد ملف (.tex)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowLatexCleanerModal(true)}
+                title="استوديو تنظيف وترتيب LaTeX: تصحيح ترتيب حزم الترويسة، حل تعارضات الحزم، وتطبيع الرموز الرياضية"
+                className="bg-gradient-to-r from-indigo-900 to-indigo-950 hover:from-indigo-800 hover:to-indigo-900 text-cyan-200 border border-cyan-500/40 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>أداة تنظيف وترتيب LaTeX</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPrintLayoutTemplatesModal(true)}
+                title="مكتبة قوالب وهياكل الطباعة: التبديل بين هياكل وثائق متعددة (العمودين، الإطار الرسمي، الورشات، المسارات الفارقية)"
+                className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 hover:from-slate-850 hover:to-indigo-900 text-cyan-200 border border-cyan-500/50 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <LayoutTemplate className="w-3.5 h-3.5 text-cyan-400" />
+                <span>قوالب الطباعة (7 هياكل)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowExerciseSolutionQrModal(true)}
+                title="توليد وتخصيص رموز QR لحلول التمارين الفردية وإدراجها مباشرة في الطباعة الورقية"
+                className="bg-gradient-to-r from-amber-950 to-slate-900 hover:from-amber-900 hover:to-slate-800 text-amber-200 border border-amber-600/70 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+              >
+                <QrCode className="w-3.5 h-3.5 text-amber-400" />
+                <span>رموز QR للحلول</span>
+                {Object.values(exerciseSolutionQrs).filter((c) => c.enabled).length > 0 && (
+                  <span className="bg-amber-400 text-slate-950 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black">
+                    {Object.values(exerciseSolutionQrs).filter((c) => c.enabled).length}
+                  </span>
+                )}
+              </button>
+
               {exportFormat !== "PDF" && (
                 <button
                   type="button"
@@ -11104,9 +13959,10 @@ export default function App() {
               )}
             </div>
           </div>
+          )}
 
           {/* محرر العناوين السريع المزود بالتحقق من صحة البيانات (Validation) بعد دمج خيارات التنسيق والخطوط في لوحة الإعدادات */}
-          {viewMode === "PREVIEW" && (
+          {viewMode === "PREVIEW" && !readingModeConfig.enabled && (
             <div
               className={`border rounded-xl p-3 space-y-2.5 no-print transition-colors ${
                 quickEditorValidation.hasErrors
@@ -11349,12 +14205,21 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => handleOpenAdvancedPedagogyStudio("TBI_PROJECTOR")}
-                    title="فتح وضع العرض الصفي والسبورة التفاعلية (Mode TBI) مع كشف تدريجي للحلول خطوة بخطوة"
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-teal-700 hover:bg-teal-600 text-white border border-teal-600 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs"
+                    onClick={() => {
+                      setIsConfigDeckCollapsed(false);
+                      setCol1Tab("TRACK_EXAM");
+                      setCol3Tab("EVAL_GRID");
+                      setIncludeCustomEvalGridSheet(true);
+                      setStatusMessage({
+                        type: "info",
+                        text: "تم فتح مكتبة قوالب شبكات التقويم الرسمية (المذكرة 142-08) للتعديل المباشر وإرفاق الشبكة بوثيقة الفرض.",
+                      });
+                    }}
+                    title="فتح مكتبة قوالب شبكات التقويم الجاهزة (المذكرة 142-08) وتعديل المؤشرات والبنود مباشرة"
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs"
                   >
-                    <Eye className="w-3.5 h-3.5 shrink-0" />
-                    <span>السبورة التفاعلية (TBI)</span>
+                    <Table2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>قوالب شبكات التقويم (142-08)</span>
                   </button>
 
                   <button
@@ -11884,7 +14749,7 @@ export default function App() {
           )}
 
           {/* شريط التركيز التلقائي والانتقال المتزامن بين أقسام الكود المصدري ومعاينة الورقة */}
-          {syncScrollEnabled && (
+          {syncScrollEnabled && !readingModeConfig.enabled && (
             <div className="no-print flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-slate-100 px-3.5 py-2 rounded-xl border border-slate-800 text-[11px]">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 font-black text-cyan-300">
@@ -11933,37 +14798,164 @@ export default function App() {
             {(viewMode === "CODE" || viewMode === "SPLIT") && (
               <div
                 className={
-                  viewMode === "SPLIT" ? "xl:col-span-5 space-y-2 no-print" : "block"
+                  viewMode === "SPLIT" ? "xl:col-span-5 space-y-2 no-print" : "block space-y-2 no-print"
                 }
               >
-                {viewMode === "SPLIT" && (
-                  <div className="flex items-center justify-between bg-slate-900 text-slate-200 px-3 py-1.5 rounded-t-xl border-b border-slate-800 text-xs font-bold">
-                    <span className="flex items-center gap-1.5">
-                      <Code2 className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>محرر الكود المصدري المتزامن ({exportFormat === "TYPST" ? "Typst" : "LaTeX"})</span>
+                {/* شريط أدوات محرر الكود المصدري واستيراد/دمج ملفات LaTeX الخارجية (.tex) */}
+                <div className="bg-slate-900 text-slate-200 p-3 rounded-t-xl border border-slate-800 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-black text-white">
+                      <Code2 className="w-4 h-4 text-cyan-400" />
+                      <span>
+                        محرر الكود المصدري التفاعلي ({exportFormat === "TYPST" ? "Typst" : "LaTeX .tex"})
+                      </span>
                     </span>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => texFileInputRef.current?.click()}
+                        className="text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer shadow-xs transition"
+                        title="استيراد ملف LaTeX خارجي (.tex) ودمجه في المحرر مع معالجة الترميز والرموز تلقائياً"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>استيراد ودمج ملف (.tex)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowLatexCleanerModal(true)}
+                        className="text-[11px] bg-gradient-to-r from-indigo-900 to-indigo-800 hover:from-indigo-800 hover:to-indigo-700 text-amber-200 border border-indigo-600 font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                        title="استوديو تنظيف وترتيب LaTeX: تصحيح ترتيب حزم الترويسة، حل تعارضات الحزم، وتطبيع الرموز"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>استوديو تنظيف وترتيب LaTeX</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleNormalizeCurrentEditorCode}
+                        className="text-[11px] bg-indigo-950 hover:bg-indigo-900 text-cyan-200 border border-indigo-700 font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition"
+                        title="تنظيف سريع: ترتيب الترويسة وتطبيع الرموز الرياضية وتحديث الأوامر القديمة"
+                      >
+                        <Sparkles className="w-3 h-3 text-cyan-400" />
+                        <span>تنظيف فوري وترتيب</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="text-[11px] bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer"
+                      >
+                        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        <span>{copied ? "تم النسخ" : "نسخ"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* خيارات طريقة دمج ملف .tex المستورد في الكود المصدري */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-slate-400 font-bold">وضع دمج ملف .tex:</span>
+                      {(
+                        [
+                          {
+                            id: "SMART_MERGE_BODY",
+                            label: "دمج ذكي داخل \\begin{document}",
+                          },
+                          {
+                            id: "APPEND_TO_END",
+                            label: "إلحاق بنهاية الكود",
+                          },
+                          {
+                            id: "REPLACE_ENTIRE_CODE",
+                            label: "استبدال الكود بالكامل",
+                          },
+                        ] as Array<{ id: LatexImportMergeMode; label: string }>
+                      ).map((mMode) => (
+                        <button
+                          key={mMode.id}
+                          type="button"
+                          onClick={() => setLatexImportMergeMode(mMode.id)}
+                          className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
+                            latexImportMergeMode === mMode.id
+                              ? "bg-cyan-500 text-slate-950 font-black"
+                              : "bg-slate-800 text-slate-300 hover:text-white"
+                          }`}
+                        >
+                          {mMode.label}
+                        </button>
+                      ))}
+                    </div>
+
                     <button
                       type="button"
-                      onClick={handleCopyCode}
-                      className="text-[11px] bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer"
+                      onClick={triggerOfflineGeneration}
+                      className="text-[10.5px] text-slate-400 hover:text-amber-300 underline cursor-pointer"
                     >
-                      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      <span>{copied ? "تم النسخ" : "نسخ"}</span>
+                      إعادة توليد الكود الأصلي
                     </button>
                   </div>
-                )}
-                <pre
+
+                  {/* تقرير تشخيص الملف المستورد وإمكانية إدراج تمارينه في الورقة التفاعلية */}
+                  {lastImportedLatexReport && (
+                    <div className="p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-[11px] text-emerald-100 flex flex-wrap items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="font-black text-emerald-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>{lastImportedLatexReport.summaryAr}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-300 font-mono">
+                          الترميز المكتشف: {lastImportedLatexReport.detectedEncoding} · الحزم المستخرجة:{" "}
+                          {lastImportedLatexReport.extractedPreamblePackages.length}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const importedLesson =
+                              convertExtractedLatexToLessonItem(
+                                lastImportedLatexReport,
+                                activeCustomLessons[0]
+                              );
+                            handleInsertOfficialAnnaleExercise(importedLesson);
+                            setStatusMessage({
+                              type: "success",
+                              text: `تم إدراج محتوى ملف LaTeX «${lastImportedLatexReport.fileName}» كفقرة/تمرين تفاعلي في معاينة الورقة A4!`,
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10.5px] cursor-pointer shrink-0"
+                        >
+                          + إدراج المحتوى في ورقة المعاينة A4
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLastImportedLatexReport(null)}
+                          className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] cursor-pointer"
+                        >
+                          إغلاق
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <textarea
                   ref={codeScrollRef}
                   onScroll={handleCodeScroll}
+                  value={generatedCode}
+                  onChange={(e) => setGeneratedCode(e.target.value)}
+                  spellCheck={false}
                   dir="ltr"
-                  className={`bg-slate-950 text-slate-100 p-5 overflow-y-auto overflow-x-auto text-xs leading-relaxed select-all font-mono no-print border border-slate-800 ${
+                  aria-label="محرر الكود المصدري LaTeX و Typst"
+                  className={`w-full bg-slate-950 text-emerald-100 p-5 overflow-y-auto overflow-x-auto text-xs leading-relaxed font-mono no-print border border-slate-800 focus:outline-none focus:border-cyan-500 resize-y ${
                     viewMode === "SPLIT"
-                      ? "rounded-b-xl max-h-[820px]"
-                      : "rounded-xl max-h-[680px]"
+                      ? "rounded-b-xl min-h-[680px] max-h-[820px]"
+                      : "rounded-b-xl min-h-[620px]"
                   }`}
-                >
-                  {generatedCode}
-                </pre>
+                />
               </div>
             )}
 
@@ -11978,6 +14970,11 @@ export default function App() {
                 viewMode={viewMode}
               >
                 <PrintablePreview
+                    key={
+                      activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON"
+                        ? activeHomeworkDocId
+                        : activeModule
+                    }
                     track={currentTrack}
                     sem={semester}
                     dsKey={dsKey}
@@ -12031,6 +15028,8 @@ export default function App() {
                     includeGradingScaleTable={includeGradingScaleTable}
                     includeAnswerWorkspace={includeAnswerWorkspace}
                     studentGridStyle={studentGridStyle}
+                    seyesSpacingPreset={seyesSpacingPreset}
+                    onChangeSeyesSpacingPreset={setSeyesSpacingPreset}
                     workspaceHeightMode={workspaceHeightMode}
                     onChangeStudentGridStyle={setStudentGridStyle}
                     onOpenBatchPrint={() => setIsBatchPrintModalOpen(true)}
@@ -12129,6 +15128,35 @@ export default function App() {
                         return next;
                       })
                     }
+                    showDualABSplitView={showDualABSplitInPreview}
+                    onToggleDualABSplitView={() =>
+                      setShowDualABSplitInPreview((v) => !v)
+                    }
+                    onOpenSevenStrategicProposals={(tab) => {
+                      if (tab) setSevenStrategicProposalsTab(tab);
+                      setShowSevenStrategicProposalsModal(true);
+                    }}
+                    bindingAndCropConfig={bindingAndCropConfig}
+                    onToggleEcoTonerMode={() => {
+                      setBindingAndCropConfig((prev) => {
+                        const nextMode = !prev.enableEcoTonerBlackMode;
+                        setStatusMessage({
+                          type: "info",
+                          text: nextMode
+                            ? "تم تفعيل وضع الاستنساخ الاقتصادي 100% K-Black Monochrome لآلات RISO / Ricoh!"
+                            : "تم إيقاف وضع الاستنساخ الاقتصادي والعودة إلى الألوان الأكاديمية القياسية.",
+                        });
+                        return { ...prev, enableEcoTonerBlackMode: nextMode };
+                      });
+                    }}
+                    onOpenReprographicsStudio={(tab) => {
+                      if (tab) setReprographicsStudioTab(tab);
+                      setShowReprographicsStudioModal(true);
+                    }}
+                    reproGroupsCount={reproGroupsCount}
+                    reproStudentsPerGroup={reproStudentsPerGroup}
+                    reproDuplexMode={reproDuplexMode}
+                    variationSeed={examVariationSeed}
                     onSwitchDocumentViewModel={(nextModule, nextDmSubType) => {
                       setActiveModule(nextModule);
                       if (nextDmSubType) {
@@ -12143,12 +15171,160 @@ export default function App() {
                         text: `تم التبديل إلى « ${autoSpec.labelAr} » وضبط هوامش الورقة تلقائياً (${autoSpec.topMm}mm أعلى/أسفل · ${autoSpec.xMm}mm يمين/يسار).`,
                       });
                     }}
+                    printLayoutTemplateId={printLayoutTemplateId}
+                    onChangePrintLayoutTemplate={setPrintLayoutTemplateId}
+                    onOpenPrintLayoutTemplatesModal={() =>
+                      setShowPrintLayoutTemplatesModal(true)
+                    }
+                    exerciseSolutionQrs={exerciseSolutionQrs}
+                    onOpenExerciseSolutionQrModal={() =>
+                      setShowExerciseSolutionQrModal(true)
+                    }
+                    smartPageBreakConfig={smartPageBreakConfig}
+                    activeHomeworkDocId={activeHomeworkDocId}
+                    onOpenHomeworkSolutionPage={() => {
+                      setShowAnswerKey(true);
+                      setIncludeDetailedSolutions(true);
+                      setOnlyPrintSolutions(true);
+                      setStatusMessage({
+                        type: "success",
+                        text: `تم الانتقال المباشر إلى صفحة الحل النموذجي المفصل للفرض المنزلي (${dmNumber})!`,
+                      });
+                      setTimeout(() => {
+                        const el = document.getElementById("homework-solution-sheet");
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                      }, 120);
+                    }}
+                    onExitHomeworkSolutionOnlyMode={() => {
+                      setOnlyPrintSolutions(false);
+                      setStatusMessage({
+                        type: "info",
+                        text: `تمت العودة لعرض موضوع الفرض المنزلي (${dmNumber}) كاملاً مع عناصر الإجابة.`,
+                      });
+                    }}
+                    sheetViewMode={sheetViewMode}
+                    onToggleSheetViewMode={() =>
+                      setSheetViewMode((v) =>
+                        v === "CONTINUOUS" ? "MULTIPAGE_CARDS" : "CONTINUOUS"
+                      )
+                    }
+                    evalGridCustomConfig={evalGridCustomConfig}
+                    readingModeConfig={readingModeConfig}
+                    subQuestionDecompositionMode={subQuestionDecompositionMode}
+                    onChangeSubQuestionDecompositionMode={setSubQuestionDecompositionMode}
                   />
               </TouchPreviewCanvas>
             )}
           </div>
         </section>
       </main>
+      <React.Suspense fallback={null}>
+      {showAiDiagnosticsModal && (
+        <AiGenerationDiagnosticsModal
+          isOpen={showAiDiagnosticsModal}
+          onClose={() => setShowAiDiagnosticsModal(false)}
+          diagnosticsHistory={aiDiagnosticsHistory}
+          currentLessons={activeCustomLessons}
+          currentVariationSeed={examVariationSeed}
+          isGeneratingAI={isGeneratingAI}
+          onTriggerNewSeedGeneration={handleRotateVariationSeed}
+          onTriggerAiGenerationWithNewSeed={handleAIGenerate}
+        />
+      )}
+      {/* مركز الابتكارات الهندسية والديداكتيكية السبعة الشامل */}
+      {showSevenStrategicProposalsModal && (
+        <PedagogicalStudioProvider
+          snapshotParams={{
+            school,
+            prof,
+            year,
+            academy,
+            direction,
+            headerStyle,
+            educationSystem,
+            trackCode: currentTrack.code,
+            trackLabelAr: currentTrack.labelAr,
+            semester,
+            dsKey,
+            activeModule,
+            examModel,
+            activeLessonsCount: activeCustomLessons.length,
+            n1,
+            n2,
+            n3,
+            pageOrientation,
+            printPageSizePreset,
+            docFontFamily,
+            docFontSize,
+            latexPackageTheme,
+            paperSurface,
+            showA4LivePageBreaks,
+            includeInteractiveQrFooter,
+            includeDetailedSolutions,
+            includeAnswerWorkspace,
+            include2DSpecMatrix,
+            includeOMRBubbleSheet,
+            includeCustomEvalGridSheet,
+          }}
+        >
+          <SevenStrategicProposalsModal
+            isOpen={showSevenStrategicProposalsModal}
+            onClose={() => setShowSevenStrategicProposalsModal(false)}
+            initialTab={sevenStrategicProposalsTab}
+            track={currentTrack}
+            sem={semester}
+            dsKey={dsKey}
+            school={school}
+            prof={prof}
+            year={year}
+            academy={academy}
+            direction={direction}
+            lessons={activeCustomLessons}
+            n1={n1}
+            n2={n2}
+            n3={n3}
+            isFr={isMission || docLang === "FR"}
+            isMission={isMission}
+            showDualABInPreview={showDualABSplitInPreview}
+            onToggleDualABInPreview={() => setShowDualABSplitInPreview((v) => !v)}
+            onInsertFigureToExam={handleAddFigure}
+            onInsertLessonFromBank={(entry) => {
+              handleInsertOfficialAnnaleExercise(entry.rawLesson);
+              setShowSevenStrategicProposalsModal(false);
+            }}
+            onOpenSmartQcmScanner={() => setShowSmartQcmScannerModal(true)}
+            onNotify={(type, text) => setStatusMessage({ type, text })}
+          />
+        </PedagogicalStudioProvider>
+      )}
+      {/* أستوديو مصلحة النسخ والطبع وأستاذ الرياضيات (6 ابتكارات ميدانية) */}
+      {showReprographicsStudioModal && (
+        <ReprographicsAndTeacherStudioModal
+          isOpen={showReprographicsStudioModal}
+          onClose={() => setShowReprographicsStudioModal(false)}
+          initialTab={reprographicsStudioTab}
+          track={currentTrack}
+          sem={semester}
+          dsKey={dsKey}
+          school={school}
+          prof={prof}
+          year={year}
+          lessons={activeCustomLessons}
+          isFr={isMission || docLang === "FR"}
+          bindingAndCropConfig={bindingAndCropConfig}
+          onChangeBindingAndCropConfig={setBindingAndCropConfig}
+          groupsCount={reproGroupsCount}
+          onChangeGroupsCount={setReproGroupsCount}
+          studentsPerGroup={reproStudentsPerGroup}
+          onChangeStudentsPerGroup={setReproStudentsPerGroup}
+          duplexMode={reproDuplexMode}
+          onChangeDuplexMode={setReproDuplexMode}
+          onInsertFigureToExam={handleAddFigure}
+          onNotify={(type, text) => setStatusMessage({ type, text })}
+        />
+      )}
       {/* استوديو الابتكارات التطبيقية الأربعة (منحنى C_f التفاعلي · مصنف مسار Excel · بنك أخطاء BIOF · تلميحات QR) */}
       {showFourProposalsModal && (
         <FourProposalsInnovationStudioModal
@@ -12393,29 +15569,303 @@ export default function App() {
       )}
 
       {/* نافذة السحابة ومزامنة الإعدادات مع Google Drive ونظام التشفير المحلي AES-256 */}
-      <GoogleDriveSyncModal
-        isOpen={showDrivePanel}
-        onClose={() => setShowDrivePanel(false)}
-        driveUser={driveUser}
-        driveToken={driveToken}
-        isLoggingIn={isLoggingInDrive}
-        isUploading={isUploadingDrive}
-        driveFiles={driveFiles}
-        isLoadingFiles={isLoadingDriveFiles}
-        autoSyncEnabled={driveAutoSyncEnabled}
-        onToggleAutoSync={handleToggleDriveAutoSync}
-        onSignIn={handleGoogleDriveSignIn}
-        onLogout={handleGoogleDriveLogout}
-        onUploadCurrentDoc={handleSaveToGoogleDrive}
-        onSyncSettingsNow={handleSyncSettingsToDriveNow}
-        onRestoreSettingsFromDrive={handleRestoreSettingsFromDrive}
-        onDeleteFile={confirmDeleteDriveFile}
-        onNotify={(type, text) => setStatusMessage({ type, text })}
-        lastSyncTime={lastDriveSyncTime}
-        isSyncingSettings={isSyncingDriveSettings}
-      />
+      {showDrivePanel && (
+        <GoogleDriveSyncModal
+          isOpen={showDrivePanel}
+          onClose={() => setShowDrivePanel(false)}
+          driveUser={driveUser}
+          driveToken={driveToken}
+          isLoggingIn={isLoggingInDrive}
+          isUploading={isUploadingDrive}
+          driveFiles={driveFiles}
+          isLoadingFiles={isLoadingDriveFiles}
+          autoSyncEnabled={driveAutoSyncEnabled}
+          onToggleAutoSync={handleToggleDriveAutoSync}
+          onSignIn={handleGoogleDriveSignIn}
+          onLogout={handleGoogleDriveLogout}
+          onUploadCurrentDoc={handleSaveToGoogleDrive}
+          onSyncSettingsNow={handleSyncSettingsToDriveNow}
+          onRestoreSettingsFromDrive={handleRestoreSettingsFromDrive}
+          onDeleteFile={confirmDeleteDriveFile}
+          onNotify={(type, text) => setStatusMessage({ type, text })}
+          lastSyncTime={lastDriveSyncTime}
+          isSyncingSettings={isSyncingDriveSettings}
+        />
+      )}
+
+      {/* نافذة استوديو تنظيف وترتيب وثائق LaTeX المستوردة وهندسة الترويسة وتطبيع الرموز */}
+      {showLatexCleanerModal && (
+        <LatexCleanerStudioModal
+          isOpen={showLatexCleanerModal}
+          onClose={() => setShowLatexCleanerModal(false)}
+          initialCode={generatedCode || buildSourceCodeForFormat(exportFormat)}
+          onApplyCleanedCode={handleApplyCleanedLatexFromModal}
+        />
+      )}
+
+      {/* نافذة مكتبة قوالب وهياكل الطباعة للوثائق الرياضية ومُحسِّن فواصل الصفحات الذكي (A4 / Letter) */}
+      {showPrintLayoutTemplatesModal && (
+        <PrintLayoutTemplatesModal
+          isOpen={showPrintLayoutTemplatesModal}
+          onClose={() => setShowPrintLayoutTemplatesModal(false)}
+          activeTemplateId={printLayoutTemplateId}
+          onSelectTemplate={(tpl) => {
+            setPrintLayoutTemplateId(tpl);
+            setStatusMessage({
+              type: "success",
+              text: `تم تفعيل هيكل الطباعة: « ${getPrintLayoutTemplate(tpl).labelAr} » بنجاح!`,
+            });
+          }}
+          smartPageBreakConfig={smartPageBreakConfig}
+          onChangeSmartPageBreakConfig={(newCfg) => {
+            setSmartPageBreakConfig(newCfg);
+            setPrintPageSizePreset(newCfg.paperFormat);
+          }}
+          lessons={activeCustomLessons}
+          includeAnswerWorkspace={includeAnswerWorkspace}
+          includeDetailedSolutions={includeDetailedSolutions}
+          isFr={docLang === "FR" || isMission}
+        />
+      )}
+
+      {/* نافذة توليد وتخصيص رموز QR لحلول التمارين الفردية وإدراجها بالطباعة */}
+      {showExerciseSolutionQrModal && (
+        <ExerciseSolutionQrModal
+          isOpen={showExerciseSolutionQrModal}
+          onClose={() => setShowExerciseSolutionQrModal(false)}
+          lessons={activeCustomLessons}
+          qrMap={exerciseSolutionQrs}
+          onSaveQrMap={(newMap) => {
+            setExerciseSolutionQrs(newMap);
+            const activeCount = Object.values(newMap).filter((c) => c.enabled).length;
+            setStatusMessage({
+              type: "success",
+              text: `تم تحديث رموز QR لحلول التمارين بنجاح (${activeCount} تمرين مفعل) وإدراجها في ورقة الطباعة!`,
+            });
+          }}
+          isFr={docLang === "FR" || isMission}
+        />
+      )}
+
+      {/* 1. نافذة لوحة الأوامر الشاملة والبحث السريع (Ctrl+K / ⌘K) */}
+      {showCommandPalette && (
+        <CommandPaletteModal
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          isFr={docLang === "FR" || isMission}
+          commands={appCommandPaletteItems}
+        />
+      )}
+
+      {/* 2. نافذة وضع العرض الصفي والسبورة التفاعلية (Classroom Projection & TBI) */}
+      {showClassroomProjection && (
+        <ClassroomProjectionModal
+          isOpen={showClassroomProjection}
+          onClose={() => setShowClassroomProjection(false)}
+          lessons={activeCustomLessons}
+          examTitle={customDocTitle || currentTrack.labelAr}
+          isFr={docLang === "FR" || isMission}
+          examModel={examModel === "B" ? "B" : "A"}
+        />
+      )}
+
+      {/* 3. نافذة سجل نقط مسار ومصفوفة مجموعات الدعم والاستدراك البيداغوجي */}
+      {showMassarGradebook && (
+        <MassarGradebookModal
+          isOpen={showMassarGradebook}
+          onClose={() => setShowMassarGradebook(false)}
+          lessons={activeCustomLessons}
+          track={currentTrack}
+          school={school}
+          prof={prof}
+          year={year}
+          dsNumber={dsKey}
+          isFr={docLang === "FR" || isMission}
+        />
+      )}
+
+      {/* 4. نافذة تأليف وتوليد امتحان تركيبي هجين (Hybrid Exam Composer) */}
+      {showCustomExamComposer && (
+        <CustomExamComposerModal
+          isOpen={showCustomExamComposer}
+          onClose={() => setShowCustomExamComposer(false)}
+          track={currentTrack}
+          availableLessons={[
+            ...Object.values(currentTrack.semesters.S1 || {}).flat(),
+            ...Object.values(currentTrack.semesters.S2 || {}).flat(),
+          ]}
+          currentLessons={activeCustomLessons}
+          onApplyComposedLessons={(newLessons) => {
+            setSimulatedImportedLessons(newLessons);
+            setIsExamSimulationActive(true);
+            setStatusMessage({
+              type: "success",
+              text: `تم تطبيق الفرض التركيبي الهجين بنجاح (${newLessons.length} تمارين، بمجموع 20/20 نقطة موزونة تلقائياً)!`,
+            });
+          }}
+          isFr={docLang === "FR" || isMission}
+        />
+      )}
+
+      {/* 5. نافذة مستكشف المقاربات والفروع اللانهائية والمنحنيات C_f (LaTeX TikZ) */}
+      {showAsymptoteVisualizer && (
+        <AsymptoteCurveVisualizerModal
+          isOpen={showAsymptoteVisualizer}
+          onClose={() => setShowAsymptoteVisualizer(false)}
+          isFr={docLang === "FR" || isMission}
+        />
+      )}
+
+      {/* نافذة المفضلة البيداغوجية للنماذج الجاهزة والتمارين المخصصة */}
+      {showFavoritesModal && (
+        <PedagogicalFavoritesModal
+          isOpen={showFavoritesModal}
+          onClose={() => setShowFavoritesModal(false)}
+          favorites={favorites}
+          currentTrackCode={currentTrack.code}
+          currentSemester={semester}
+          onApplyBlueprint={handleApplyFavoriteBlueprint}
+          onInsertExercise={handleInsertFavoriteExercise}
+          onDeleteFavorite={handleDeleteFavorite}
+          isFr={docLang === "FR" || isMission}
+          onNotify={(type: any, text: string) => setStatusMessage({ type, text })}
+        />
+      )}
+
+      {/* نافذة وضع المقارنة الذكية بين فرضين محروسين ومؤشر التكافؤ الديداكتيكي */}
+      {showDualExamComparisonModal && (
+        <DualExamComparisonModal
+          isOpen={showDualExamComparisonModal}
+          onClose={() => setShowDualExamComparisonModal(false)}
+          currentTrack={currentTrack}
+          currentTrackCode={currentTrack.code}
+          currentTrackLabel={currentTrack.labelAr}
+          defaultSemester={semester}
+          defaultDsKey={dsKey}
+          currentLessons={activeCustomLessons}
+          isFr={docLang === "FR" || isMission}
+          onNotify={(type: any, text: string) => setStatusMessage({ type, text })}
+        />
+      )}
+      {showCompleteUnitDossierModal && (
+        <CompleteUnitDossierModal
+          isOpen={showCompleteUnitDossierModal}
+          onClose={() => setShowCompleteUnitDossierModal(false)}
+          track={currentTrack}
+          lessons={activeCustomLessons}
+        />
+      )}
+      {showCompanionBridgeModal && (
+        <CompanionPedagogicalBridgeModal
+          isOpen={showCompanionBridgeModal}
+          onClose={() => setShowCompanionBridgeModal(false)}
+          activeModule={activeModule}
+          dmSubType={dmSubType}
+          track={currentTrack}
+          semester={semester}
+          dsKey={dsKey}
+          school={school}
+          prof={prof}
+          year={year}
+          totalPoints={liveExamStats.totalPoints}
+          totalQuestions={liveExamStats.totalQuestions}
+          n1={n1}
+          n2={n2}
+          n3={n3}
+          lessons={activeCustomLessons}
+          subQuestionDecompositionMode={subQuestionDecompositionMode}
+          onApplyImportedBrief={(resolved) => {
+            skipTrackResetRef.current = true;
+            setSelectedTrackCode(resolved.resolvedTrackCode);
+            setSemester(resolved.resolvedSemester);
+            setDsKey(resolved.resolvedDsKey);
+            setActiveModule(resolved.resolvedModule);
+            if (resolved.resolvedDmSubType) {
+              setDmSubType(resolved.resolvedDmSubType);
+            }
+            setN1(resolved.n1);
+            setN2(resolved.n2);
+            setN3(resolved.n3);
+            setIncludeHints(resolved.includeHints);
+            setIncludeLessonMemo(resolved.includeLessonMemo);
+            setCustomHeaderNote(resolved.customHeaderNoteAr);
+            setSimulatedImportedLessons(resolved.matchedCurriculumLessons);
+            setIsExamSimulationActive(true);
+            setStatusMessage({
+              type: "success",
+              text: resolved.customHeaderNoteAr,
+            });
+          }}
+        />
+      )}
+      {showCentralFirebaseHubModal && (
+        <CentralFirebaseExamsAndTexStudioModal
+          isOpen={showCentralFirebaseHubModal}
+          initialTab={centralFirebaseHubInitialTab}
+          onClose={() => setShowCentralFirebaseHubModal(false)}
+          currentTrack={currentTrack}
+          semester={semester}
+          dsKey={dsKey}
+          examModel={examModel === "B" ? "B" : "A"}
+          activeModule={activeModule}
+          school={school}
+          prof={prof}
+          year={year}
+          totalPoints={liveExamStats.totalPoints}
+          totalQuestions={liveExamStats.totalQuestions}
+          n1={n1}
+          n2={n2}
+          n3={n3}
+          currentLessons={activeCustomLessons}
+          currentLatexSource={
+            generatedCode || buildSourceCodeForFormat("LATEX")
+          }
+          onLoadExamIntoStudio={(payload) => {
+            skipTrackResetRef.current = true;
+            setSelectedTrackCode(payload.trackCode);
+            setSemester(payload.semester);
+            setDsKey(payload.dsKey);
+            setExamModel(payload.examModel);
+            setActiveModule(payload.moduleType);
+            setCustomDocTitle(payload.titleAr);
+            setN1(payload.n1);
+            setN2(payload.n2);
+            setN3(payload.n3);
+            if (payload.lessons && payload.lessons.length > 0) {
+              setSimulatedImportedLessons(payload.lessons);
+              setIsExamSimulationActive(true);
+            }
+            if (payload.latexSource) {
+              setExportFormat("LATEX");
+              setGeneratedCode(payload.latexSource);
+            }
+          }}
+          onApplyNormalizedTexToStudio={(payload) => {
+            setExportFormat("LATEX");
+            setGeneratedCode(payload.mergedLatexSource);
+            if (payload.extractedLessons.length > 0) {
+              setSimulatedImportedLessons(payload.extractedLessons);
+              setIsExamSimulationActive(true);
+            }
+            if (viewMode === "PREVIEW") {
+              setViewMode("SPLIT");
+            }
+          }}
+          onNotify={(type, text) =>
+            setStatusMessage({
+              type: type === "warning" ? "info" : type,
+              text,
+            })
+          }
+        />
+      )}
+      </React.Suspense>
+
+      {/* مؤشر وضع العمل دون إنترنت (Offline-First PWA Indicator) */}
+      <OfflineStatusBanner />
 
       {/* شريط التحكم السفلي العائم للجوال (Mobile Bottom Dock) للوصول السريع دون مزاحمة معاينة الورقة A4 */}
+      {!readingModeConfig.enabled && (
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 no-print shadow-2xl">
         <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           <button
@@ -12458,16 +15908,12 @@ export default function App() {
             type="button"
             onClick={() => {
               setMobileConfigSheetOpen(false);
-              setMobileNavOpen(true);
+              setIsExportCenterOpen(true);
             }}
-            className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-black transition cursor-pointer ${
-              mobileNavOpen
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                : "text-slate-300 hover:bg-slate-900"
-            }`}
+            className="min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-black transition cursor-pointer text-slate-300 hover:bg-slate-900"
           >
-            <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-            <span>الأدوات</span>
+            <Printer className="w-3.5 h-3.5 text-cyan-400" />
+            <span>مركز الطبع</span>
           </button>
           <button
             type="button"
@@ -12480,6 +15926,7 @@ export default function App() {
           </button>
         </div>
       </div>
+      )}
       </div>
       </div>
     </div>
