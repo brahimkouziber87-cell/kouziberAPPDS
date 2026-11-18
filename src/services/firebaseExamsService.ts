@@ -10,10 +10,10 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocFromServer,
   getFirestore,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -387,36 +387,66 @@ export async function saveExamToFirebaseFirestore(
   }
 
   const docPath = `saved_exams/${id}`;
+  const docRef = doc(firestoreDb, "saved_exams", id);
   try {
-    await setDoc(doc(firestoreDb, "saved_exams", id), {
-      id: record.id,
-      ownerId: record.ownerId,
-      ownerEmail: record.ownerEmail,
-      titleAr: record.titleAr,
-      titleFr: record.titleFr,
-      documentType: record.documentType,
-      trackCode: record.trackCode,
-      trackLabelAr: record.trackLabelAr,
-      semester: record.semester,
-      examKey: record.examKey,
-      examModel: record.examModel,
-      duration: record.duration,
-      totalPoints: record.totalPoints,
-      totalQuestions: record.totalQuestions,
-      totalSubQuestions: record.totalSubQuestions,
-      n1: record.n1,
-      n2: record.n2,
-      n3: record.n3,
-      school: record.school,
-      professor: record.professor,
-      academicYear: record.academicYear,
-      latexSource: record.latexSource,
-      lessonsJson: record.lessonsJson,
-      isFavorite: record.isFavorite,
-      sourceOrigin: record.sourceOrigin,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    const existingSnap = await getDoc(docRef);
+    if (existingSnap.exists()) {
+      await updateDoc(docRef, {
+        titleAr: record.titleAr,
+        titleFr: record.titleFr,
+        documentType: record.documentType,
+        trackCode: record.trackCode,
+        trackLabelAr: record.trackLabelAr,
+        semester: record.semester,
+        examKey: record.examKey,
+        examModel: record.examModel,
+        duration: record.duration,
+        totalPoints: record.totalPoints,
+        totalQuestions: record.totalQuestions,
+        totalSubQuestions: record.totalSubQuestions,
+        n1: record.n1,
+        n2: record.n2,
+        n3: record.n3,
+        school: record.school,
+        professor: record.professor,
+        academicYear: record.academicYear,
+        latexSource: record.latexSource,
+        lessonsJson: record.lessonsJson,
+        isFavorite: record.isFavorite,
+        sourceOrigin: record.sourceOrigin,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await setDoc(docRef, {
+        id: record.id,
+        ownerId: record.ownerId,
+        ownerEmail: record.ownerEmail,
+        titleAr: record.titleAr,
+        titleFr: record.titleFr,
+        documentType: record.documentType,
+        trackCode: record.trackCode,
+        trackLabelAr: record.trackLabelAr,
+        semester: record.semester,
+        examKey: record.examKey,
+        examModel: record.examModel,
+        duration: record.duration,
+        totalPoints: record.totalPoints,
+        totalQuestions: record.totalQuestions,
+        totalSubQuestions: record.totalSubQuestions,
+        n1: record.n1,
+        n2: record.n2,
+        n3: record.n3,
+        school: record.school,
+        professor: record.professor,
+        academicYear: record.academicYear,
+        latexSource: record.latexSource,
+        lessonsJson: record.lessonsJson,
+        isFavorite: record.isFavorite,
+        sourceOrigin: record.sourceOrigin,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
     const syncedRecord = { ...record, syncedToCloud: true };
     saveLocalSavedExamsMirror([
       syncedRecord,
@@ -424,7 +454,11 @@ export async function saveExamToFirebaseFirestore(
     ]);
     return syncedRecord;
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, docPath);
+    handleFirestoreError(
+      error,
+      OperationType.WRITE,
+      docPath
+    );
   }
 }
 
@@ -556,53 +590,56 @@ export function subscribeToUserSavedExams(
 
     const examsQuery = query(
       collection(firestoreDb, "saved_exams"),
-      where("ownerId", "==", user.uid),
-      orderBy("updatedAt", "desc")
+      where("ownerId", "==", user.uid)
     );
 
     unsubscribeSnapshot = onSnapshot(
       examsQuery,
       (snapshot) => {
-        const cloudExams: SavedExamRecord[] = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const createdTs = data.createdAt as Timestamp | undefined;
-          const updatedTs = data.updatedAt as Timestamp | undefined;
-          return {
-            id: String(data.id || docSnap.id),
-            ownerId: String(data.ownerId || user.uid),
-            ownerEmail: String(data.ownerEmail || user.email || ""),
-            titleAr: String(data.titleAr || "فرض محروس"),
-            titleFr: String(data.titleFr || "Devoir Surveillé"),
-            documentType: (data.documentType as SavedExamDocumentType) || "DS_142_08",
-            trackCode: String(data.trackCode || "2BAC_PC"),
-            trackLabelAr: String(data.trackLabelAr || "الثانية باكالوريا"),
-            semester: data.semester === 2 ? 2 : 1,
-            examKey: String(data.examKey || "S1_F1"),
-            examModel: data.examModel === "B" ? "B" : "A",
-            duration: String(data.duration || "2h"),
-            totalPoints: Number(data.totalPoints ?? 20),
-            totalQuestions: Number(data.totalQuestions ?? 1),
-            totalSubQuestions: Number(data.totalSubQuestions ?? 0),
-            n1: Number(data.n1 ?? 30),
-            n2: Number(data.n2 ?? 50),
-            n3: Number(data.n3 ?? 20),
-            school: String(data.school || ""),
-            professor: String(data.professor || ""),
-            academicYear: String(data.academicYear || "2025/2026"),
-            latexSource: String(data.latexSource || ""),
-            lessonsJson: String(data.lessonsJson || "[]"),
-            isFavorite: Boolean(data.isFavorite),
-            sourceOrigin:
-              (data.sourceOrigin as SavedExamSourceOrigin) || "STUDIO_GENERATED",
-            createdAtIso: createdTs?.toDate
-              ? createdTs.toDate().toISOString()
-              : new Date().toISOString(),
-            updatedAtIso: updatedTs?.toDate
-              ? updatedTs.toDate().toISOString()
-              : new Date().toISOString(),
-            syncedToCloud: true,
-          };
-        });
+        const cloudExams: SavedExamRecord[] = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data();
+            const createdTs = data.createdAt as Timestamp | undefined;
+            const updatedTs = data.updatedAt as Timestamp | undefined;
+            return {
+              id: String(data.id || docSnap.id),
+              ownerId: String(data.ownerId || user.uid),
+              ownerEmail: String(data.ownerEmail || user.email || ""),
+              titleAr: String(data.titleAr || "فرض محروس"),
+              titleFr: String(data.titleFr || "Devoir Surveillé"),
+              documentType:
+                (data.documentType as SavedExamDocumentType) || "DS_142_08",
+              trackCode: String(data.trackCode || "2BAC_PC"),
+              trackLabelAr: String(data.trackLabelAr || "الثانية باكالوريا"),
+              semester: (data.semester === 2 ? 2 : 1) as 1 | 2,
+              examKey: String(data.examKey || "S1_F1"),
+              examModel: (data.examModel === "B" ? "B" : "A") as "A" | "B",
+              duration: String(data.duration || "2h"),
+              totalPoints: Number(data.totalPoints ?? 20),
+              totalQuestions: Number(data.totalQuestions ?? 1),
+              totalSubQuestions: Number(data.totalSubQuestions ?? 0),
+              n1: Number(data.n1 ?? 30),
+              n2: Number(data.n2 ?? 50),
+              n3: Number(data.n3 ?? 20),
+              school: String(data.school || ""),
+              professor: String(data.professor || ""),
+              academicYear: String(data.academicYear || "2025/2026"),
+              latexSource: String(data.latexSource || ""),
+              lessonsJson: String(data.lessonsJson || "[]"),
+              isFavorite: Boolean(data.isFavorite),
+              sourceOrigin:
+                (data.sourceOrigin as SavedExamSourceOrigin) ||
+                "STUDIO_GENERATED",
+              createdAtIso: createdTs?.toDate
+                ? createdTs.toDate().toISOString()
+                : new Date().toISOString(),
+              updatedAtIso: updatedTs?.toDate
+                ? updatedTs.toDate().toISOString()
+                : new Date().toISOString(),
+              syncedToCloud: true,
+            };
+          })
+          .sort((a, b) => b.updatedAtIso.localeCompare(a.updatedAtIso));
 
         // دمج الفروض السحابية مع أي فروض محلية لم تتم مزامنتها بعد
         const localOnly = loadLocalSavedExamsMirror().filter(

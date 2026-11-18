@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
@@ -10,7 +10,7 @@ import firebaseConfig from "../../firebase-applet-config.json";
 
 export const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();

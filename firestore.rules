@@ -128,9 +128,22 @@ service cloud.firestore {
         && isValidId(examId)
         && (resource.data.ownerId == request.auth.uid || isAdmin())
         && isValidSavedExam(request.resource.data, examId)
+        && request.resource.data.id == resource.data.id
         && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.ownerEmail == resource.data.ownerEmail
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (
+          isAdmin() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isFavorite', 'updatedAt']) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'titleAr', 'titleFr', 'documentType', 'trackCode', 'trackLabelAr',
+            'semester', 'examKey', 'examModel', 'duration', 'totalPoints',
+            'totalQuestions', 'totalSubQuestions', 'n1', 'n2', 'n3',
+            'school', 'professor', 'academicYear', 'latexSource', 'lessonsJson',
+            'isFavorite', 'sourceOrigin', 'updatedAt'
+          ])
+        );
       allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
   }

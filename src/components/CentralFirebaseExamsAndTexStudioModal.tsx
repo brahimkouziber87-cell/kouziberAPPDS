@@ -971,7 +971,15 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
                             <div className="flex flex-wrap items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => toggleSavedExamFavorite(exam)}
+                                onClick={async () => {
+                                  try {
+                                    await toggleSavedExamFavorite(exam);
+                                  } catch (err: any) {
+                                    setFirestoreErrorBanner(
+                                      err?.message || "تعذر تحديث حالة المفضلة."
+                                    );
+                                  }
+                                }}
                                 className="p-1 rounded-lg hover:bg-amber-50 text-amber-500 cursor-pointer"
                                 title="تبديل المفضلة"
                               >
@@ -1127,12 +1135,18 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
                                 <button
                                   type="button"
                                   onClick={async () => {
-                                    await deleteSavedExamFromFirebase(exam.id);
-                                    setConfirmDeleteId(null);
-                                    onNotify?.(
-                                      "info",
-                                      `تم حذف الفرض «${exam.titleAr}» من قاعدة البيانات.`
-                                    );
+                                    try {
+                                      await deleteSavedExamFromFirebase(exam.id);
+                                      setConfirmDeleteId(null);
+                                      onNotify?.(
+                                        "info",
+                                        `تم حذف الفرض «${exam.titleAr}» من قاعدة البيانات.`
+                                      );
+                                    } catch (err: any) {
+                                      setFirestoreErrorBanner(
+                                        err?.message || "تعذر حذف الفرض."
+                                      );
+                                    }
                                   }}
                                   className="text-[10px] font-black text-rose-800 hover:underline cursor-pointer"
                                 >
