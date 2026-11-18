@@ -611,9 +611,31 @@ export function normalizeExternalTexToPlatformSystem(
     }
   );
 
-  // 4. استخراج قائمة التمارين وتحويلها إلى LessonItem[] للمعاينة الحية في الورقة A4
+  // 4. استخراج التمارين بعد التطبيع والتنسيق بحيث تعكس المعاينة الحية A4 نفس التنسيق (أ، ب، ج والباريم الموحد)
+  const normalizedExtractedExercises: Array<{ title: string; content: string }> = [];
+  const normalizedExoRegex =
+    /\\begin\{(exoBox|exercice|exercise|problem)\}(?:\{([^}]*)\})?([\s\S]*?)\\end\{\1\}/gi;
+  let normMatch: RegExpExecArray | null;
+  while ((normMatch = normalizedExoRegex.exec(body)) !== null) {
+    normalizedExtractedExercises.push({
+      title:
+        normMatch[2]?.trim() ||
+        `التمرين ${normalizedExtractedExercises.length + 1} (${fileName.replace(/\.tex$/i, "")})`,
+      content: normMatch[3].trim(),
+    });
+  }
+
+  const normalizedProcessedForExtraction: ProcessedLatexImportResult = {
+    ...processed,
+    extractedBodyOnly: body,
+    extractedExercises:
+      normalizedExtractedExercises.length > 0
+        ? normalizedExtractedExercises
+        : processed.extractedExercises,
+  };
+
   const extractedLessonItems = convertExtractedLatexToMultiLessonItems(
-    processed,
+    normalizedProcessedForExtraction,
     body
   );
 
@@ -635,7 +657,7 @@ export function normalizeExternalTexToPlatformSystem(
         ? "0F766E"
         : "334155";
 
-  let platformFormattedTex = processed.normalizedCode;
+  let platformFormattedTex = body.trim();
   if (options.autoInjectPlatformPreamble) {
     platformFormattedTex = `% ============================================================================
 % [منصة الهندسة البيداغوجية - وثيقة LaTeX مستوردة ومنسقة تلقائياً]
@@ -680,6 +702,25 @@ ${body.trim()}
 
 \\end{document}
 `;
+  } else {
+    const docStartIdx = processed.normalizedCode.indexOf("\\begin{document}");
+    const docEndIdx = processed.normalizedCode.lastIndexOf("\\end{document}");
+    if (docStartIdx !== -1 && docEndIdx > docStartIdx) {
+      const preamble = processed.normalizedCode.slice(
+        0,
+        docStartIdx + "\\begin{document}".length
+      );
+      const hasExoBoxDef = /\\newtcolorbox\{exoBox\}|\\newenvironment\{exoBox\}/.test(
+        preamble
+      );
+      const injectedPreamble = hasExoBoxDef
+        ? preamble
+        : preamble.replace(
+            "\\begin{document}",
+            `\\usepackage[most]{tcolorbox}\n\\newtcolorbox{exoBox}[2][]{enhanced,breakable,colback=white,colframe=black!75,fonttitle=\\bfseries,title={#2},#1}\n\\begin{document}`
+          );
+      platformFormattedTex = `${injectedPreamble}\n\n${body.trim()}\n\n\\end{document}\n`;
+    }
   }
 
   diagnosticsAr.push(
@@ -687,7 +728,7 @@ ${body.trim()}
   );
 
   return {
-    processed,
+    processed: normalizedProcessedForExtraction,
     platformFormattedTex,
     extractedLessonItems,
     detectedSubQuestionsCount,

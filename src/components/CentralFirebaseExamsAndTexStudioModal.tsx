@@ -8,8 +8,10 @@ import {
   Copy,
   Database,
   Download,
+  Edit3,
   Eye,
   FileCode2,
+  FileJson,
   FilePlus2,
   FileText,
   Filter,
@@ -208,6 +210,14 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
     null
   );
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [editTitleAr, setEditTitleAr] = useState<string>("");
+  const [editTrackCode, setEditTrackCode] = useState<string>("2BAC_PC");
+  const [editSemester, setEditSemester] = useState<1 | 2>(1);
+  const [editExamKey, setEditExamKey] = useState<string>("S1_F1");
+  const [editExamModel, setEditExamModel] = useState<"A" | "B">("A");
+  const [editDuration, setEditDuration] = useState<string>("2h");
+  const [isUpdatingExam, setIsUpdatingExam] = useState<boolean>(false);
 
   // Quick Save current exam form state
   const [draftTitleAr, setDraftTitleAr] = useState<string>(
@@ -223,6 +233,7 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
 
   // Direct .tex Importer state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDraggingTex, setIsDraggingTex] = useState<boolean>(false);
   const [importedFileName, setImportedFileName] = useState<string>(
     SAMPLE_EXTERNAL_TEX_TEMPLATES[0].fileName
   );
@@ -477,11 +488,7 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
     }
   };
 
-  const handleFileUploadFromDevice = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const readUploadedTexFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const buffer = ev.target?.result;
@@ -496,7 +503,100 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleFileUploadFromDevice = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readUploadedTexFile(file);
     e.target.value = "";
+  };
+
+  const handleStartEditExam = (exam: SavedExamRecord) => {
+    setEditingExamId(exam.id);
+    setEditTitleAr(exam.titleAr);
+    setEditTrackCode(exam.trackCode);
+    setEditSemester(exam.semester);
+    setEditExamKey(exam.examKey);
+    setEditExamModel(exam.examModel);
+    setEditDuration(exam.duration);
+  };
+
+  const handleCommitEditExam = async (exam: SavedExamRecord) => {
+    setIsUpdatingExam(true);
+    setFirestoreErrorBanner(null);
+    try {
+      let parsedLessons: LessonItem[] = [];
+      try {
+        parsedLessons = JSON.parse(exam.lessonsJson || "[]");
+      } catch {
+        parsedLessons = [];
+      }
+      const trackObj = CURRICULUM_DB[editTrackCode];
+      const updated = await saveExamToFirebaseFirestore({
+        id: exam.id,
+        titleAr: editTitleAr.trim() || exam.titleAr,
+        titleFr: exam.titleFr,
+        documentType: exam.documentType,
+        trackCode: editTrackCode,
+        trackLabelAr: trackObj?.labelAr || exam.trackLabelAr,
+        semester: editSemester,
+        examKey: editExamKey.trim() || exam.examKey,
+        examModel: editExamModel,
+        duration: editDuration.trim() || exam.duration,
+        totalPoints: exam.totalPoints,
+        totalQuestions: exam.totalQuestions,
+        totalSubQuestions: exam.totalSubQuestions,
+        n1: exam.n1,
+        n2: exam.n2,
+        n3: exam.n3,
+        school: exam.school,
+        professor: exam.professor,
+        academicYear: exam.academicYear,
+        latexSource: exam.latexSource,
+        lessons: parsedLessons,
+        isFavorite: exam.isFavorite,
+        sourceOrigin: exam.sourceOrigin,
+      });
+      setEditingExamId(null);
+      onNotify?.(
+        "success",
+        `تم تحديث بيانات الفرض «${updated.titleAr}» بنجاح (${
+          updated.syncedToCloud ? "محفوظ في Firebase" : "محلي"
+        }).`
+      );
+    } catch (err: any) {
+      setFirestoreErrorBanner(
+        err?.message || "تعذر تحديث بيانات الفرض في قاعدة البيانات."
+      );
+    } finally {
+      setIsUpdatingExam(false);
+    }
+  };
+
+  const handleExportDashboardJsonBackup = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      totalExams: savedExams.length,
+      exams: savedExams,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `firebase_exams_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onNotify?.(
+      "success",
+      `تم تنزيل نسخة احتياطية كاملة (${savedExams.length} فروض) بصيغة JSON!`
+    );
   };
 
   const handleApplyTexToStudio = () => {
@@ -935,6 +1035,16 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
                     />
                     <span>المفضلة فقط</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportDashboardJsonBackup}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 flex items-center gap-1.5 transition cursor-pointer"
+                    title="تصدير نسخة احتياطية JSON لجميع الفروض"
+                  >
+                    <FileJson className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>نسخة احتياطية JSON</span>
+                  </button>
                 </div>
               </div>
 
@@ -1121,6 +1231,22 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
                               </span>
                             </button>
 
+                            <button
+                              type="button"
+                              onClick={() =>
+                                editingExamId === exam.id
+                                  ? setEditingExamId(null)
+                                  : handleStartEditExam(exam)
+                              }
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                              title="تعديل وتحديث بيانات الفرض في Firebase"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                              <span>
+                                {editingExamId === exam.id ? "إغلاق" : "تعديل"}
+                              </span>
+                            </button>
+
                             {!isConfirmingDelete ? (
                               <button
                                 type="button"
@@ -1165,6 +1291,62 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
                           </div>
                         </div>
 
+                        {/* Inline Metadata Edit Form */}
+                        {editingExamId === exam.id && (
+                          <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-2.5 text-xs">
+                            <div className="font-black text-amber-950 flex items-center gap-1.5">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                              <span>تعديل وتحديث بيانات الفرض مباشرة في قاعدة بيانات Firebase</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+                              <input
+                                type="text"
+                                value={editTitleAr}
+                                onChange={(e) => setEditTitleAr(e.target.value)}
+                                className="sm:col-span-2 border border-amber-300 rounded-lg px-2.5 py-1.5 bg-white font-bold text-slate-900"
+                                placeholder="عنوان الفرض"
+                              />
+                              <select
+                                value={editTrackCode}
+                                onChange={(e) => setEditTrackCode(e.target.value)}
+                                className="border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-bold text-slate-900"
+                              >
+                                <option value="TCS">TCS</option>
+                                <option value="1BAC_SE">1BAC_SE</option>
+                                <option value="1BAC_SM">1BAC_SM</option>
+                                <option value="2BAC_PC">2BAC_PC</option>
+                                <option value="2BAC_SVT">2BAC_SVT</option>
+                                <option value="2BAC_SM">2BAC_SM</option>
+                              </select>
+                              <select
+                                value={editSemester}
+                                onChange={(e) =>
+                                  setEditSemester(Number(e.target.value) === 2 ? 2 : 1)
+                                }
+                                className="border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-bold text-slate-900"
+                              >
+                                <option value={1}>الدورة S1</option>
+                                <option value={2}>الدورة S2</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={editExamKey}
+                                onChange={(e) => setEditExamKey(e.target.value)}
+                                className="border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-mono font-bold text-slate-900"
+                                placeholder="S1_F1"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleCommitEditExam(exam)}
+                                disabled={isUpdatingExam}
+                                className="rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black px-3 py-1.5 transition cursor-pointer"
+                              >
+                                {isUpdatingExam ? "جاري التحديث..." : "حفظ التحديث"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Lessons pills */}
                         {parsedLessons.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pr-6">
@@ -1196,14 +1378,33 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
           ) : (
             /* TAB 2: DIRECT .TEX IMPORTER & PLATFORM NORMALIZER */
             <div className="space-y-4">
-              {/* Top Upload & Preset Bar */}
-              <div className="bg-gradient-to-l from-emerald-50 via-white to-teal-50 border border-emerald-200 rounded-2xl p-4 shadow-xs space-y-3">
+              {/* Top Upload, Drag-and-Drop Zone & Preset Bar */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingTex(true);
+                }}
+                onDragLeave={() => setIsDraggingTex(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingTex(false);
+                  const droppedFile = e.dataTransfer.files?.[0];
+                  if (droppedFile) {
+                    readUploadedTexFile(droppedFile);
+                  }
+                }}
+                className={`bg-gradient-to-l from-emerald-50 via-white to-teal-50 border-2 rounded-2xl p-4 shadow-xs space-y-3 transition ${
+                  isDraggingTex
+                    ? "border-emerald-600 ring-4 ring-emerald-200/70"
+                    : "border-emerald-200"
+                }`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-black text-emerald-950 flex items-center gap-2">
                       <Upload className="w-4 h-4 text-emerald-700" />
                       <span>
-                        استيراد ملف <code className="font-mono">.tex</code> مباشرة من جهازك وتنسيقه مع نظام LaTeX بالمنصة
+                        اسحب وأفلت ملف <code className="font-mono">.tex</code> هنا أو اختره من جهازك لتنسيقه مع نظام LaTeX بالمنصة
                       </span>
                     </h3>
                     <p className="text-xs text-slate-600 mt-0.5">
@@ -1349,41 +1550,57 @@ export const CentralFirebaseExamsAndTexStudioModal: React.FC<
               </div>
 
               {/* Diagnostics Strip */}
-              <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-black">
-                    الملف: {importedFileName}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-bold">
-                    الترميز: {normalizedBundle.processed.detectedEncoding}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 font-bold">
-                    التمارين المستخلصة:{" "}
-                    {normalizedBundle.extractedLessonItems.length}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold">
-                    الأسئلة الفرعية المنسقة:{" "}
-                    {normalizedBundle.detectedSubQuestionsCount}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-bold">
-                    الرموز الرياضية المطبعة:{" "}
-                    {normalizedBundle.processed.normalizedSymbolsCount}
-                  </span>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-black">
+                      الملف: {importedFileName}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-bold">
+                      الترميز: {normalizedBundle.processed.detectedEncoding}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 font-bold">
+                      التمارين المستخلصة:{" "}
+                      {normalizedBundle.extractedLessonItems.length}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold">
+                      الأسئلة الفرعية المنسقة:{" "}
+                      {normalizedBundle.detectedSubQuestionsCount}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-bold">
+                      الرموز الرياضية المطبعة:{" "}
+                      {normalizedBundle.processed.normalizedSymbolsCount}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadTexFile(
+                        `normalized_${importedFileName}`,
+                        normalizedBundle.platformFormattedTex
+                      )
+                    }
+                    className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>تنزيل الكود المنسق (.tex)</span>
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    downloadTexFile(
-                      `normalized_${importedFileName}`,
-                      normalizedBundle.platformFormattedTex
-                    )
-                  }
-                  className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>تنزيل الكود المنسق (.tex)</span>
-                </button>
+                {normalizedBundle.diagnosticsAr.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+                    {normalizedBundle.diagnosticsAr.map((diag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-900 text-[10.5px] font-bold flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>{diag}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Side-by-Side Comparison: Raw .tex Input vs Platform-Normalized Output + Extracted A4 Exercises */}

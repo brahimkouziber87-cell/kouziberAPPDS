@@ -2754,11 +2754,25 @@ try {
   );
 
   const multiLessons = convertExtractedLatexToMultiLessonItems(normBundle.processed);
+  const keepOriginalPreambleBundle = normalizeExternalTexToPlatformSystem(
+    "ds_externe_keep_preamble.tex",
+    sampleRawTex,
+    {
+      targetTheme: "MOROCCAN_142_08",
+      subQuestionStyle: "ARABIC_ABJAD",
+      autoInjectPlatformPreamble: false,
+      normalizeBaremePoints: true,
+    }
+  );
   assert(
     multiLessons.length === 2 &&
       (multiLessons[0]?.sampleExerciseAr?.length || 0) >= 2 &&
-      (multiLessons[1]?.sampleExerciseAr?.length || 0) >= 2,
-    `convertExtractedLatexToMultiLessonItems produced ${multiLessons.length} structured LessonItem exercises`
+      (multiLessons[1]?.sampleExerciseAr?.length || 0) >= 2 &&
+      Boolean(multiLessons[0]?.sampleExerciseAr?.some((q) => q.includes("أ)"))) &&
+      Boolean(multiLessons[0]?.sampleExerciseAr?.some((q) => q.includes("2.5 ن"))) &&
+      keepOriginalPreambleBundle.platformFormattedTex.includes("\\begin{exoBox}") &&
+      keepOriginalPreambleBundle.platformFormattedTex.includes("\\item[\\textbf{أ)}]"),
+    `convertExtractedLatexToMultiLessonItems & keepOriginalPreamble preserved normalized (أ، ب، 2.5 ن) across A4 preview and LaTeX source`
   );
 
   const safeId = sanitizeExamId("فرض محروس 2BAC/S1#1");
