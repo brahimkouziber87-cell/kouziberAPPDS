@@ -89,6 +89,7 @@ import { HomeworkSolutionQrCard } from "./HomeworkSolutionQrCard";
 import {
   buildInteractiveQuizLinkForDocument,
   generateHomeworkAssignmentVerificationCode,
+  renderQrSvgString,
 } from "../utils/qrCodeHelper";
 import {
   A4LayoutOverflowReport,
@@ -158,7 +159,11 @@ import {
   generateSerieBlockCorrection,
   ExerciseCorrection,
 } from "../utils/correctionGenerator";
-import { generateMoroccanDiagnosticPaper } from "../utils/diagnosticGenerator";
+import {
+  generateMoroccanDiagnosticPaper,
+  MoroccanDiagnosticPaper,
+} from "../utils/diagnosticGenerator";
+import { buildDiagnosticInteractiveQrUrl } from "../utils/diagnosticAndDynamicSpecMatrixEngine";
 import {
   build2DSpecificationMatrix,
   generateOMRGridData,
@@ -353,6 +358,10 @@ interface PrintablePreviewProps {
   readingModeConfig?: ReadingModeConfig;
   subQuestionDecompositionMode?: SubQuestionDecompositionMode;
   onChangeSubQuestionDecompositionMode?: (mode: SubQuestionDecompositionMode) => void;
+  customDiagnosticPaper?: MoroccanDiagnosticPaper | null;
+  onOpenDiagnosticAndSpecStudio?: (
+    initialTab?: "DIAGNOSTIC_STUDIO" | "DYNAMIC_SPEC_MATRIX"
+  ) => void;
 }
 
 export type DocumentViewMarginModelId =
@@ -872,6 +881,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   readingModeConfig = DEFAULT_READING_MODE_CONFIG,
   subQuestionDecompositionMode = "STRUCTURED_ABC_ALL",
   onChangeSubQuestionDecompositionMode,
+  customDiagnosticPaper = null,
+  onOpenDiagnosticAndSpecStudio,
 }) => {
   const [unlockFullSolutionEarly, setUnlockFullSolutionEarly] = React.useState<boolean>(false);
   const [showMarginGuides, setShowMarginGuides] = React.useState<boolean>(false);
@@ -9407,19 +9418,33 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
       {/* 4. محتوى الرائز التشخيصي وشبكة التفريغ والتحليل الديداكتيكي للتعثرات وفق المنهاج المغربي */}
       {!onlyPrintEvalGrid && activeModule === "DIAGNOSTIC" && (() => {
-        const diagPaper = generateMoroccanDiagnosticPaper(
-          track.code,
-          diagDuration,
-          examModel === "B" ? "B" : "A"
+        const activeDiagModel: "A" | "B" = examModel === "B" ? "B" : "A";
+        const diagPaper =
+          customDiagnosticPaper ||
+          generateMoroccanDiagnosticPaper(
+            track.code,
+            diagDuration,
+            activeDiagModel
+          );
+        const diagQrUrl = buildDiagnosticInteractiveQrUrl({
+          trackCode: track.code,
+          examModel: activeDiagModel,
+        });
+        const diagQrSvg = renderQrSvgString(
+          diagQrUrl,
+          88,
+          "#1e1b4b",
+          "#ffffff"
         );
+        const diagVerificationPin = `DIAG-${track.code}-${activeDiagModel}`;
 
         return (
           <div className="space-y-5 text-xs md:text-sm">
             <div data-sync-section="HEADER">
-              {renderDocumentHeader(examModel === "B" ? "B" : "A")}
+              {renderDocumentHeader(activeDiagModel)}
             </div>
 
-            {/* إطار التوجيهات الرسمية ومجالات الرائز التشخيصي */}
+            {/* إطار التوجيهات الرسمية ومجالات الرائز التشخيصي + رمز QR التفاعلي */}
             <div data-sync-section="SPEC_TABLE" className="avoid-break border-2 border-indigo-950 rounded-xl p-4 bg-indigo-50/40 space-y-3 shadow-2xs">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-2">
                 <div className="flex items-center gap-2">
@@ -9430,10 +9455,61 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                     {isFr ? diagPaper.titleFr : diagPaper.titleAr}
                   </h3>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-mono font-bold text-indigo-900 bg-white border border-indigo-200 px-2.5 py-1 rounded-lg">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono font-bold text-indigo-900 bg-white border border-indigo-200 px-2.5 py-1 rounded-lg">
                   <span>⏱ {isFr ? "Durée :" : "المدة :"} {diagPaper.duration}</span>
                   <span>·</span>
                   <span>🎯 {isFr ? "Seuil :" : "عتبة التحكم :"} {diagPaper.masteryThresholdPercent}%</span>
+                  <span>·</span>
+                  <span className="text-emerald-800">📱 QR: {diagVerificationPin}</span>
+                </div>
+              </div>
+
+              {/* بطاقة QR التفاعلي للرائز التشخيصي للمكتسبات القبلية */}
+              <div className="bg-white border-2 border-indigo-900/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="p-1.5 bg-white border border-slate-300 rounded-lg shrink-0"
+                    dangerouslySetInnerHTML={{ __html: diagQrSvg }}
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-indigo-950 text-amber-300 text-[10px] font-black">
+                        {isFr
+                          ? "DIAGNOSTIC NUMÉRIQUE INTERACTIF (QR CODE)"
+                          : "الرائز التشخيصي التفاعلي عبر QR Code (المكتسبات القبلية)"}
+                      </span>
+                      <span className="font-mono text-[11px] font-bold text-indigo-900">
+                        PIN: {diagVerificationPin}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">
+                      {isFr
+                        ? "Scannez ce QR Code pour passer le test diagnostique interactif sur smartphone/tablette avec correction automatique et plan de remédiation par prérequis."
+                        : "امسح رمز الاستجابة السريعة (QR Code) لإجراء الاختبار التشخيصي تفاعلياً على الهاتف أو اللوحة والحصول فوراً على بطاقة تشخيص المكتسبات القبلية وخطة الدعم الفردي."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap sm:flex-col gap-1.5 no-print shrink-0">
+                  {onOpenInteractiveQuiz && (
+                    <button
+                      type="button"
+                      onClick={onOpenInteractiveQuiz}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black transition cursor-pointer whitespace-nowrap"
+                    >
+                      📱 تشغيل الرائز التفاعلي الآن
+                    </button>
+                  )}
+                  {onOpenDiagnosticAndSpecStudio && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenDiagnosticAndSpecStudio("DIAGNOSTIC_STUDIO")
+                      }
+                      className="px-3 py-1.5 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+                    >
+                      🎯 تخصيص المكتسبات القبلية
+                    </button>
+                  )}
                 </div>
               </div>
 

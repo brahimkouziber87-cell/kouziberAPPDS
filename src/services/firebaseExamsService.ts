@@ -151,7 +151,9 @@ export interface SavedExamRecord {
 const LOCAL_MIRROR_KEY = "math_platform_firebase_exams_mirror_v1";
 
 export function loadLocalSavedExamsMirror(): SavedExamRecord[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined" || !window.localStorage) {
+    return getDefaultSeedExams();
+  }
   try {
     const raw = window.localStorage.getItem(LOCAL_MIRROR_KEY);
     if (!raw) return getDefaultSeedExams();
@@ -166,7 +168,7 @@ export function loadLocalSavedExamsMirror(): SavedExamRecord[] {
 }
 
 export function saveLocalSavedExamsMirror(exams: SavedExamRecord[]): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(LOCAL_MIRROR_KEY, JSON.stringify(exams));
   } catch {

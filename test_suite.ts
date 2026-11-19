@@ -2819,6 +2819,226 @@ try {
   assert(false, `Section 36 test crashed: ${e.message}`);
 }
 
+console.log("\n--- 37. Testing Comprehensive System Audit & 8-Subsystem Live Interactive Sandbox Engine ---");
+try {
+  const { runComprehensiveApplicationAudit } = await import(
+    "./src/utils/comprehensiveSystemAuditEngine.ts"
+  );
+
+  const auditReport = runComprehensiveApplicationAudit("2BAC_PC", "S1");
+
+  assert(
+    auditReport.totalSubsystems === 8 &&
+      auditReport.passedSubsystems === 8 &&
+      auditReport.totalAssertionsChecked === 24 &&
+      auditReport.passedAssertionsChecked === 24 &&
+      auditReport.overallHealthPercent === 100,
+    `runComprehensiveApplicationAudit verified 8/8 core subsystems and 24/24 assertions at 100% health (${auditReport.reportId})`
+  );
+
+  const allSandboxesValid = auditReport.subsystems.every(
+    (s) =>
+      s.status === "PASSED" &&
+      s.checks.length === 3 &&
+      s.checks.every((a) => a.passed) &&
+      s.sandboxPayload.lessons.length >= 1 &&
+      s.sandboxPayload.n1 + s.sandboxPayload.n2 + s.sandboxPayload.n3 === 100 &&
+      s.sandboxPayload.titleAr.trim().length > 3
+  );
+
+  assert(
+    allSandboxesValid,
+    `All 8 subsystem live sandbox payloads contain valid LessonItems, 100% cognitive distribution (N1+N2+N3=100), and document titles ready for 1-click A4 preview`
+  );
+} catch (e: any) {
+  assert(false, `Section 37 test crashed: ${e.message}`);
+}
+
+console.log("\n--- 38. Testing Prerequisite-Based Diagnostic Tests (PDF + Interactive QR Code) & Automated Dynamic Spec Matrix Engine ---");
+try {
+  const { CURRICULUM_DB } = await import("./src/data/curriculum.ts");
+  const {
+    getTrackPrerequisitesCatalog,
+    buildPrerequisiteDiagnosticBlueprint,
+    evaluateDiagnosticMasteryReport,
+    exportStandaloneDiagnosticQuizHtml,
+    buildAutomatedDynamicSpecMatrix,
+    addExerciseAndSyncSpecMatrix,
+    updateExerciseAndSyncSpecMatrix,
+    removeExerciseAndSyncSpecMatrix,
+    autoRebalanceSpecMatrixTo14208,
+    exportAutomatedSpecMatrixLatex,
+  } = await import("./src/utils/diagnosticAndDynamicSpecMatrixEngine.ts");
+
+  // 38.1 Prerequisite-Based Diagnostic Test Studio across grade levels (TCS, 1BAC_SE, 2BAC_PC, 2BAC_SM)
+  for (const trackCode of ["TCS", "1BAC_SE", "2BAC_PC", "2BAC_SM"]) {
+    const catalog = getTrackPrerequisitesCatalog(trackCode, "A");
+    assert(
+      catalog.length >= 3 &&
+        catalog.every(
+          (item) =>
+            item.qcmItem.optionsAr.length === 4 &&
+            item.openExercise.questionsAr.length >= 2 &&
+            item.openExercise.remediationAr.length > 10
+        ),
+      `getTrackPrerequisitesCatalog(${trackCode}) loaded ${catalog.length} prior-level prerequisites with QCM + Open Exercise + Remediation`
+    );
+
+    const blueprint = buildPrerequisiteDiagnosticBlueprint({
+      trackCode,
+      examModel: "A",
+      selectedPrereqIndices: catalog.map((c) => c.index),
+      includeQcm: true,
+      includeOpenExercises: true,
+      includeSynthesisProblem: true,
+      origin: "https://ais-pre-rsw3xd2wr4jevx5kl4om4d-251237406585.europe-west2.run.app",
+    });
+
+    assert(
+      blueprint.totalPoints === 20 &&
+        blueprint.interactiveQrSvg.includes("<svg") &&
+        blueprint.interactiveQrUrl.includes("?quiz=1&type=DIAGNOSTIC") &&
+        blueprint.interactiveQrUrl.includes(`track=${trackCode}`) &&
+        blueprint.diagnosticPaper.qcmItems.length === catalog.length &&
+        blueprint.diagnosticPaper.directExercises.length >= 1 &&
+        blueprint.interactiveQuizData.questions.length >= catalog.length &&
+        blueprint.asLessonItems.length === catalog.length,
+      `buildPrerequisiteDiagnosticBlueprint(${trackCode}) produced 20/20 pt A4 paper, ISO QR SVG (${blueprint.verificationCode}), and ${blueprint.interactiveQuizData.questions.length} interactive QR quiz items`
+    );
+  }
+
+  // Test Diagnostic Mastery Evaluation & Standalone HTML Export
+  const pcBlueprint = buildPrerequisiteDiagnosticBlueprint({
+    trackCode: "2BAC_PC",
+    examModel: "A",
+  });
+  const simulatedAnswers: Record<string, number> = {};
+  pcBlueprint.interactiveQuizData.questions.forEach((q, idx) => {
+    const correctIdx = q.choices.findIndex((c) => c.isCorrect);
+    simulatedAnswers[q.id] = idx % 2 === 0 ? correctIdx : (correctIdx + 1) % 4;
+  });
+  const masteryReport = evaluateDiagnosticMasteryReport(pcBlueprint, simulatedAnswers);
+  const standaloneHtml = exportStandaloneDiagnosticQuizHtml(pcBlueprint);
+
+  assert(
+    masteryReport.totalEarned >= 0 &&
+      masteryReport.totalMax === 20 &&
+      masteryReport.rows.length === pcBlueprint.selectedPrerequisites.length &&
+      standaloneHtml.includes("<!DOCTYPE html>") &&
+      standaloneHtml.includes(pcBlueprint.verificationCode),
+    `evaluateDiagnosticMasteryReport (${masteryReport.totalEarned}/${masteryReport.totalMax} - ${masteryReport.overallStatusAr}) & exportStandaloneDiagnosticQuizHtml verified`
+  );
+
+  // 38.2 Automated Dynamic Specification Matrix Engine (add / update / remove / auto-rebalance / LaTeX export)
+  const baseLessons = CURRICULUM_DB["2BAC_PC"].semesters.S1.DS1;
+  const initialMatrix = buildAutomatedDynamicSpecMatrix({
+    lessons: baseLessons,
+    n1Target: 35,
+    n2Target: 45,
+    n3Target: 20,
+  });
+
+  assert(
+    Math.abs(initialMatrix.totals.grandTotalPoints - 20) < 0.01 &&
+      initialMatrix.totals.n1Percent +
+        initialMatrix.totals.n2Percent +
+        initialMatrix.totals.n3Percent ===
+        100 &&
+      initialMatrix.rows.length === baseLessons.length,
+    `buildAutomatedDynamicSpecMatrix computed initial 2D Spec Matrix (${initialMatrix.rows.length} exercises, ${initialMatrix.totals.grandTotalPoints}/20 pts, N1=${initialMatrix.totals.n1Percent}%/N2=${initialMatrix.totals.n2Percent}%/N3=${initialMatrix.totals.n3Percent}%)`
+  );
+
+  // Add an exercise dynamically and verify Spec Matrix updates automatically to 20/20
+  const afterAdd = addExerciseAndSyncSpecMatrix(
+    baseLessons,
+    {
+      lessonAr: "تمرين إضافي: مبرهنة القيم الوسطية والتفرع الثنائي",
+      lessonFr: "Exercice supplémentaire: TVI et dichotomie",
+      domainAr: "تحليل",
+      targetPoints: 5,
+      questionsAr: [
+        "1. تحقق من اتصال الدالة f على المجال [1,2].",
+        "2. بين أن المعادلة f(x)=0 تقبل حلاً وحيداً α في ]1,2[.",
+        "3. حدد تأطيراً للعدد α سعته 0.25 باستعمال التفرع الثنائي.",
+      ],
+      questionLevels: ["N1", "N2", "N3"],
+    },
+    { n1Target: 35, n2Target: 45, n3Target: 20 }
+  );
+
+  assert(
+    afterAdd.lessons.length === baseLessons.length + 1 &&
+      Math.abs(afterAdd.specMatrix.totals.grandTotalPoints - 20) < 0.01 &&
+      afterAdd.specMatrix.rows.length === baseLessons.length + 1 &&
+      afterAdd.specMatrix.totals.n1Percent +
+        afterAdd.specMatrix.totals.n2Percent +
+        afterAdd.specMatrix.totals.n3Percent ===
+        100,
+    `addExerciseAndSyncSpecMatrix dynamically updated Spec Matrix (${afterAdd.specMatrix.rows.length} exercises, ${afterAdd.specMatrix.totals.grandTotalPoints}/20 pts)`
+  );
+
+  // Modify an exercise dynamically (change points, questions, and cognitive levels)
+  const afterUpdate = updateExerciseAndSyncSpecMatrix(
+    afterAdd.lessons,
+    0,
+    {
+      lessonAr: "تمرين معدل: اتصال واشتقاق دالة مركبة",
+      targetPoints: 7,
+      questionsAr: [
+        "1. أحسب نهاية الدالة عند +∞.",
+        "2. أدرس اتصال الدالة في النقطة x_0 = 1.",
+        "3. استنتج قابلية الاشتقاق ومعادلة المماس.",
+        "4. أنشئ المنحنى البياني (C_f).",
+      ],
+      questionBaremes: [1.5, 1.75, 2, 1.75],
+      questionLevels: ["N1", "N2", "N2", "N3"],
+    },
+    { n1Target: 35, n2Target: 45, n3Target: 20 }
+  );
+
+  assert(
+    Math.abs(afterUpdate.specMatrix.totals.grandTotalPoints - 20) < 0.01 &&
+      afterUpdate.specMatrix.rows[0].questionCount === 4 &&
+      afterUpdate.specMatrix.rows[0].lessonAr.includes("تمرين معدل"),
+    `updateExerciseAndSyncSpecMatrix dynamically updated exercise #1 (4 questions, ${afterUpdate.specMatrix.rows[0].totalPoints} pts) and resynced total to ${afterUpdate.specMatrix.totals.grandTotalPoints}/20 pts`
+  );
+
+  // Remove an exercise dynamically
+  const afterRemove = removeExerciseAndSyncSpecMatrix(
+    afterUpdate.lessons,
+    afterUpdate.lessons.length - 1,
+    { n1Target: 35, n2Target: 45, n3Target: 20 }
+  );
+
+  assert(
+    afterRemove.lessons.length === baseLessons.length &&
+      Math.abs(afterRemove.specMatrix.totals.grandTotalPoints - 20) < 0.01,
+    `removeExerciseAndSyncSpecMatrix removed exercise and rebalanced remaining ${afterRemove.lessons.length} exercises to ${afterRemove.specMatrix.totals.grandTotalPoints}/20 pts`
+  );
+
+  // Auto-rebalance to 142-08
+  const afterRebalance = autoRebalanceSpecMatrixTo14208(
+    afterRemove.lessons,
+    35,
+    45,
+    20
+  );
+  const specLatex = exportAutomatedSpecMatrixLatex(
+    afterRebalance.specMatrix,
+    CURRICULUM_DB["2BAC_PC"].labelAr,
+    "الفرض المحروس رقم 1"
+  );
+
+  assert(
+    Math.abs(afterRebalance.specMatrix.totals.grandTotalPoints - 20) < 0.01 &&
+      specLatex.includes("\\begin{tabular}") &&
+      specLatex.includes("20.00 / 20"),
+    `autoRebalanceSpecMatrixTo14208 & exportAutomatedSpecMatrixLatex produced valid 20.00/20 LaTeX specification matrix (score ${afterRebalance.specMatrix.conformity14208.score}%)`
+  );
+} catch (e: any) {
+  assert(false, `Section 38 test crashed: ${e.message}`);
+}
+
 console.log("\n=================================================");
 console.log(`=== TEST SUMMARY: ${passCount} PASSED, ${failCount} FAILED ===`);
 console.log("=================================================");
@@ -2826,6 +3046,7 @@ console.log("=================================================");
 if (failCount > 0) {
   process.exit(1);
 }
+
 
 
 

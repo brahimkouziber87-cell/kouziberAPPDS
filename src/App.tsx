@@ -493,6 +493,18 @@ const CentralFirebaseExamsAndTexStudioModal = React.lazy(() =>
     default: m.CentralFirebaseExamsAndTexStudioModal,
   }))
 );
+const InteractiveSystemAuditAndSandboxModal = React.lazy(() =>
+  import("./components/InteractiveSystemAuditAndSandboxModal").then((m) => ({
+    default: m.InteractiveSystemAuditAndSandboxModal,
+  }))
+);
+const DiagnosticAndDynamicSpecMatrixModal = React.lazy(() =>
+  import("./components/DiagnosticAndDynamicSpecMatrixModal").then((m) => ({
+    default: m.DiagnosticAndDynamicSpecMatrixModal,
+  }))
+);
+import { buildPrerequisiteDiagnosticBlueprint } from "./utils/diagnosticAndDynamicSpecMatrixEngine";
+import type { MoroccanDiagnosticPaper } from "./utils/diagnosticGenerator";
 const GoogleDriveSyncModal = React.lazy(() =>
   import("./components/GoogleDriveSyncModal").then((m) => ({
     default: m.GoogleDriveSyncModal,
@@ -763,6 +775,15 @@ export default function App() {
     useState<boolean>(false);
   const [centralFirebaseHubInitialTab, setCentralFirebaseHubInitialTab] =
     useState<CentralHubTabId>("FIREBASE_DASHBOARD");
+  const [showSystemAuditSandboxModal, setShowSystemAuditSandboxModal] =
+    useState<boolean>(false);
+  const [showDiagnosticAndSpecStudioModal, setShowDiagnosticAndSpecStudioModal] =
+    useState<boolean>(false);
+  const [diagnosticAndSpecStudioTab, setDiagnosticAndSpecStudioTab] = useState<
+    "DIAGNOSTIC_STUDIO" | "DYNAMIC_SPEC_MATRIX"
+  >("DIAGNOSTIC_STUDIO");
+  const [customDiagnosticPaper, setCustomDiagnosticPaper] =
+    useState<MoroccanDiagnosticPaper | null>(null);
   const [showQuickVoiceDictation, setShowQuickVoiceDictation] =
     useState<boolean>(false);
   const [customDocTitle, setCustomDocTitle] = useState<string>("");
@@ -4212,6 +4233,31 @@ export default function App() {
     }
 
     try {
+      const urlQuizType = params.get("type");
+      if (urlQuizType === "DIAGNOSTIC") {
+        const rawPrereqs = params.get("prereqs");
+        const parsedPrereqs = rawPrereqs
+          ? rawPrereqs
+              .split(",")
+              .map((x) => parseInt(x.trim(), 10))
+              .filter((n) => !isNaN(n))
+          : undefined;
+        const diagBp = buildPrerequisiteDiagnosticBlueprint({
+          trackCode: resolvedTrack.code,
+          examModel: urlModel === "B" ? "B" : "A",
+          selectedPrereqIndices: parsedPrereqs,
+        });
+        setActiveModule("DIAGNOSTIC");
+        setCustomDiagnosticPaper(diagBp.diagnosticPaper);
+        setCurrentInteractiveQuiz(diagBp.interactiveQuizData);
+        setShowInteractiveQuizModal(true);
+        setStatusMessage({
+          type: "success",
+          text: `تم فتح الرائز التشخيصي التفاعلي للمكتسبات القبلية (${resolvedTrack.labelAr}) عبر رمز QR!`,
+        });
+        return;
+      }
+
       const quizTitleAr = `الفرض المحروس رقم ${resolvedDs.replace("DS", "")} (${
         resolvedSem === "S1" ? "الدورة 1" : "الدورة 2"
       }) — ${resolvedTrack.labelAr}`;
@@ -5880,9 +5926,24 @@ export default function App() {
     }
   };
 
-  // فتح وإعداد الاختبار التفاعلي للتمارين الحالية (يدعم الدروس المختارة أو الفرض المحاكى المستورد بدقة عالية)
+  // فتح وإعداد الاختبار التفاعلي للتمارين الحالية (يدعم الدروس المختارة أو الفرض المحاكى المستورد أو الرائز التشخيصي للمكتسبات القبلية)
   const handleOpenInteractiveQuiz = useCallback(() => {
     try {
+      if (activeModule === "DIAGNOSTIC") {
+        const diagBp = buildPrerequisiteDiagnosticBlueprint({
+          trackCode: currentTrack.code,
+          duration: diagDuration,
+          examModel: examModel === "B" ? "B" : "A",
+        });
+        setCurrentInteractiveQuiz(diagBp.interactiveQuizData);
+        setShowInteractiveQuizModal(true);
+        setStatusMessage({
+          type: "success",
+          text: `تم فتح الرائز التشخيصي التفاعلي للمكتسبات القبلية (${currentTrack.labelAr} · ${diagBp.interactiveQuizData.totalQuestions} أسئلة · 20/20 ن) مع التصحيح الآلي وخطة الدعم!`,
+        });
+        return;
+      }
+
       const sourceExercises =
         isExamSimulationActive && activeImportedBlueprint
           ? activeImportedBlueprint.exercises
@@ -5924,6 +5985,9 @@ export default function App() {
       });
     }
   }, [
+    activeModule,
+    diagDuration,
+    examModel,
     isExamSimulationActive,
     activeImportedBlueprint,
     activeCustomLessons,
@@ -7754,6 +7818,34 @@ export default function App() {
                 <Upload className="w-3.5 h-3.5" />
                 <span>📥 استيراد وتنسيق ملف .tex من الجهاز</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
+                  setShowDiagnosticAndSpecStudioModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <span>🎯 الاختبارات التشخيصية (المكتسبات + PDF + QR)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
+                  setShowDiagnosticAndSpecStudioModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <span>📊 أتمتة جدول المواصفات الديناميكي</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSystemAuditSandboxModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <Stethoscope className="w-3.5 h-3.5" />
+                <span>🩺 الفحص الدقيق (8/8)</span>
+              </button>
             </div>
           </div>
         )}
@@ -8211,6 +8303,31 @@ export default function App() {
                     );
                   })}
                 </div>
+
+                {/* شريط أتمتة جدول المواصفات الديناميكي للفرض المحروس */}
+                {(activeModule === "DS_142_08" ||
+                  (activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON")) && (
+                  <div className="bg-gradient-to-l from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 border border-emerald-500/40 shadow-xs">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-black text-emerald-300">
+                        📊 أداة أتمتة جدول المواصفات الديناميكي (Spec Matrix 142-08)
+                      </div>
+                      <div className="text-[11px] text-slate-200">
+                        تحديث لحظي لجدول المواصفات وسلالم التنقيط (20/20 ن) عند إضافة أو تعديل أو حذف أي تمرين في الفرض
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
+                        setShowDiagnosticAndSpecStudioModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black transition cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      ⚙️ فتح محرر جدول المواصفات الديناميكي
+                    </button>
+                  </div>
+                )}
 
                 {/* مكون مصفوفة التخصيص ثنائية الأبعاد (2D) لتدقيق المفتش التربوي (الدروس × المهارات N1/N2/N3) */}
                 {(activeModule === "DS_142_08" ||
@@ -10964,6 +11081,18 @@ export default function App() {
                       <option value="OPEN">تمارين مفتوحة وموجهة</option>
                     </select>
                   </div>
+                  <div className="col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
+                        setShowDiagnosticAndSpecStudioModal(true);
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <span>🎯 تخصيص المكتسبات القبلية للرائز التشخيصي + PDF + QR التفاعلي</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -12693,6 +12822,33 @@ export default function App() {
                           className="p-2 rounded-lg border border-emerald-300 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-950 text-right transition cursor-pointer"
                         >
                           📥 استيراد وتنسيق ملف .tex
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
+                            setShowDiagnosticAndSpecStudioModal(true);
+                          }}
+                          className="p-2 rounded-lg border border-amber-300 bg-amber-100/80 hover:bg-amber-200 text-amber-950 text-right font-bold transition cursor-pointer"
+                        >
+                          🎯 الاختبارات التشخيصية (المكتسبات + QR)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
+                            setShowDiagnosticAndSpecStudioModal(true);
+                          }}
+                          className="p-2 rounded-lg border border-teal-300 bg-teal-100/80 hover:bg-teal-200 text-teal-950 text-right font-bold transition cursor-pointer"
+                        >
+                          📊 أتمتة جدول المواصفات الديناميكي
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowSystemAuditSandboxModal(true)}
+                          className="col-span-2 p-2 rounded-lg border border-cyan-400 bg-gradient-to-l from-cyan-950 to-slate-900 hover:from-cyan-900 hover:to-slate-800 text-cyan-200 text-center font-black transition cursor-pointer shadow-2xs"
+                        >
+                          🩺 مختبر الفحص الدقيق والمراجعة الشاملة وتجربة المكونات (8/8)
                         </button>
                       </div>
                     </div>
@@ -15214,6 +15370,11 @@ export default function App() {
                     readingModeConfig={readingModeConfig}
                     subQuestionDecompositionMode={subQuestionDecompositionMode}
                     onChangeSubQuestionDecompositionMode={setSubQuestionDecompositionMode}
+                    customDiagnosticPaper={customDiagnosticPaper}
+                    onOpenDiagnosticAndSpecStudio={(tab) => {
+                      setDiagnosticAndSpecStudioTab(tab || "DIAGNOSTIC_STUDIO");
+                      setShowDiagnosticAndSpecStudioModal(true);
+                    }}
                   />
               </TouchPreviewCanvas>
             )}
@@ -15857,6 +16018,125 @@ export default function App() {
               text,
             })
           }
+        />
+      )}
+      {showSystemAuditSandboxModal && (
+        <InteractiveSystemAuditAndSandboxModal
+          isOpen={showSystemAuditSandboxModal}
+          onClose={() => setShowSystemAuditSandboxModal(false)}
+          initialTrackCode={selectedTrackCode}
+          initialSemester={semester}
+          school={school}
+          prof={prof}
+          year={year}
+          onApplyLiveSandboxToStudio={(payload) => {
+            skipTrackResetRef.current = true;
+            setSelectedTrackCode(payload.trackCode);
+            setSemester(payload.semester);
+            setDsKey(payload.dsKey);
+            setExamModel(payload.examModel);
+            setActiveModule(payload.moduleType);
+            if (payload.dmSubType) {
+              setDmSubType(payload.dmSubType);
+            }
+            setCustomDocTitle(payload.titleAr);
+            setCustomHeaderNote(payload.headerNoteAr);
+            setN1(payload.n1);
+            setN2(payload.n2);
+            setN3(payload.n3);
+            if (payload.lessons && payload.lessons.length > 0) {
+              setSimulatedImportedLessons(payload.lessons);
+              setIsExamSimulationActive(true);
+            }
+            if (payload.latexSourceOverride) {
+              setExportFormat("LATEX");
+              setGeneratedCode(payload.latexSourceOverride);
+              if (viewMode === "PREVIEW") {
+                setViewMode("SPLIT");
+              }
+            }
+          }}
+          onOpenFirebaseDashboard={() => {
+            setCentralFirebaseHubInitialTab("FIREBASE_DASHBOARD");
+            setShowCentralFirebaseHubModal(true);
+          }}
+          onNotify={(type, text) =>
+            setStatusMessage({
+              type,
+              text,
+            })
+          }
+        />
+      )}
+      {showDiagnosticAndSpecStudioModal && (
+        <DiagnosticAndDynamicSpecMatrixModal
+          isOpen={showDiagnosticAndSpecStudioModal}
+          initialTab={diagnosticAndSpecStudioTab}
+          trackCode={currentTrack.code}
+          examModel={examModel === "B" ? "B" : "A"}
+          durationAr={diagDuration}
+          lessons={activeCustomLessons}
+          n1Target={n1}
+          n2Target={n2}
+          n3Target={n3}
+          dsStructureMode={dsStructureMode}
+          onClose={() => setShowDiagnosticAndSpecStudioModal(false)}
+          onSelectTrackCode={(newCode) => {
+            if (CURRICULUM_DB[newCode]) {
+              setSelectedTrackCode(newCode);
+            }
+          }}
+          onApplyDiagnosticToA4AndExportPdf={(blueprint, triggerPrintPdf) => {
+            skipTrackResetRef.current = true;
+            if (CURRICULUM_DB[blueprint.trackCode]) {
+              setSelectedTrackCode(blueprint.trackCode);
+            }
+            setExamModel(blueprint.examModel);
+            setDiagDuration(blueprint.durationAr);
+            setCustomDiagnosticPaper(blueprint.diagnosticPaper);
+            setActiveModule("DIAGNOSTIC");
+            setCustomDocTitle(blueprint.customTitleAr);
+            setShowDiagnosticAndSpecStudioModal(false);
+            setStatusMessage({
+              type: "success",
+              text: `تم تطبيق الرائز التشخيصي للمكتسبات القبلية (${blueprint.selectedPrerequisites.length} مكتسبات · 20/20 ن) مع رمز QR التفاعلي (${blueprint.verificationCode}) في الورقة الرسمية A4!`,
+            });
+            if (triggerPrintPdf) {
+              setTimeout(() => {
+                handleExportPDF();
+              }, 220);
+            }
+          }}
+          onLaunchInteractiveQuizModal={(quizData) => {
+            setCurrentInteractiveQuiz(quizData);
+            setShowDiagnosticAndSpecStudioModal(false);
+            setShowInteractiveQuizModal(true);
+            setStatusMessage({
+              type: "success",
+              text: `تم تشغيل الرائز التشخيصي التفاعلي عبر QR (${quizData.totalQuestions} أسئلة · 20/20 ن) مع التصحيح الآلي الفوري وخطة الدعم!`,
+            });
+          }}
+          onSyncLessonsAndSpecMatrix={(payload) => {
+            setSimulatedImportedLessons(payload.lessons);
+            setIsExamSimulationActive(true);
+            setN1(payload.n1);
+            setN2(payload.n2);
+            setN3(payload.n3);
+            if (payload.appendSpecMatrixToA4) {
+              setInclude2DSpecMatrix(true);
+              setActiveModule("DS_142_08");
+            }
+            setStatusMessage({
+              type: "success",
+              text: payload.summaryMessageAr,
+            });
+            if (payload.triggerPrintPdf) {
+              setShowDiagnosticAndSpecStudioModal(false);
+              setTimeout(() => {
+                handleExportPDF();
+              }, 220);
+            }
+          }}
         />
       )}
       </React.Suspense>
