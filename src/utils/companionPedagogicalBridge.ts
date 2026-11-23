@@ -26,18 +26,18 @@ export const OFFICIAL_MOROCCAN_TRACK_COEFFICIENTS: Record<string, number> = {
   "1BAC_SE": 7,
   "1BAC_STE_STM": 7,
   "1BAC_ECO": 4,
-  "1BAC_LETTRES": 2,
+  "1BAC_LETTRES": 1,
   "2BAC_SM": 9,
   "2BAC_PC": 7,
   "2BAC_SVT_AGRO": 7,
   "2BAC_STE_STM": 7,
   "2BAC_ECO_TGC": 4,
-  "2BAC_LETTRES": 2,
+  "2BAC_LETTRES": 1,
   "2NDE_FR": 4,
-  "1ERE_SPE_FR": 6,
+  "1ERE_SPE_FR": 8,
   TERM_SPE_FR: 16,
-  TERM_EXP_FR: 9,
-  TERM_COMPL_FR: 5,
+  TERM_EXP_FR: 16,
+  TERM_COMPL_FR: 6,
 };
 
 export interface CompletedLessonBriefItem {

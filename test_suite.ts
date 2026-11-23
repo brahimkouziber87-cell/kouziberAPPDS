@@ -3058,6 +3058,7 @@ try {
   const tcsStandard = getOfficialNote14208TrackStandards("TCS");
   const tctStandard = getOfficialNote14208TrackStandards("TCT");
   const lsh1Standard = getOfficialNote14208TrackStandards("1BAC_LETTRES");
+  const tclshStandard = getOfficialNote14208TrackStandards("TCLSH");
   const termSpeFrStandard = getOfficialNote14208TrackStandards("TERM_SPE_FR");
   const { computeNote14208SemesterAverage } = await import(
     "./src/utils/moroccanPedagogicalPortfolio14208Engine.ts"
@@ -3074,14 +3075,15 @@ try {
       pcStandard.officialCoefficient === 7 &&
       tcsStandard.officialCoefficient === 4 &&
       tctStandard.officialCoefficient === 4 &&
-      lsh1Standard.officialCoefficient === 2 &&
+      tclshStandard.officialCoefficient === 2 &&
+      lsh1Standard.officialCoefficient === 1 &&
       lsh1Standard.officialDurationMinutes === 60 &&
       termSpeFrStandard.officialCoefficient === 16 &&
       Math.abs(caCalc.finalSemesterAverage - 15) < 0.01 &&
       caCalc.remediationTierCode === "EXCELLENCE" &&
       smStandard.recommendedN1 + smStandard.recommendedN2 + smStandard.recommendedN3 === 100 &&
       pcStandard.requiredPortfolioDocumentsAr.length === 7,
-    `getOfficialNote14208TrackStandards & 75/25 calculator verified across all tracks (SM=9/4DS, 1BAC_SE=7/3DS, PC=7, TCS/TCT=4, LSH=2/60min, TERM_SPE_FR=16, CA=15.00/20)`
+    `getOfficialNote14208TrackStandards & 75/25 calculator verified across all tracks (SM=9/4DS, 1BAC_SE=7/3DS, PC=7, TCS/TCT=4, TCLSH=2, 1BAC_LETTRES=1/60min, TERM_SPE_FR=16, CA=15.00/20)`
   );
 
   const pcLessons = CURRICULUM_DB["2BAC_PC"].semesters.S1.DS1;
@@ -3215,6 +3217,91 @@ try {
   );
 } catch (e: any) {
   assert(false, `Section 40 test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 41. TEST REAL-TIME PRINT LAYOUT PAGE BREAKS & MARGINS BY PDF SIZE PRESET
+// ----------------------------------------------------------------------
+console.log("\n--- 41. Testing Real-Time Print Layout Page Breaks & Margins by PDF Size Preset ---");
+try {
+  const { computePrintMediaQueryMetrics } = await import("./src/utils/pdfExporter.ts");
+
+  const a4Metrics = computePrintMediaQueryMetrics({
+    preset: "A4",
+    orientation: "PORTRAIT",
+    marginTopMm: 12,
+    marginBottomMm: 14,
+    marginLeftMm: 15,
+    marginRightMm: 18,
+    contentWidthPx: 840, // 4 px/mm for 210mm width
+    contentHeightPx: 2500,
+  });
+
+  const letterMetrics = computePrintMediaQueryMetrics({
+    preset: "LETTER",
+    orientation: "PORTRAIT",
+    marginTopMm: 10,
+    marginBottomMm: 10,
+    marginLeftMm: 12,
+    marginRightMm: 12,
+    contentWidthPx: 863.6, // 4 px/mm for 215.9mm width
+    contentHeightPx: 2300,
+  });
+
+  const customLandscapeMetrics = computePrintMediaQueryMetrics({
+    preset: "CUSTOM",
+    orientation: "LANDSCAPE",
+    customWidthMm: 200,
+    customHeightMm: 300,
+    marginTopMm: 15,
+    marginBottomMm: 15,
+    marginLeftMm: 20,
+    marginRightMm: 10,
+    contentWidthPx: 900, // 3 px/mm for 300mm landscape width
+    contentHeightPx: 1400,
+  });
+
+  assert(
+    a4Metrics.widthMm === 210 &&
+      a4Metrics.heightMm === 297 &&
+      a4Metrics.effectivePxPerMm === 4 &&
+      a4Metrics.marginTopPx === 48 &&
+      a4Metrics.marginBottomPx === 56 &&
+      a4Metrics.marginLeftPx === 60 &&
+      a4Metrics.marginRightPx === 72 &&
+      a4Metrics.pageBreakIntervalPx === 1188 &&
+      a4Metrics.pageBreakOffsetsPx[0] === 1188 &&
+      a4Metrics.pageBreakOffsetsPx[1] === 2376 &&
+      a4Metrics.printableWidthMm === 177 &&
+      a4Metrics.printableHeightMm === 271 &&
+      a4Metrics.cssPageRule.includes("margin: 12mm 18mm 14mm 15mm"),
+    `Print Layout A4 Portrait: computes exact 4px/mm real-time margin insets (Top=48px, Bottom=56px, Left=60px, Right=72px) and page break interval (1188px)`
+  );
+
+  assert(
+    letterMetrics.widthMm === 215.9 &&
+      letterMetrics.heightMm === 279.4 &&
+      letterMetrics.pageBreakIntervalPx === 1118 &&
+      letterMetrics.marginTopPx === 40 &&
+      letterMetrics.marginLeftPx === 48 &&
+      letterMetrics.printableAreaPercent > 80 &&
+      letterMetrics.cssPageRule.includes("size: letter portrait"),
+    `Print Layout US Letter Portrait: shifts page break interval from 1188px (A4) to ${letterMetrics.pageBreakIntervalPx}px (279.4mm height) and updates @page rule`
+  );
+
+  assert(
+    customLandscapeMetrics.widthMm === 300 &&
+      customLandscapeMetrics.heightMm === 200 &&
+      customLandscapeMetrics.effectivePxPerMm === 3 &&
+      customLandscapeMetrics.marginTopPx === 45 &&
+      customLandscapeMetrics.marginLeftPx === 60 &&
+      customLandscapeMetrics.marginRightPx === 30 &&
+      customLandscapeMetrics.pageBreakIntervalPx === 600 &&
+      customLandscapeMetrics.estimatedPageCount === 3,
+    `Print Layout Custom Landscape (300×200mm): computes asymmetric margin insets (Left=60px, Right=30px) and 600px page break intervals across ${customLandscapeMetrics.estimatedPageCount} pages`
+  );
+} catch (e: any) {
+  assert(false, `Section 41 test crashed: ${e.message}`);
 }
 
 console.log("\n=================================================");

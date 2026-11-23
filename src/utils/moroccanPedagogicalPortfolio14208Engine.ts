@@ -170,8 +170,8 @@ export function getOfficialNote14208TrackStandards(
     officialDurationAr = "ساعتان (2h00)";
     officialDurationFr = "2 heures (120 min)";
     officialDurationMinutes = 120;
-    recommendedN1 = 40;
-    recommendedN2 = 45;
+    recommendedN1 = 45;
+    recommendedN2 = 40;
     recommendedN3 = 15;
   } else if (code.includes("ECO")) {
     officialCoefficient = 4;
@@ -186,15 +186,21 @@ export function getOfficialNote14208TrackStandards(
     recommendedN2 = 45;
     recommendedN3 = 15;
   } else if (code.includes("LSH") || code.includes("LET")) {
-    officialCoefficient = 2;
+    officialCoefficient = code === "TCLSH" ? 2 : 1;
     weeklyHours = "ساعتان أسبوعياً";
     dsCountPerSemester = 2;
     officialDurationAr =
       code === "1BAC_LETTRES"
         ? "ساعة واحدة (1h00) للفرض · 1h30 للجهوي"
+        : code === "2BAC_LETTRES"
+        ? "ساعة واحدة (1h00) للفرض · 1h30 للوطني"
         : "ساعة واحدة (1h00)";
     officialDurationFr =
-      code === "1BAC_LETTRES" ? "1h (DS) · 1h30 (Régional)" : "1 heure (60 min)";
+      code === "1BAC_LETTRES"
+        ? "1h (DS) · 1h30 (Régional)"
+        : code === "2BAC_LETTRES"
+        ? "1h (DS) · 1h30 (National)"
+        : "1 heure (60 min)";
     officialDurationMinutes = 60;
     recommendedN1 = 50;
     recommendedN2 = 35;
@@ -203,7 +209,7 @@ export function getOfficialNote14208TrackStandards(
     officialCoefficient = 16;
     weeklyHours = "6h + 3h (Maths Expertes)";
     dsCountPerSemester = 3;
-    officialDurationAr = "ساعتان (2h00) · البكالوريا الفرنسية";
+    officialDurationAr = "ساعتان (2h00) للفرض · 4 ساعات للبكالوريا";
     officialDurationFr = "2h (DS) · 4h (Baccalauréat)";
     officialDurationMinutes = 120;
     recommendedN1 = 25;
@@ -213,7 +219,7 @@ export function getOfficialNote14208TrackStandards(
     officialCoefficient = 16;
     weeklyHours = "6 ساعات أسبوعياً (AEFE)";
     dsCountPerSemester = 3;
-    officialDurationAr = "ساعتان (2h00) · 4 ساعات للبكالوريا";
+    officialDurationAr = "ساعتان (2h00) للفرض · 4 ساعات للبكالوريا";
     officialDurationFr = "2h (DS) · 4h (Baccalauréat)";
     officialDurationMinutes = 120;
     recommendedN1 = 30;

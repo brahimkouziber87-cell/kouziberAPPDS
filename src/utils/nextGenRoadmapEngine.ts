@@ -70,9 +70,15 @@ const OFFICIAL_BAC_COEFS: Record<string, { coef: number; hours: number }> = {
   "2BAC_SVT_AGRO": { coef: 7, hours: 3 },
   "2BAC_STE_STM": { coef: 7, hours: 3 },
   "2BAC_ECO_TGC": { coef: 4, hours: 2 },
-  "2BAC_LETTRES": { coef: 2, hours: 2 },
-  "1BAC_SM": { coef: 9, hours: 3 },
+  "2BAC_LETTRES": { coef: 1, hours: 1.5 },
+  "1BAC_SM": { coef: 9, hours: 2 },
   "1BAC_SE": { coef: 7, hours: 2 },
+  "1BAC_STE_STM": { coef: 7, hours: 2 },
+  "1BAC_ECO": { coef: 4, hours: 2 },
+  "1BAC_LETTRES": { coef: 1, hours: 1.5 },
+  TCS: { coef: 4, hours: 2 },
+  TCT: { coef: 4, hours: 2 },
+  TCLSH: { coef: 2, hours: 1 },
   TERM_SPE_FR: { coef: 16, hours: 4 },
 };
 

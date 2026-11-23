@@ -8266,8 +8266,52 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* ضوابط المعاينة السريعة */}
+                {/* ضوابط المعاينة السريعة وتخطيط الطباعة الحي (Print Layout) */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !(showA4LivePageBreaks || simulatePrintMediaQuery);
+                        setShowA4LivePageBreaks(next);
+                        setSimulatePrintMediaQuery(next);
+                      }}
+                      className={`h-6 px-2 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
+                        showA4LivePageBreaks || simulatePrintMediaQuery
+                          ? "bg-teal-900 text-teal-100 shadow-2xs"
+                          : "text-slate-700 hover:bg-slate-100"
+                      }`}
+                      title="تفعيل تخطيط الطباعة الحي (Print Layout) لعرض فواصل الصفحات والهوامش بالوقت الفعلي حسب مقاس PDF المختار"
+                    >
+                      <Layers
+                        className={`w-3 h-3 shrink-0 ${
+                          showA4LivePageBreaks || simulatePrintMediaQuery
+                            ? "text-amber-300"
+                            : "text-teal-700"
+                        }`}
+                      />
+                      <span>تخطيط الطباعة</span>
+                    </button>
+                    <select
+                      aria-label="مقاس صفحة PDF"
+                      value={printPageSizePreset}
+                      onChange={(e) => {
+                        const preset = e.target.value as PrintPageSizePreset;
+                        setPrintPageSizePreset(preset);
+                        setSmartPageBreakConfig((prev) => ({
+                          ...prev,
+                          paperFormat: preset === "LETTER" ? "LETTER" : "A4",
+                        }));
+                      }}
+                      className="h-6 px-1.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border-0 cursor-pointer focus:outline-none"
+                      title="اختيار مقاس PDF (A4 / US Letter / Custom) لتحديث فواصل الصفحات والهوامش فوراً"
+                    >
+                      <option value="A4">A4</option>
+                      <option value="LETTER">Letter</option>
+                      <option value="CUSTOM">Custom</option>
+                    </select>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setIncludeAnswerWorkspace((v) => !v)}

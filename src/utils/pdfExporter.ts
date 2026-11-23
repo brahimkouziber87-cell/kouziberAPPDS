@@ -18,8 +18,18 @@ export interface PrintPageMetricsResult {
   heightMm: number;
   widthPx: number;
   heightPx: number;
+  marginTopMm: number;
+  marginBottomMm: number;
+  marginLeftMm: number;
+  marginRightMm: number;
+  marginTopPx: number;
+  marginBottomPx: number;
+  marginLeftPx: number;
+  marginRightPx: number;
+  effectivePxPerMm: number;
   printableWidthMm: number;
   printableHeightMm: number;
+  printableAreaPercent: number;
   pageBreakIntervalPx: number;
   marginBufferPx: number;
   estimatedPageCount: number;
@@ -32,7 +42,7 @@ export interface PrintPageMetricsResult {
 /**
  * محرك محاكاة استعلامات الطباعة الفورية (@media print & @page Simulator)
  * يحسب الأبعاد الفيزيائية والبيكسلات الدقيقة ونقاط فواصل الصفحات (Page Break Boundaries)
- * لمقاسات الورق القياسية (A4, US Letter) والمقاسات المخصصة (Custom @page)
+ * وهوامش الأمان (Margins) لمقاسات الورق القياسية (A4, US Letter) والمقاسات المخصصة (Custom @page)
  */
 export function computePrintMediaQueryMetrics(params: {
   preset: PrintPageSizePreset;
@@ -42,6 +52,8 @@ export function computePrintMediaQueryMetrics(params: {
   marginTopMm?: number;
   marginBottomMm?: number;
   marginXMm?: number;
+  marginLeftMm?: number;
+  marginRightMm?: number;
   contentHeightPx?: number;
   contentWidthPx?: number;
 }): PrintPageMetricsResult {
@@ -70,13 +82,28 @@ export function computePrintMediaQueryMetrics(params: {
   const widthPx = Math.round(widthMm * MM_TO_PX);
   const heightPx = Math.round(heightMm * MM_TO_PX);
 
-  const marginTopMm = Math.max(5, Math.min(30, params.marginTopMm ?? 10));
-  const marginBottomMm = Math.max(5, Math.min(30, params.marginBottomMm ?? 12));
-  const marginXMm = Math.max(5, Math.min(30, params.marginXMm ?? 12));
+  const marginTopMm = Number(Math.max(4, Math.min(35, params.marginTopMm ?? 10)).toFixed(1));
+  const marginBottomMm = Number(Math.max(4, Math.min(35, params.marginBottomMm ?? 12)).toFixed(1));
+  const baseMarginXMm = Math.max(4, Math.min(35, params.marginXMm ?? 12));
+  const marginLeftMm = Number(
+    Math.max(4, Math.min(40, params.marginLeftMm ?? baseMarginXMm)).toFixed(1)
+  );
+  const marginRightMm = Number(
+    Math.max(4, Math.min(40, params.marginRightMm ?? baseMarginXMm)).toFixed(1)
+  );
 
-  const printableWidthMm = Number(Math.max(80, widthMm - marginXMm * 2).toFixed(1));
+  const printableWidthMm = Number(
+    Math.max(80, widthMm - marginLeftMm - marginRightMm).toFixed(1)
+  );
   const printableHeightMm = Number(
     Math.max(100, heightMm - marginTopMm - marginBottomMm).toFixed(1)
+  );
+  const printableAreaPercent = Number(
+    (
+      ((printableWidthMm * printableHeightMm) /
+        Math.max(1, widthMm * heightMm)) *
+      100
+    ).toFixed(1)
   );
 
   // حساب النسبة الفعلية للبيكسل في المعاينة الحية إذا كان عرض العنصر الفعلي متوفراً
@@ -85,13 +112,18 @@ export function computePrintMediaQueryMetrics(params: {
       ? params.contentWidthPx / widthMm
       : MM_TO_PX;
 
+  const marginTopPx = Math.max(6, Math.round(marginTopMm * effectivePxPerMm));
+  const marginBottomPx = Math.max(6, Math.round(marginBottomMm * effectivePxPerMm));
+  const marginLeftPx = Math.max(6, Math.round(marginLeftMm * effectivePxPerMm));
+  const marginRightPx = Math.max(6, Math.round(marginRightMm * effectivePxPerMm));
+
   const pageBreakIntervalPx = Math.max(
     360,
     Math.round(heightMm * effectivePxPerMm)
   );
   const marginBufferPx = Math.max(
-    18,
-    Math.round((marginTopMm + marginBottomMm) * effectivePxPerMm)
+    16,
+    marginTopPx + marginBottomPx
   );
 
   const totalContentHeightPx = Math.max(
@@ -103,7 +135,7 @@ export function computePrintMediaQueryMetrics(params: {
     Math.ceil(totalContentHeightPx / pageBreakIntervalPx - 0.02)
   );
 
-  // توليد إحداثيات خطوط فواصل الصفحات (حتى 8 فواصل كحد أقصى للمعاينة الواضحة)
+  // توليد إحداثيات خطوط فواصل الصفحات (حتى 10 فواصل كحد أقصى للمعاينة الواضحة)
   const breakLinesCount = Math.max(4, Math.min(10, estimatedPageCount + 1));
   const pageBreakOffsetsPx: number[] = [];
   for (let p = 1; p <= breakLinesCount; p++) {
@@ -118,7 +150,7 @@ export function computePrintMediaQueryMetrics(params: {
       ? `letter ${orientCss}`
       : `${widthMm}mm ${heightMm}mm`;
 
-  const cssPageRule = `@page { size: ${cssPageSizeValue}; margin: ${marginTopMm}mm ${marginXMm}mm ${marginBottomMm}mm ${marginXMm}mm; }`;
+  const cssPageRule = `@page { size: ${cssPageSizeValue}; margin: ${marginTopMm}mm ${marginRightMm}mm ${marginBottomMm}mm ${marginLeftMm}mm; }`;
   const cssMediaPrintBlock = `@media print {\n  ${cssPageRule}\n  .print-sheet { width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; min-height: ${heightMm}mm !important; }\n}`;
 
   const labelAr =
@@ -143,8 +175,18 @@ export function computePrintMediaQueryMetrics(params: {
     heightMm,
     widthPx,
     heightPx,
+    marginTopMm,
+    marginBottomMm,
+    marginLeftMm,
+    marginRightMm,
+    marginTopPx,
+    marginBottomPx,
+    marginLeftPx,
+    marginRightPx,
+    effectivePxPerMm: Number(effectivePxPerMm.toFixed(3)),
     printableWidthMm,
     printableHeightMm,
+    printableAreaPercent,
     pageBreakIntervalPx,
     marginBufferPx,
     estimatedPageCount,

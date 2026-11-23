@@ -1086,6 +1086,32 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
     [syncDocTypeOnModelClick, onSwitchDocumentViewModel, updateMarginOverride]
   );
 
+  const resolvedMarginTopMm =
+    smartPageBreakConfig.marginTopMm !== undefined
+      ? smartPageBreakConfig.marginTopMm
+      : activeMarginModelSpec.topMm;
+  const resolvedMarginBottomMm =
+    smartPageBreakConfig.marginBottomMm !== undefined
+      ? smartPageBreakConfig.marginBottomMm
+      : activeMarginModelSpec.bottomMm;
+  const resolvedMarginLeftMm =
+    (smartPageBreakConfig.marginLeftMm !== undefined
+      ? smartPageBreakConfig.marginLeftMm
+      : activeMarginModelSpec.xMm) +
+    (bindingAndCropConfig.enableStapleBindingGutter &&
+    (bindingAndCropConfig.stapleCorner === "TOP_LEFT_LTR" ||
+      bindingAndCropConfig.stapleCorner === "LEFT_TWO_HOLES")
+      ? bindingAndCropConfig.gutterExtraMm
+      : 0);
+  const resolvedMarginRightMm =
+    (smartPageBreakConfig.marginRightMm !== undefined
+      ? smartPageBreakConfig.marginRightMm
+      : activeMarginModelSpec.xMm) +
+    (bindingAndCropConfig.enableStapleBindingGutter &&
+    bindingAndCropConfig.stapleCorner === "TOP_RIGHT_RTL"
+      ? bindingAndCropConfig.gutterExtraMm
+      : 0);
+
   const printMediaMetrics = React.useMemo(
     () =>
       computePrintMediaQueryMetrics({
@@ -1093,9 +1119,11 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         orientation: pageOrientation,
         customWidthMm: customPageWidthMm,
         customHeightMm: customPageHeightMm,
-        marginTopMm: activeMarginModelSpec.topMm,
-        marginBottomMm: activeMarginModelSpec.bottomMm,
+        marginTopMm: resolvedMarginTopMm,
+        marginBottomMm: resolvedMarginBottomMm,
         marginXMm: activeMarginModelSpec.xMm,
+        marginLeftMm: resolvedMarginLeftMm,
+        marginRightMm: resolvedMarginRightMm,
         contentWidthPx: measuredSheetDims.widthPx,
         contentHeightPx: measuredSheetDims.heightPx,
       }),
@@ -1104,9 +1132,11 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       pageOrientation,
       customPageWidthMm,
       customPageHeightMm,
-      activeMarginModelSpec.topMm,
-      activeMarginModelSpec.bottomMm,
+      resolvedMarginTopMm,
+      resolvedMarginBottomMm,
       activeMarginModelSpec.xMm,
+      resolvedMarginLeftMm,
+      resolvedMarginRightMm,
       measuredSheetDims.widthPx,
       measuredSheetDims.heightPx,
     ]
@@ -1116,21 +1146,35 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   const a4TotalHeightMm = printMediaMetrics.heightMm;
   const safePrintWidthMm = printMediaMetrics.printableWidthMm;
   const safePrintHeightMm = printMediaMetrics.printableHeightMm;
-  const printableAreaUtilizationPct =
-    Math.round(
-      ((safePrintWidthMm * safePrintHeightMm) /
-        Math.max(1, a4TotalWidthMm * a4TotalHeightMm)) *
-        1000
-    ) / 10;
+  const printableAreaUtilizationPct = printMediaMetrics.printableAreaPercent;
 
   const effectiveShowA4Breaks =
     (showA4LivePageBreaks ?? internalShowA4PageBreaks) || simulatePrintMediaQuery;
+  const effectiveShowMarginGuides =
+    showMarginGuides || effectiveShowA4Breaks || simulatePrintMediaQuery;
+  const isPrintLayoutActive =
+    effectiveShowA4Breaks && effectiveShowMarginGuides;
   const effectiveEconomicMode = economicTwoUpPrintMode ?? internalEconomicTwoUpMode;
   const effectiveIncludeInteractiveQr = includeInteractiveQrFooter ?? internalIncludeInteractiveQr;
 
   const handleToggleA4Breaks = () => {
     if (onToggleA4LivePageBreaks) onToggleA4LivePageBreaks();
     else setInternalShowA4PageBreaks((v) => !v);
+  };
+
+  const handleToggleUnifiedPrintLayout = () => {
+    const nextState = !isPrintLayoutActive;
+    setShowMarginGuides(nextState);
+    if (onToggleA4LivePageBreaks) {
+      if (Boolean(showA4LivePageBreaks) !== nextState) {
+        onToggleA4LivePageBreaks();
+      }
+    } else {
+      setInternalShowA4PageBreaks(nextState);
+    }
+    if (onToggleSimulatePrintMediaQuery && Boolean(simulatePrintMediaQuery) !== nextState) {
+      onToggleSimulatePrintMediaQuery();
+    }
   };
 
   const handleToggleEconomicMode = () => {
@@ -3711,34 +3755,89 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
               ))}
             </div>
 
-            {/* مسطرة A4 القياسية */}
+            {/* زر تخطيط الطباعة الحي الموحد (Print Layout: Page Breaks & Margins by PDF Size Preset) */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={handleToggleUnifiedPrintLayout}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-black border flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  isPrintLayoutActive
+                    ? "bg-teal-900 text-teal-100 border-teal-800 shadow-2xs"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                }`}
+                title="تخطيط الطباعة الحي (Print Layout): عرض فواصل الصفحات والهوامش الحية بالوقت الفعلي حسب مقاس PDF المختار (A4 / US Letter / Custom)"
+              >
+                <Ruler className={`w-3.5 h-3.5 shrink-0 ${isPrintLayoutActive ? "text-amber-300" : "text-teal-700"}`} />
+                <span>تخطيط الطباعة · Print Layout</span>
+                <span
+                  className={`text-[9.5px] font-mono tabular-nums px-1.5 py-0.2 rounded ${
+                    isPrintLayoutActive
+                      ? "bg-teal-950 text-amber-300 border border-teal-700"
+                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                  }`}
+                >
+                  {printPageSizePreset} · {printMediaMetrics.estimatedPageCount}p
+                </span>
+              </button>
+
+              {onChangePrintPageSizePreset && (
+                <div className="hidden sm:flex items-center gap-0.5 px-1">
+                  {(
+                    [
+                      { id: "A4" as PrintPageSizePreset, label: "A4" },
+                      { id: "LETTER" as PrintPageSizePreset, label: "Letter" },
+                      { id: "CUSTOM" as PrintPageSizePreset, label: "Custom" },
+                    ] as const
+                  ).map((presetBtn) => {
+                    const active = printPageSizePreset === presetBtn.id;
+                    return (
+                      <button
+                        key={presetBtn.id}
+                        type="button"
+                        onClick={() => onChangePrintPageSizePreset(presetBtn.id)}
+                        className={`px-1.5 py-0.5 rounded-md font-mono text-[10px] font-bold transition cursor-pointer ${
+                          active
+                            ? "bg-slate-900 text-white shadow-2xs"
+                            : "text-slate-600 hover:bg-slate-200/70"
+                        }`}
+                        title={`ضبط مقاس PDF على ${presetBtn.label} وتحديث الهوامش وفواصل الصفحات فوراً`}
+                      >
+                        {presetBtn.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* مسطرة الهوامش الفردية */}
             <button
               type="button"
               onClick={() => setShowMarginGuides(!showMarginGuides)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1 transition-colors cursor-pointer ${
-                showMarginGuides
+              className={`px-2 py-1 rounded-xl text-[10.5px] font-bold border flex items-center gap-1 transition-colors cursor-pointer ${
+                effectiveShowMarginGuides
                   ? "bg-cyan-900 text-cyan-100 border-cyan-800"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
-              title="إظهار مسطرة القياس المليمترية وهوامش الطباعة القياسية A4"
+              title={`إظهار مسطرة الهوامش المليمترية لمقاس ${printPageSizePreset} (${printMediaMetrics.widthMm}×${printMediaMetrics.heightMm}mm)`}
             >
-              <Ruler className="w-3.5 h-3.5" />
-              <span>مسطرة A4</span>
+              <Ruler className="w-3 h-3" />
+              <span>هوامش {printPageSizePreset}</span>
             </button>
 
-            {/* فواصل A4 الحية */}
+            {/* فواصل الصفحات الحية */}
             <button
               type="button"
               onClick={handleToggleA4Breaks}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1 transition-colors cursor-pointer ${
+              className={`px-2 py-1 rounded-xl text-[10.5px] font-bold border flex items-center gap-1 transition-colors cursor-pointer ${
                 effectiveShowA4Breaks
                   ? "bg-cyan-900 text-cyan-200 border-cyan-800 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
-              title="إظهار فواصل الصفحات الحية A4 لمعرفة حدود الصفحة 1 و 2 وتفادي تقطيع الجداول"
+              title={`إظهار فواصل الصفحات الحية لمقاس ${printPageSizePreset} لمعرفة حدود كل صفحة وتفادي تقطيع التمارين والجداول`}
             >
-              <Layers className="w-3.5 h-3.5 text-cyan-600" />
-              <span>فواصل A4</span>
+              <Layers className="w-3 h-3 text-cyan-600" />
+              <span>فواصل {printPageSizePreset}</span>
             </button>
 
             {/* الطباعة الاقتصادية 2-في-1 */}
@@ -4400,36 +4499,41 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       {/* حقن قاعدة @media print و @page الفورية لمطابقة مقاس الورقة المختار أثناء الطباعة */}
       <style>{printMediaMetrics.cssMediaPrintBlock}</style>
 
-      {/* شريط محاكي استعلامات الطباعة الفوري (@media print & @page Simulator) عند تفعيله */}
+      {/* شريط تخطيط الطباعة الفوري (Print Layout & @page Real-Time Inspector) عند تفعيله */}
       {!readingModeConfig.enabled &&
-        (simulatePrintMediaQuery || printPageSizePreset !== "A4" || effectiveShowA4Breaks) && (
+        (isPrintLayoutActive ||
+          simulatePrintMediaQuery ||
+          printPageSizePreset !== "A4" ||
+          effectiveShowA4Breaks ||
+          effectiveShowMarginGuides) && (
         <div
           dir="rtl"
-          className="no-print bg-slate-950 text-white rounded-2xl px-3.5 py-2.5 border border-cyan-500/40 shadow-md flex flex-wrap items-center justify-between gap-2 text-[11px]"
+          className="no-print bg-slate-950 text-white rounded-2xl px-3.5 py-2.5 border border-teal-500/40 shadow-md flex flex-wrap items-center justify-between gap-2 text-[11px]"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-black text-[10.5px]">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>@media print Simulator</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-500/20 text-teal-200 border border-teal-500/40 font-mono font-black text-[10.5px]">
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+              <span>Print Layout · تخطيط الطباعة الحي</span>
             </span>
             <code
               dir="ltr"
-              className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 border border-slate-800 font-mono text-[10px]"
+              className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 border border-slate-800 font-mono tabular-nums text-[10px]"
             >
               {printMediaMetrics.cssPageRule}
             </code>
-            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-mono text-[10px] border border-slate-700">
-              المقاس: {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · فاصل الصفحة:{" "}
-              {printMediaMetrics.pageBreakIntervalPx}px ({printMediaMetrics. estimatedPageCount} صفحات)
+            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-mono tabular-nums text-[10px] border border-slate-700">
+              المقاس: {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · منطقة الطباعة الآمنة:{" "}
+              {printMediaMetrics.printableWidthMm}×{printMediaMetrics.printableHeightMm}mm ({printMediaMetrics.printableAreaPercent}%) · فاصل الصفحة:{" "}
+              {printMediaMetrics.pageBreakIntervalPx}px ({printMediaMetrics.estimatedPageCount} صفحات)
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
-                { id: "A4" as PrintPageSizePreset, label: "A4 (210×297)" },
-                { id: "LETTER" as PrintPageSizePreset, label: "Letter (216×279)" },
-                { id: "CUSTOM" as PrintPageSizePreset, label: `Custom (${customPageWidthMm}×${customPageHeightMm})` },
+                { id: "A4" as PrintPageSizePreset, label: "A4 (210×297mm)" },
+                { id: "LETTER" as PrintPageSizePreset, label: "US Letter (215.9×279.4mm)" },
+                { id: "CUSTOM" as PrintPageSizePreset, label: `Custom (${customPageWidthMm}×${customPageHeightMm}mm)` },
               ] as const
             ).map((presetBtn) => {
               const active = printPageSizePreset === presetBtn.id;
@@ -4438,9 +4542,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   key={presetBtn.id}
                   type="button"
                   onClick={() => onChangePrintPageSizePreset?.(presetBtn.id)}
-                  className={`px-2 py-1 rounded-lg font-mono text-[10px] font-bold border transition cursor-pointer ${
+                  className={`px-2 py-1 rounded-lg font-mono tabular-nums text-[10px] font-bold border transition cursor-pointer ${
                     active
-                      ? "bg-cyan-500 text-slate-950 border-cyan-400 font-black"
+                      ? "bg-teal-400 text-slate-950 border-teal-300 font-black"
                       : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
                   }`}
                 >
@@ -4449,19 +4553,51 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
               );
             })}
 
-            {onToggleSimulatePrintMediaQuery && (
-              <button
-                type="button"
-                onClick={onToggleSimulatePrintMediaQuery}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition cursor-pointer ${
-                  simulatePrintMediaQuery
-                    ? "bg-amber-400 text-slate-950 border-amber-300"
-                    : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-                }`}
-              >
-                {simulatePrintMediaQuery ? "إيقاف محاكاة @media print" : "تفعيل محاكاة @media print"}
-              </button>
+            {printPageSizePreset === "CUSTOM" && onChangeCustomPageDimensionsMm && (
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-0.5 font-mono text-[10px]">
+                <span className="text-slate-400">W:</span>
+                <input
+                  type="number"
+                  min={120}
+                  max={350}
+                  value={customPageWidthMm}
+                  onChange={(e) =>
+                    onChangeCustomPageDimensionsMm(
+                      Math.max(120, Math.min(350, Number(e.target.value) || 210)),
+                      customPageHeightMm
+                    )
+                  }
+                  className="w-12 bg-slate-950 text-amber-300 border border-slate-700 rounded px-1 py-0.2 text-center"
+                />
+                <span className="text-slate-400">× H:</span>
+                <input
+                  type="number"
+                  min={160}
+                  max={450}
+                  value={customPageHeightMm}
+                  onChange={(e) =>
+                    onChangeCustomPageDimensionsMm(
+                      customPageWidthMm,
+                      Math.max(160, Math.min(450, Number(e.target.value) || 297))
+                    )
+                  }
+                  className="w-12 bg-slate-950 text-amber-300 border border-slate-700 rounded px-1 py-0.2 text-center"
+                />
+                <span className="text-slate-400">mm</span>
+              </div>
             )}
+
+            <button
+              type="button"
+              onClick={handleToggleUnifiedPrintLayout}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition cursor-pointer ${
+                isPrintLayoutActive
+                  ? "bg-amber-400 text-slate-950 border-amber-300"
+                  : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+              }`}
+            >
+              {isPrintLayoutActive ? "إغلاق تخطيط الطباعة (Print Layout)" : "تفعيل تخطيط الطباعة الكامل"}
+            </button>
 
             {onToggleSheetViewMode && (
               <button
@@ -4472,9 +4608,13 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                     ? "bg-emerald-400 text-slate-950 border-emerald-300 shadow-sm"
                     : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
                 }`}
-                title="التبديل بين الورقة الممتدة وعرض الصفحات الفيزيائية A4 المنفصلة"
+                title="التبديل بين الورقة الممتدة وعرض الصفحات الفيزيائية المنفصلة"
               >
-                <span>{sheetViewMode === "MULTIPAGE_CARDS" ? "📄 صفحات منفصلة A4" : "📜 ورقة ممتدة"}</span>
+                <span>
+                  {sheetViewMode === "MULTIPAGE_CARDS"
+                    ? `📄 صفحات ${printPageSizePreset} منفصلة`
+                    : "📜 ورقة ممتدة"}
+                </span>
               </button>
             )}
           </div>
@@ -4530,10 +4670,11 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             : {}),
         }}
         data-margin-model={activeMarginModelSpec.id}
-        data-custom-margins-mm={`${smartPageBreakConfig.marginTopMm ?? 14}/${smartPageBreakConfig.marginBottomMm ?? 14}/${smartPageBreakConfig.marginLeftMm ?? 15}/${smartPageBreakConfig.marginRightMm ?? 15}`}
+        data-custom-margins-mm={`${printMediaMetrics.marginTopMm}/${printMediaMetrics.marginBottomMm}/${printMediaMetrics.marginLeftMm}/${printMediaMetrics.marginRightMm}`}
         data-vertical-density={smartPageBreakConfig.verticalDensityPreset || "BALANCED"}
         data-page-size-preset={printPageSizePreset}
         data-page-dimensions-mm={`${printMediaMetrics.widthMm}x${printMediaMetrics.heightMm}`}
+        data-print-layout-active={isPrintLayoutActive ? "true" : "false"}
         data-interactive-quiz-url={resolvedInteractiveQuizUrl}
         data-a4-auto-fit={autoFitCompactionScale < 1 ? "compacted" : "standard"}
         data-eco-toner-mode={bindingAndCropConfig.enableEcoTonerBlackMode ? "true" : "false"}
@@ -4561,8 +4702,8 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
         } ${
           effectiveEconomicMode ? "mode-two-up-print" : ""
         } ${
-          simulatePrintMediaQuery
-            ? "ring-4 ring-cyan-500/60 shadow-2xl mx-auto"
+          simulatePrintMediaQuery || isPrintLayoutActive
+            ? "ring-4 ring-teal-500/50 shadow-2xl mx-auto"
             : ""
         } ${
           isInlineEditable ? "editable-sheet ring-2 ring-indigo-500/40" : ""
@@ -4668,74 +4809,146 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           isFr={isFr}
         />
       )}
-      {/* فواصل الصفحات الحية لمعاينة حدود @page (A4 / Letter / Custom) وتفادي تشطير المسائل والجداول */}
+      {/* فواصل الصفحات الحية لمعاينة حدود @page (A4 / Letter / Custom) وهوامش أعلى وأسفل كل صفحة بالوقت الفعلي */}
       {effectiveShowA4Breaks && (
         <div
           aria-hidden="true"
           className="no-print pointer-events-none absolute inset-0 z-30"
         >
-          {printMediaMetrics.pageBreakOffsetsPx.map((topOffset, idx) => {
-            const pageNum = idx + 1;
-            const halfBuffer = Math.round(printMediaMetrics.marginBufferPx / 2);
-            const cutMm = Math.round(pageNum * printMediaMetrics.heightMm);
-            return (
-              <div
-                key={`page-break-${printPageSizePreset}-${pageNum}`}
-                style={{
-                  top: `${Math.max(0, topOffset - halfBuffer)}px`,
-                  height: `${halfBuffer * 2}px`,
-                }}
-                className="absolute left-0 right-0 flex flex-col justify-center bg-gradient-to-b from-amber-500/10 via-cyan-500/20 to-amber-500/10 border-y border-dashed border-amber-500/50"
-              >
-                <div className="w-full border-b-2 border-dashed border-cyan-600 flex flex-wrap items-center justify-between px-3 py-0.5 bg-white/85 backdrop-blur-2xs shadow-2xs">
-                  <span className="bg-slate-950 text-cyan-300 text-[10px] font-mono font-black px-2.5 py-0.5 rounded shadow-xs flex items-center gap-1.5 border border-cyan-500/40">
-                    <span>✂</span>
+          {printMediaMetrics.pageBreakOffsetsPx
+            .filter(
+              (topOffset) =>
+                topOffset <=
+                Math.max(
+                  measuredSheetDims.heightPx + printMediaMetrics.marginBufferPx,
+                  printMediaMetrics.pageBreakIntervalPx * 1.15
+                )
+            )
+            .map((topOffset, idx) => {
+              const pageNum = idx + 1;
+              const bottomMarginPx = printMediaMetrics.marginBottomPx;
+              const topMarginPx = printMediaMetrics.marginTopPx;
+              const cutMm = Number((pageNum * printMediaMetrics.heightMm).toFixed(1));
+              return (
+                <div
+                  key={`page-break-${printPageSizePreset}-${pageNum}`}
+                  style={{
+                    top: `${Math.max(0, topOffset - bottomMarginPx)}px`,
+                    height: `${bottomMarginPx + topMarginPx}px`,
+                  }}
+                  className="absolute left-0 right-0 flex flex-col justify-between bg-gradient-to-b from-amber-500/12 via-teal-500/20 to-amber-500/12 border-y border-dashed border-teal-600/60"
+                >
+                  {/* منطقة الهامش السفلي للصفحة السابقة */}
+                  <div className="px-3 py-0.5 text-[8.5px] font-mono tabular-nums font-bold text-amber-900 flex items-center justify-between">
                     <span>
-                      فاصل صفحة @page ({printPageSizePreset}): نهاية ص {pageNum} / بداية ص{" "}
-                      {pageNum + 1}
+                      ▲ هامش سفلي ص {pageNum} ({printMediaMetrics.marginBottomMm}mm / {bottomMarginPx}px)
                     </span>
-                  </span>
-                  <span className="bg-cyan-950 text-amber-300 text-[9.5px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-700">
-                    @page {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · Cut @{" "}
-                    {cutMm}mm (~{topOffset}px)
-                  </span>
+                    <span>
+                      منطقة قابلة للطباعة ص {pageNum}: {printMediaMetrics.printableWidthMm}×{printMediaMetrics.printableHeightMm}mm
+                    </span>
+                  </div>
+
+                  {/* خط القص الفيزيائي الفاصل بين الصفحتين */}
+                  <div className="w-full border-b-2 border-dashed border-teal-700 flex flex-wrap items-center justify-between px-3 py-0.5 bg-white/90 backdrop-blur-2xs shadow-2xs">
+                    <span className="bg-slate-950 text-teal-200 text-[10px] font-mono tabular-nums font-black px-2.5 py-0.5 rounded shadow-xs flex items-center gap-1.5 border border-teal-500/40">
+                      <span>✂</span>
+                      <span>
+                        فاصل صفحة @page ({printPageSizePreset}): نهاية ص {pageNum} / بداية ص{" "}
+                        {pageNum + 1}
+                      </span>
+                    </span>
+                    <span className="bg-teal-950 text-amber-300 text-[9.5px] font-mono tabular-nums font-bold px-2 py-0.5 rounded border border-teal-700">
+                      {printPageSizePreset} ({printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm) · Cut @{" "}
+                      {cutMm}mm (~{topOffset}px)
+                    </span>
+                  </div>
+
+                  {/* منطقة الهامش العلوي للصفحة التالية */}
+                  <div className="px-3 py-0.5 text-[8.5px] font-mono tabular-nums font-bold text-teal-950 flex items-center justify-between">
+                    <span>
+                      ▼ هامش علوي ص {pageNum + 1} ({printMediaMetrics.marginTopMm}mm / {topMarginPx}px)
+                    </span>
+                    <span>
+                      Page {pageNum + 1} of {printMediaMetrics.estimatedPageCount}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       )}
 
-      {/* مسطرة القياس العلوية والجانبية وهوامش الأمان A4 الديناميكية عند تفعيلها */}
-      {showMarginGuides && (
+      {/* مسطرة القياس العلوية والجانبية وهوامش الأمان الحية حسب مقاس PDF المختار (A4 / US Letter / Custom) */}
+      {effectiveShowMarginGuides && (
         <div
           aria-hidden="true"
-          style={{
-            top: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadTopPx * 0.45))}px`,
-            bottom: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadBottomPx * 0.45))}px`,
-            left: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadXPx * 0.45))}px`,
-            right: `${Math.max(4, Math.round(activeMarginModelSpec.previewPadXPx * 0.45))}px`,
-          }}
-          className="no-print pointer-events-none absolute border-2 border-dashed border-cyan-500/75 rounded-lg z-20 flex flex-col justify-between p-1.5"
+          className="no-print pointer-events-none absolute inset-0 z-20 select-none"
         >
-          <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] font-mono font-bold text-cyan-800 bg-cyan-50/90 border border-cyan-200 px-2 py-0.5 rounded shadow-2xs">
-            <span>
-              {isFr ? activeMarginModelSpec.labelFr : activeMarginModelSpec.labelAr} · Top:{" "}
-              {activeMarginModelSpec.topMm}mm / Bottom: {activeMarginModelSpec.bottomMm}mm
-            </span>
-            <span>
-              Safe Area: {safePrintWidthMm}mm × {safePrintHeightMm}mm ({printableAreaUtilizationPct}% A4)
-            </span>
-            <span>Package: {selectedLatexPkg.badge}</span>
-          </div>
-          <div className="flex justify-between items-center text-[9px] font-mono font-bold text-cyan-800 bg-cyan-50/90 border border-cyan-200 px-2 py-0.5 rounded shadow-2xs">
-            <span>Margin Left: {activeMarginModelSpec.xMm}mm</span>
-            <span>
-              \geometry&#123;top={(activeMarginModelSpec.topMm / 10).toFixed(1)}cm, bottom=
-              {(activeMarginModelSpec.bottomMm / 10).toFixed(1)}cm, x=
-              {(activeMarginModelSpec.xMm / 10).toFixed(1)}cm&#125;
-            </span>
-            <span>Margin Right: {activeMarginModelSpec.xMm}mm</span>
+          {/* تظليل مناطق الهوامش الأربعة غير القابلة للطباعة بالبيكسل الدقيق */}
+          <div
+            style={{ height: `${printMediaMetrics.marginTopPx}px` }}
+            className="absolute top-0 inset-x-0 bg-teal-500/[0.045] border-b border-dashed border-teal-600/60"
+          />
+          <div
+            style={{ height: `${printMediaMetrics.marginBottomPx}px` }}
+            className="absolute bottom-0 inset-x-0 bg-teal-500/[0.045] border-t border-dashed border-teal-600/60"
+          />
+          <div
+            style={{
+              top: `${printMediaMetrics.marginTopPx}px`,
+              bottom: `${printMediaMetrics.marginBottomPx}px`,
+              width: `${printMediaMetrics.marginLeftPx}px`,
+            }}
+            className="absolute left-0 bg-teal-500/[0.045] border-r border-dashed border-teal-600/60"
+          />
+          <div
+            style={{
+              top: `${printMediaMetrics.marginTopPx}px`,
+              bottom: `${printMediaMetrics.marginBottomPx}px`,
+              width: `${printMediaMetrics.marginRightPx}px`,
+            }}
+            className="absolute right-0 bg-teal-500/[0.045] border-l border-dashed border-teal-600/60"
+          />
+
+          {/* الإطار الداخلي لمنطقة الطباعة الآمنة مع شارات القياس المليمترية */}
+          <div
+            style={{
+              top: `${printMediaMetrics.marginTopPx}px`,
+              bottom: `${printMediaMetrics.marginBottomPx}px`,
+              left: `${printMediaMetrics.marginLeftPx}px`,
+              right: `${printMediaMetrics.marginRightPx}px`,
+            }}
+            className="absolute border-2 border-dashed border-teal-600/75 rounded-md flex flex-col justify-between p-1.5"
+          >
+            <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] font-mono tabular-nums font-bold text-teal-950 bg-teal-50/95 border border-teal-300 px-2 py-0.5 rounded shadow-2xs">
+              <span>
+                {printPageSizePreset} ({printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm) · Top:{" "}
+                {printMediaMetrics.marginTopMm}mm ({printMediaMetrics.marginTopPx}px) / Bottom:{" "}
+                {printMediaMetrics.marginBottomMm}mm ({printMediaMetrics.marginBottomPx}px)
+              </span>
+              <span>
+                Safe Area: {safePrintWidthMm}mm × {safePrintHeightMm}mm ({printableAreaUtilizationPct}%{" "}
+                {printPageSizePreset})
+              </span>
+              <span>
+                Pages: {printMediaMetrics.estimatedPageCount} · {selectedLatexPkg.badge}
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] font-mono tabular-nums font-bold text-teal-950 bg-teal-50/95 border border-teal-300 px-2 py-0.5 rounded shadow-2xs">
+              <span>
+                Margin Left: {printMediaMetrics.marginLeftMm}mm ({printMediaMetrics.marginLeftPx}px)
+              </span>
+              <span>
+                \geometry&#123;paper={printPageSizePreset.toLowerCase()}, top=
+                {(printMediaMetrics.marginTopMm / 10).toFixed(2)}cm, bottom=
+                {(printMediaMetrics.marginBottomMm / 10).toFixed(2)}cm, left=
+                {(printMediaMetrics.marginLeftMm / 10).toFixed(2)}cm, right=
+                {(printMediaMetrics.marginRightMm / 10).toFixed(2)}cm&#125;
+              </span>
+              <span>
+                Margin Right: {printMediaMetrics.marginRightMm}mm ({printMediaMetrics.marginRightPx}px)
+              </span>
+            </div>
           </div>
         </div>
       )}
