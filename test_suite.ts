@@ -147,6 +147,12 @@ import {
   buildA6RectoVersoFlashcardsSheet,
 } from './src/utils/nextGenRoadmapEngine.ts';
 import { computeModularArchitectureDiagnostics } from './src/hooks/useModularStudioArchitecture.ts';
+import { autoRebalanceSpecMatrixTo14208 } from './src/utils/diagnosticAndDynamicSpecMatrixEngine.ts';
+import {
+  getOfficialNote14208TrackStandards,
+  runDeepPedagogical14208Audit,
+  buildOfficialMoroccanProfessorPortfolio,
+} from './src/utils/moroccanPedagogicalPortfolio14208Engine.ts';
 
 let passCount = 0;
 let failCount = 0;
@@ -3031,12 +3037,184 @@ try {
 
   assert(
     Math.abs(afterRebalance.specMatrix.totals.grandTotalPoints - 20) < 0.01 &&
+      afterRebalance.specMatrix.conformity14208.score >= 90 &&
       specLatex.includes("\\begin{tabular}") &&
       specLatex.includes("20.00 / 20"),
     `autoRebalanceSpecMatrixTo14208 & exportAutomatedSpecMatrixLatex produced valid 20.00/20 LaTeX specification matrix (score ${afterRebalance.specMatrix.conformity14208.score}%)`
   );
 } catch (e: any) {
   assert(false, `Section 38 test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 39. TEST MOROCCAN PEDAGOGICAL PORTFOLIO & NOTE 142-08 / OP 2007 AUDIT
+// ----------------------------------------------------------------------
+console.log("\n--- 39. Testing Moroccan Note 142-08 & OP 2007 Inspector Audit & 7-Doc Portfolio ---");
+try {
+  const smStandard = getOfficialNote14208TrackStandards("2BAC_SM");
+  const sm1Standard = getOfficialNote14208TrackStandards("1BAC_SM");
+  const se1Standard = getOfficialNote14208TrackStandards("1BAC_SE");
+  const pcStandard = getOfficialNote14208TrackStandards("2BAC_PC");
+  const tcsStandard = getOfficialNote14208TrackStandards("TCS");
+  const tctStandard = getOfficialNote14208TrackStandards("TCT");
+  const lsh1Standard = getOfficialNote14208TrackStandards("1BAC_LETTRES");
+  const termSpeFrStandard = getOfficialNote14208TrackStandards("TERM_SPE_FR");
+  const { computeNote14208SemesterAverage } = await import(
+    "./src/utils/moroccanPedagogicalPortfolio14208Engine.ts"
+  );
+  const caCalc = computeNote14208SemesterAverage([14, 16, 12], 18);
+
+  assert(
+    smStandard.officialCoefficient === 9 &&
+      smStandard.dsCountPerSemester === 4 &&
+      sm1Standard.officialCoefficient === 9 &&
+      sm1Standard.dsCountPerSemester === 4 &&
+      se1Standard.officialCoefficient === 7 &&
+      se1Standard.dsCountPerSemester === 3 &&
+      pcStandard.officialCoefficient === 7 &&
+      tcsStandard.officialCoefficient === 4 &&
+      tctStandard.officialCoefficient === 4 &&
+      lsh1Standard.officialCoefficient === 2 &&
+      lsh1Standard.officialDurationMinutes === 60 &&
+      termSpeFrStandard.officialCoefficient === 16 &&
+      Math.abs(caCalc.finalSemesterAverage - 15) < 0.01 &&
+      caCalc.remediationTierCode === "EXCELLENCE" &&
+      smStandard.recommendedN1 + smStandard.recommendedN2 + smStandard.recommendedN3 === 100 &&
+      pcStandard.requiredPortfolioDocumentsAr.length === 7,
+    `getOfficialNote14208TrackStandards & 75/25 calculator verified across all tracks (SM=9/4DS, 1BAC_SE=7/3DS, PC=7, TCS/TCT=4, LSH=2/60min, TERM_SPE_FR=16, CA=15.00/20)`
+  );
+
+  const pcLessons = CURRICULUM_DB["2BAC_PC"].semesters.S1.DS1;
+  const rebalancedPc = autoRebalanceSpecMatrixTo14208(
+    pcLessons,
+    pcStandard.recommendedN1,
+    pcStandard.recommendedN2,
+    pcStandard.recommendedN3
+  );
+
+  const deepAudit = runDeepPedagogical14208Audit({
+    trackCode: "2BAC_PC",
+    semester: "S1",
+    dsKey: "DS1",
+    lessons: rebalancedPc.lessons,
+    n1: pcStandard.recommendedN1,
+    n2: pcStandard.recommendedN2,
+    n3: pcStandard.recommendedN3,
+    dsStructureMode: "EXERCICES_ET_PROBLEME",
+    includeDetailedSolutions: true,
+    include2DSpecMatrix: true,
+    includePostExamRemediationSheet: true,
+    showQuestionBareme: true,
+    examModel: "A",
+    subQuestionDecompositionMode: "STRUCTURED_ABC_ALL",
+  });
+
+  assert(
+    deepAudit.totalCriteriaCount === 10 &&
+      deepAudit.compliantCount === 10 &&
+      deepAudit.overallScorePercent === 100 &&
+      deepAudit.cahierDeTextesDraftEntry.targetedCapacitiesAr.length > 0,
+    `runDeepPedagogical14208Audit verifies 10/10 official Note 142-08 & OP 2007 criteria (${deepAudit.overallScorePercent}%) and builds Cahier de Textes entry`
+  );
+
+  const portfolio7Docs = buildOfficialMoroccanProfessorPortfolio({
+    trackCode: "2BAC_PC",
+    semester: "S1",
+    dsKey: "DS1",
+    lessons: pcLessons,
+    school: "ثانوية محمد الخامس التأهيلية",
+    prof: "الأستاذ كوزيبر ابراهيم",
+    year: "2025/2026",
+  });
+
+  assert(
+    portfolio7Docs.length === 7 &&
+      portfolio7Docs.every(
+        (d) =>
+          d.rebalancedLessons.length > 0 &&
+          d.readyLatexSnippet.length > 10 &&
+          d.recommendedN1 + d.recommendedN2 + d.recommendedN3 === 100
+      ),
+    `buildOfficialMoroccanProfessorPortfolio generates all 7 interconnected Moroccan mathematics teacher portfolio documents`
+  );
+} catch (e: any) {
+  assert(false, `Section 39 test crashed: ${e.message}`);
+}
+
+// ----------------------------------------------------------------------
+// 40. TEST WEB SPEECH API LESSON NAVIGATION & QUICK NOTE VOICE PARSER
+// ----------------------------------------------------------------------
+console.log("\n--- 40. Testing Web Speech API Lesson Navigation & Quick Note Voice Commands ---");
+try {
+  const {
+    parseSpokenLessonAndNoteVoiceCommand,
+    convertSpokenMathAndPedagogyTerms,
+  } = await import("./src/components/VoiceDictationControl.tsx");
+
+  const sampleNavLessons = [
+    { index: 0, lessonAr: "الاتصال ومبرهنة القيم الوسطية", lessonFr: "Continuité et TVI" },
+    { index: 1, lessonAr: "الاشتقاق ودراسة الدوال", lessonFr: "Dérivation et étude des fonctions" },
+    { index: 2, lessonAr: "المتتاليات العددية", lessonFr: "Suites numériques" },
+    { index: 3, lessonAr: "الدوال اللوغاريتمية", lessonFr: "Fonctions logarithmiques" },
+  ];
+
+  const nextCmd = parseSpokenLessonAndNoteVoiceCommand("الدرس التالي", sampleNavLessons, 0);
+  const prevCmd = parseSpokenLessonAndNoteVoiceCommand("leçon précédente", sampleNavLessons, 2);
+  const byTitleCmd = parseSpokenLessonAndNoteVoiceCommand(
+    "انتقل إلى درس المتتاليات",
+    sampleNavLessons,
+    0
+  );
+  const byIndexCmd = parseSpokenLessonAndNoteVoiceCommand(
+    "الدرس الرابع",
+    sampleNavLessons,
+    0
+  );
+
+  assert(
+    nextCmd.matched &&
+      nextCmd.actionType === "NEXT_LESSON" &&
+      nextCmd.lessonIndex === 1 &&
+      prevCmd.matched &&
+      prevCmd.actionType === "PREV_LESSON" &&
+      prevCmd.lessonIndex === 1 &&
+      byTitleCmd.matched &&
+      byTitleCmd.actionType === "SELECT_LESSON_BY_TITLE" &&
+      byTitleCmd.lessonIndex === 2 &&
+      byIndexCmd.matched &&
+      byIndexCmd.actionType === "SELECT_LESSON_BY_INDEX" &&
+      byIndexCmd.lessonIndex === 3,
+    `parseSpokenLessonAndNoteVoiceCommand handles Arabic & French lesson navigation (NEXT=1, PREV=1, BY_TITLE=2, BY_INDEX=3)`
+  );
+
+  const quickNoteCmd = parseSpokenLessonAndNoteVoiceCommand(
+    "ملاحظة سريعة: التركيز على الاتصال في زائد ما لا نهاية ومجموعة الأعداد الحقيقية",
+    sampleNavLessons,
+    0
+  );
+  const headerInstrCmd = parseSpokenLessonAndNoteVoiceCommand(
+    "تعليمة الفرض: يسمح باستعمال الآلة الحاسبة غير القابلة للبرمجة",
+    sampleNavLessons,
+    0
+  );
+
+  assert(
+    Boolean(
+      quickNoteCmd.matched &&
+        quickNoteCmd.actionType === "INSERT_QUICK_NOTE" &&
+        quickNoteCmd.extractedText?.includes("+∞") &&
+        quickNoteCmd.extractedText?.includes("ℝ") &&
+        headerInstrCmd.matched &&
+        headerInstrCmd.actionType === "INSERT_HEADER_INSTRUCTION" &&
+        headerInstrCmd.extractedText?.includes("الآلة الحاسبة") &&
+        convertSpokenMathAndPedagogyTerms(
+          "جذر مربع إكس ينتمي إلى مجموعة الأعداد الحقيقية"
+        ).includes("√")
+    ),
+    `parseSpokenLessonAndNoteVoiceCommand parses spoken quick notes & header instructions with automatic math symbol conversion (+∞, ℝ, √)`
+  );
+} catch (e: any) {
+  assert(false, `Section 40 test crashed: ${e.message}`);
 }
 
 console.log("\n=================================================");
@@ -3046,11 +3224,4 @@ console.log("=================================================");
 if (failCount > 0) {
   process.exit(1);
 }
-
-
-
-
-
-
-
 

@@ -49,6 +49,13 @@ export interface VoiceCommandActionCallbacks {
     questionTextFr: string
   ) => void;
   onTriggerExportPDF: () => void;
+  onNavigateLesson?: (
+    directionOrIndex: "NEXT" | "PREV" | "FIRST" | "LAST" | number
+  ) => string;
+  onInsertQuickPedagogicalNote?: (noteText: string) => void;
+  onInsertQuickHeaderInstruction?: (instrText: string) => void;
+  activeLessonTitleAr?: string;
+  totalLessonsCount?: number;
   onNotify?: (type: "success" | "error" | "info", msg: string) => void;
 }
 
@@ -218,6 +225,60 @@ export const VOICE_COMMANDS_CATALOG: VoiceCommandDefinition[] = [
     execute: (cb) => {
       cb.onOpenOcrScanner();
       return "تم فتح استوديو المسح الضوئي الذكي (OCR).";
+    },
+  },
+  {
+    id: "nav_next_lesson",
+    category: "NAVIGATION",
+    titleAr: "الانتقال إلى الدرس التالي في المسلك (Web Speech API)",
+    voiceTriggersAr: ["الدرس التالي", "انتقل إلى الدرس التالي", "الدرس الموالي"],
+    voiceTriggersFr: ["leçon suivante", "cours suivant", "chapitre suivant"],
+    descriptionAr: "التنقل الصوتي المباشر إلى الدرس الموالي في برنامج المسلك الدراسي النشط",
+    badgeText: "تنقل: الدرس التالي",
+    execute: (cb) => {
+      const msg = cb.onNavigateLesson?.("NEXT");
+      return msg || "تم الانتقال صوتياً إلى الدرس التالي في المسلك.";
+    },
+  },
+  {
+    id: "nav_prev_lesson",
+    category: "NAVIGATION",
+    titleAr: "الرجوع إلى الدرس السابق في المسلك (Web Speech API)",
+    voiceTriggersAr: ["الدرس السابق", "انتقل إلى الدرس السابق", "ارجع للدرس السابق"],
+    voiceTriggersFr: ["leçon précédente", "cours précédent", "chapitre précédent"],
+    descriptionAr: "الرجوع الصوتي المباشر إلى الدرس السابق في برنامج المسلك الدراسي النشط",
+    badgeText: "تنقل: الدرس السابق",
+    execute: (cb) => {
+      const msg = cb.onNavigateLesson?.("PREV");
+      return msg || "تم الرجوع صوتياً إلى الدرس السابق في المسلك.";
+    },
+  },
+  {
+    id: "nav_first_lesson",
+    category: "NAVIGATION",
+    titleAr: "الانتقال إلى الدرس الأول في المسلك",
+    voiceTriggersAr: ["الدرس الأول", "الدرس الاول", "أول درس"],
+    voiceTriggersFr: ["première leçon", "premier cours"],
+    descriptionAr: "الانتقال الصوتي الفوري إلى أول درس في لائحة دروس المسلك",
+    badgeText: "تنقل: الدرس الأول",
+    execute: (cb) => {
+      const msg = cb.onNavigateLesson?.("FIRST");
+      return msg || "تم الانتقال صوتياً إلى الدرس الأول في المسلك.";
+    },
+  },
+  {
+    id: "ins_quick_note_14208",
+    category: "DOCUMENT_CTRL",
+    titleAr: "إدراج ملاحظة بيداغوجية سريعة في الوثيقة (المذكرة 142-08)",
+    voiceTriggersAr: ["ملاحظة سريعة", "أدرج ملاحظة", "ملاحظة بيداغوجية"],
+    voiceTriggersFr: ["note rapide", "insérer note", "note pédagogique"],
+    descriptionAr: "إدراج ملاحظة تربوية وتوجيهية سريعة في حقل الملاحظات البيداغوجية وترويسة الفرض",
+    badgeText: "إدراج: ملاحظة سريعة",
+    execute: (cb) => {
+      const note =
+        "يُراعى التدرج الديداكتيكي للأسئلة (N1 → N2 → N3) وتفكيك الأسئلة المركبة ومنع العقاب المزدوج طبقاً للمذكرة 142-08.";
+      cb.onInsertQuickPedagogicalNote?.(note);
+      return `تم إدراج الملاحظة البيداغوجية السريعة: « ${note} »`;
     },
   },
 
@@ -468,7 +529,19 @@ export const VoiceCommandStudioModal: React.FC<VoiceCommandStudioModalProps> = (
   const [commandLogs, setCommandLogs] = useState<ExecutedVoiceCommandLog[]>([]);
   const [speechSupported, setSpeechSupported] = useState<boolean>(true);
 
-  const recognitionRef = useRef<any>(null);
+  interface ModalSpeechRecognition {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    onresult: ((event: {
+      resultIndex: number;
+      results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
+    }) => void) | null;
+    onerror: (() => void) | null;
+    start: () => void;
+    stop: () => void;
+  }
+  const recognitionRef = useRef<ModalSpeechRecognition | null>(null);
   const callbacksRef = useRef<VoiceCommandActionCallbacks>(callbacks);
   callbacksRef.current = callbacks;
   const targetExerciseIdxRef = useRef<number>(targetExerciseIdx);
@@ -516,6 +589,50 @@ export const VoiceCommandStudioModal: React.FC<VoiceCommandStudioModalProps> = (
         return;
       }
 
+      // 1-ب. فحص ما إذا كان الأمر يبدأ بـ "ملاحظة سريعة:" أو "أدرج ملاحظة:" لإدراج ملاحظة مخصصة بالصوت
+      const quickNoteMatch = rawText.match(
+        /^(?:ملاحظة سريعة|أدرج ملاحظة|ادرج ملاحظة|أضف ملاحظة|ملاحظة بيداغوجية|note rapide|insérer note)[:\s\-،,]*(.+)$/i
+      );
+      if (quickNoteMatch && quickNoteMatch[1]?.trim()) {
+        const noteText = quickNoteMatch[1].trim();
+        currentCallbacks.onInsertQuickPedagogicalNote?.(noteText);
+        const msg = `تم إدراج الملاحظة السريعة صوتياً: « ${noteText} »`;
+        currentCallbacks.onNotify?.("success", `🎙️ ${msg}`);
+        setCommandLogs((prev) => [
+          {
+            id: `log_${Date.now()}`,
+            transcript: rawText,
+            matchedTitleAr: "إدراج ملاحظة بيداغوجية سريعة بالصوت",
+            resultMessage: msg,
+            timestamp: new Date().toLocaleTimeString("ar-MA"),
+          },
+          ...prev.slice(0, 9),
+        ]);
+        return;
+      }
+
+      // 1-ج. فحص ما إذا كان الأمر يبدأ بـ "تعليمة الفرض:" أو "ملاحظة الترويسة:"
+      const headerNoteMatch = rawText.match(
+        /^(?:تعليمة الفرض|تعليمة سريعة|ملاحظة الترويسة|consigne rapide|consigne)[:\s\-،,]*(.+)$/i
+      );
+      if (headerNoteMatch && headerNoteMatch[1]?.trim()) {
+        const instrText = headerNoteMatch[1].trim();
+        currentCallbacks.onInsertQuickHeaderInstruction?.(instrText);
+        const msg = `تم إدراج تعليمة الترويسة صوتياً: « ${instrText} »`;
+        currentCallbacks.onNotify?.("success", `🎙️ ${msg}`);
+        setCommandLogs((prev) => [
+          {
+            id: `log_${Date.now()}`,
+            transcript: rawText,
+            matchedTitleAr: "إدراج تعليمة ترويسة سريعة بالصوت",
+            resultMessage: msg,
+            timestamp: new Date().toLocaleTimeString("ar-MA"),
+          },
+          ...prev.slice(0, 9),
+        ]);
+        return;
+      }
+
       // 2. مطابقة الأمر الصوتي مع كتالوج الأوامر الذكي
       const matchedCmd = VOICE_COMMANDS_CATALOG.find((cmd) => {
         const allTriggers = [...cmd.voiceTriggersAr, ...cmd.voiceTriggersFr];
@@ -551,9 +668,12 @@ export const VoiceCommandStudioModal: React.FC<VoiceCommandStudioModalProps> = (
 
   // إعداد محرك التعرف الصوتي للمتصفح (Web Speech API)
   useEffect(() => {
+    const speechWindow = window as Window & {
+      SpeechRecognition?: new () => ModalSpeechRecognition;
+      webkitSpeechRecognition?: new () => ModalSpeechRecognition;
+    };
     const SpeechRecognitionAPI =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
       setSpeechSupported(false);
@@ -565,7 +685,7 @@ export const VoiceCommandStudioModal: React.FC<VoiceCommandStudioModalProps> = (
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       let interim = "";
       let finalTranscript = "";
 
@@ -848,7 +968,10 @@ export const VoiceCommandStudioModal: React.FC<VoiceCommandStudioModalProps> = (
               <div className="flex flex-wrap items-center gap-1.5">
                 {(
                   [
-                    { id: "ALL", label: "جميع الأوامر الصوتية (18)" },
+                    {
+                      id: "ALL",
+                      label: `جميع الأوامر الصوتية (${VOICE_COMMANDS_CATALOG.length})`,
+                    },
                     { id: "NAVIGATION", label: "التنقل بين الوحدات والنوافذ" },
                     { id: "INSERT_MATH", label: "إدراج الصيغ الرياضية بالصوت" },
                     { id: "INSERT_FIGURE", label: "إدراج أشكال GeoGebra بالصوت" },

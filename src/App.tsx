@@ -503,7 +503,13 @@ const DiagnosticAndDynamicSpecMatrixModal = React.lazy(() =>
     default: m.DiagnosticAndDynamicSpecMatrixModal,
   }))
 );
+const MoroccanPedagogicalPortfolio14208Modal = React.lazy(() =>
+  import("./components/MoroccanPedagogicalPortfolio14208Modal").then((m) => ({
+    default: m.MoroccanPedagogicalPortfolio14208Modal,
+  }))
+);
 import { buildPrerequisiteDiagnosticBlueprint } from "./utils/diagnosticAndDynamicSpecMatrixEngine";
+import { getOfficialNote14208TrackStandards } from "./utils/moroccanPedagogicalPortfolio14208Engine";
 import type { MoroccanDiagnosticPaper } from "./utils/diagnosticGenerator";
 const GoogleDriveSyncModal = React.lazy(() =>
   import("./components/GoogleDriveSyncModal").then((m) => ({
@@ -782,6 +788,8 @@ export default function App() {
   const [diagnosticAndSpecStudioTab, setDiagnosticAndSpecStudioTab] = useState<
     "DIAGNOSTIC_STUDIO" | "DYNAMIC_SPEC_MATRIX"
   >("DIAGNOSTIC_STUDIO");
+  const [showMoroccanPortfolio14208Modal, setShowMoroccanPortfolio14208Modal] =
+    useState<boolean>(false);
   const [customDiagnosticPaper, setCustomDiagnosticPaper] =
     useState<MoroccanDiagnosticPaper | null>(null);
   const [showQuickVoiceDictation, setShowQuickVoiceDictation] =
@@ -7367,6 +7375,45 @@ export default function App() {
               setIsVoiceCommandStudioOpen(false);
               handleExportPDF();
             },
+            onNavigateLesson: (dirOrIdx) => {
+              const total = Math.max(1, allTrackLessons.length);
+              let nextIdx = selectedLessonIdx;
+              if (dirOrIdx === "NEXT") {
+                nextIdx = (selectedLessonIdx + 1) % total;
+              } else if (dirOrIdx === "PREV") {
+                nextIdx = (selectedLessonIdx - 1 + total) % total;
+              } else if (dirOrIdx === "FIRST") {
+                nextIdx = 0;
+              } else if (dirOrIdx === "LAST") {
+                nextIdx = total - 1;
+              } else if (typeof dirOrIdx === "number") {
+                nextIdx = Math.max(0, Math.min(total - 1, dirOrIdx));
+              }
+              setSelectedLessonIdx(nextIdx);
+              if (activeModule === "DS_142_08" || activeModule === "DM_SERIE") {
+                setIsCustomLessonMode(true);
+                setSelectedLessonIndices((prev) =>
+                  prev.includes(nextIdx) ? prev : [...prev, nextIdx]
+                );
+              }
+              const target = allTrackLessons[nextIdx];
+              return target
+                ? `تم الانتقال صوتياً إلى الدرس (${nextIdx + 1}/${total}): « ${target.lessonAr} »`
+                : `تم الانتقال صوتياً إلى الدرس رقم ${nextIdx + 1}`;
+            },
+            onInsertQuickPedagogicalNote: (noteText) => {
+              setCustomTopicNote((prev) =>
+                prev ? `${prev} · ${noteText}` : noteText
+              );
+            },
+            onInsertQuickHeaderInstruction: (instrText) => {
+              setCustomHeaderNote((prev) =>
+                prev ? `${prev} · ${instrText}` : instrText
+              );
+            },
+            activeLessonTitleAr:
+              allTrackLessons[selectedLessonIdx]?.lessonAr || "",
+            totalLessonsCount: allTrackLessons.length,
             onNotify: (type, text) => setStatusMessage({ type, text }),
           }}
         />
@@ -7784,71 +7831,6 @@ export default function App() {
         <div className="flex-1 min-w-0 flex flex-col">
           {/* المحتوى الرئيسي بعرض واسع ومريح */}
           <main className="max-w-[1440px] w-full mx-auto px-4 md:px-8 py-4 lg:py-6 pb-24 lg:pb-6 space-y-5 flex-1">
-        {/* شريط الوصول السريع للوحة القيادة المركزية (Firebase Firestore) واستيراد ملفات .tex المباشر */}
-        {!readingModeConfig.enabled && (
-          <div className="bg-gradient-to-l from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl px-4 py-3 border border-indigo-500/30 shadow-md flex flex-wrap items-center justify-between gap-3 no-print">
-            <div className="flex items-center gap-2.5">
-              <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black">
-                Firebase Cloud & LaTeX .tex Hub
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-200">
-                لوحة القيادة المركزية للفروض المنجزة والمحفوظة في قاعدة بيانات Firebase + استيراد وتنسيق ملفات <code className="font-mono text-amber-300">.tex</code> مباشرة من جهازك
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCentralFirebaseHubInitialTab("FIREBASE_DASHBOARD");
-                  setShowCentralFirebaseHubModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                <span>☁️ لوحة قيادة الفروض المحفوظة (Firebase)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCentralFirebaseHubInitialTab("TEX_DIRECT_IMPORTER");
-                  setShowCentralFirebaseHubModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>📥 استيراد وتنسيق ملف .tex من الجهاز</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
-                  setShowDiagnosticAndSpecStudioModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
-              >
-                <span>🎯 الاختبارات التشخيصية (المكتسبات + PDF + QR)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
-                  setShowDiagnosticAndSpecStudioModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
-              >
-                <span>📊 أتمتة جدول المواصفات الديناميكي</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSystemAuditSandboxModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs whitespace-nowrap"
-              >
-                <Stethoscope className="w-3.5 h-3.5" />
-                <span>🩺 الفحص الدقيق (8/8)</span>
-              </button>
-            </div>
-          </div>
-        )}
         {/* لوحة أرشيف Google Drive السحابي مع حركة Framer Motion */}
         <AnimatePresence initial={false}>
           {showDrivePanel && (
@@ -8045,130 +8027,306 @@ export default function App() {
           </div>
         )}
 
-        {/* شريط السياق البيداغوجي الحي ومنصة المختبرات التخصصية الموحدة (Unified Context & Didactic Labs Dock) */}
-        {!readingModeConfig.enabled && (
-        <section className="bg-white px-4 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs no-print">
-          {/* الصف العلوي: مسار الوثيقة الحية (Unboxed Breadcrumb) + ضوابط المعاينة والتدقيق الأساسية */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
-            <div className="flex flex-wrap items-center gap-2 text-slate-600">
-              <span className="font-black text-slate-950">
-                {activeModule === "DS_142_08"
-                  ? "فرض محروس (DS)"
-                  : activeModule === "DM_SERIE"
-                  ? dmSubType === "DEVOIR_MAISON"
-                    ? "فرض منزلي (DM)"
-                    : "سلسلة تمارين (TD)"
-                  : activeModule === "FICHE_OP2007"
-                  ? "جذاذة تربوية"
-                  : activeModule === "DIAGNOSTIC"
-                  ? "رائز تشخيصي"
-                  : "التوزيع السنوي"}
-              </span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-              <span className="font-bold text-slate-800">
-                {isMission ? currentTrack.labelFr : `${currentTrack.labelAr} (${currentTrack.code})`}
-              </span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-              <span className="font-mono font-semibold text-slate-700 tabular-nums">
-                {activeModule === "DS_142_08"
-                  ? `${semester} · ${dsKey} · ${currentTrack.durationFr}`
-                  : activeModule === "DM_SERIE"
-                  ? `${dmNumber} · ${semester}`
-                  : currentTrack.durationFr}
-              </span>
-              {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
-                <>
-                  <span aria-hidden="true" className="text-slate-300">·</span>
-                  <span className="font-mono font-extrabold text-teal-800 tabular-nums">
-                    {activeCustomLessons.length} تمارين · {liveExamStats.totalQuestions} سؤالاً ·{" "}
-                    {liveExamStats.totalPoints.toFixed(2)}/20 ن
+        {/* شريط القيادة البيداغوجية الموحد ومبدل الوثائق التربوية الرسمية الثمانية (Unified Academic Command Deck) */}
+        {!readingModeConfig.enabled && (() => {
+          const trackStd = getOfficialNote14208TrackStandards(currentTrack.code);
+          return (
+            <section className="bg-white rounded-2xl border border-slate-200/95 shadow-2xs overflow-hidden text-xs no-print">
+              {/* الصف 1: السياق البيداغوجي الرسمي (المسلك · المعامل · الغلاف الأسبوعي · السلم) + الأدوات المرجعية السريعة */}
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600 min-w-0">
+                  <span className="font-black text-slate-950">
+                    {activeModule === "DS_142_08"
+                      ? includeDetailedSolutions
+                        ? "الفرض المحروس وعناصر الإجابة"
+                        : "الفرض المحروس الرسمي (142-08)"
+                      : activeModule === "DM_SERIE"
+                      ? dmSubType === "DEVOIR_MAISON"
+                        ? "الفرض المنزلي (DM)"
+                        : "سلسلة التمارين التمايزية (TD)"
+                      : activeModule === "FICHE_OP2007"
+                      ? ficheContentDetailLevel === "SYNTHETIC_OFFICIAL"
+                        ? "ملخص الدرس التربوي"
+                        : "الجذاذة البيداغوجية (OP 2007)"
+                      : activeModule === "DIAGNOSTIC"
+                      ? "رائز التقويم التشخيصي (QR)"
+                      : "التوزيع السنوي والدوري"}
                   </span>
-                </>
-              )}
-            </div>
+                  <span aria-hidden="true" className="text-slate-300">·</span>
+                  <span className="font-bold text-slate-800">
+                    {isMission ? currentTrack.labelFr : `${currentTrack.labelAr} (${currentTrack.code})`}
+                  </span>
+                  <span aria-hidden="true" className="text-slate-300">·</span>
+                  <span className="font-mono tabular-nums text-slate-600">
+                    المعامل <strong className="text-slate-900">{trackStd.officialCoefficient}</strong>
+                  </span>
+                  <span aria-hidden="true" className="text-slate-300">·</span>
+                  <span className="font-mono tabular-nums text-slate-600">
+                    {trackStd.dsCountPerSemester} فروض/أسدس ({trackStd.weeklyHours})
+                  </span>
+                  {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
+                    <>
+                      <span aria-hidden="true" className="text-slate-300">·</span>
+                      <span className="font-mono font-extrabold text-teal-800 tabular-nums">
+                        {activeCustomLessons.length} تمارين · {liveExamStats.totalQuestions} سؤالاً ·{" "}
+                        {liveExamStats.totalPoints.toFixed(2)}/20 ن
+                      </span>
+                    </>
+                  )}
+                </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* زر التبديل السريع لحيز الإجابة الكاملة المعاير للتلميذ */}
-              <button
-                type="button"
-                onClick={() => setIncludeAnswerWorkspace((v) => !v)}
-                className={`h-7.5 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
-                  includeAnswerWorkspace
-                    ? "bg-teal-700 text-white border-teal-800 shadow-2xs"
-                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
-                }`}
-                title="ترك فراغ الإجابة الكاملة المعاير للتلميذ تحت كل سؤال (مع شبكة معلم، جدول تغيرات، ومراحل البرهان بالترجع)"
-              >
-                <Edit3 className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {includeAnswerWorkspace
-                    ? "✓ حيز الإجابة الكاملة: مفعّل"
-                    : "ترك فراغ للإجابة الكاملة"}
-                </span>
-              </button>
+                {/* أزرار الأدوات البيداغوجية الموحدة (بدون تكرار أو تشتيت لوني) */}
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowMoroccanPortfolio14208Modal(true)}
+                    className="h-8 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11.5px] font-black flex items-center gap-1.5 transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                    title="فتح مرصد المذكرة 142-08 والتوجيهات 2007 وحقيبة الأستاذ الرسمية (7 وثائق + حاسبة 75%/25%)"
+                  >
+                    <Scale className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>حقيبة وتدقيق 142-08</span>
+                    <span className="font-mono tabular-nums text-emerald-300 font-black">
+                      {pedagogicalAuditReport.scorePercent}%
+                    </span>
+                  </button>
 
-              {/* زر مرصد التدقيق البيداغوجي الشامل واقتراح النقائص */}
-              <button
-                type="button"
-                onClick={() => setShowAuditPanel((v) => !v)}
-                className={`h-7.5 px-2.5 rounded-lg text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer border ${
-                  showAuditPanel
-                    ? "bg-slate-900 text-cyan-300 border-slate-900"
-                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
-                }`}
-                title="فتح مرصد المراجعة الشاملة والتدقيق البيداغوجي وتصحيح الأخطاء واقتراح النقائص (142-08)"
-              >
-                <CheckCircle2
-                  className={`w-3.5 h-3.5 shrink-0 ${
-                    showAuditPanel ? "text-cyan-400" : "text-teal-700"
-                  }`}
-                />
-                <span>المراجعة وتدقيق المطابقة</span>
-                <span className="font-mono tabular-nums font-black text-teal-700">
-                  {pedagogicalAuditReport.scorePercent}%
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
+                      setShowDiagnosticAndSpecStudioModal(true);
+                    }}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/90 text-[11.5px] font-bold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                    <span>جدول المواصفات</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setIsConfigDeckCollapsed((v) => !v)}
-                className={`hidden lg:inline-flex items-center gap-1.5 h-7.5 px-2.5 rounded-lg text-[11px] font-black transition cursor-pointer border ${
-                  isConfigDeckCollapsed
-                    ? "bg-slate-900 text-cyan-300 border-slate-900 shadow-2xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
-                }`}
-                title="تبديل وضع اللوح الإلكتروني والتركيز الكامل على ورقة A4 (اختصار سطح المكتب: Ctrl+B)"
-              >
-                <Sliders className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {isConfigDeckCollapsed
-                    ? "إظهار أعمدة الإعدادات (Ctrl+B)"
-                    : "التركيز على الورقة A4"}
-                </span>
-              </button>
-              {isConfigDeckCollapsed && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenMobileConfigSheet(1)}
-                  className="hidden lg:inline-flex h-7.5 px-2.5 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 items-center gap-1.5 cursor-pointer"
-                  title="فتح درج الإعدادات السريع دون مغادرة معاينة الورقة"
-                >
-                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>درج الإعدادات العائم</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => handleOpenMobileConfigSheet(1)}
-                className="lg:hidden h-7.5 px-2.5 rounded-lg text-[11px] font-black bg-slate-900 text-cyan-300 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                <span>درج الإعدادات والضوابط</span>
-              </button>
-            </div>
-          </div>
-        </section>
-        )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
+                      setShowDiagnosticAndSpecStudioModal(true);
+                    }}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/90 text-[11.5px] font-bold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                    <span>الروائز QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickVoiceDictation(true);
+                      setIsVoiceCommandStudioOpen(true);
+                    }}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/90 text-[11.5px] font-bold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+                    title="فتح مركز الأوامر الصوتية والإملاء الصوتي (Web Speech API) للتنقل بين الدروس وإدراج الملاحظات السريعة"
+                  >
+                    <Mic className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>الإملاء الصوتي</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCentralFirebaseHubInitialTab("FIREBASE_DASHBOARD");
+                      setShowCentralFirebaseHubModal(true);
+                    }}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/90 text-[11.5px] font-bold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>خزانة الفروض</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSystemAuditSandboxModal(true)}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/90 text-[11.5px] font-bold flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0"
+                    title="تشغيل الفحص الفني والبيداغوجي الشامل للنظام (8/8)"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                    <span>فحص 8/8</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* الصف 2: مبدل الوثائق التربوية الثمانية + ضوابط معاينة الورقة A4 */}
+              <div className="px-4 py-2 bg-slate-50/80 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1 overflow-x-auto py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("DS_142_08");
+                      setIncludeDetailedSolutions(false);
+                      setOnlyPrintSolutions(false);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "DS_142_08" && !includeDetailedSolutions
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    1. الفرض المحروس
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("DS_142_08");
+                      setIncludeDetailedSolutions(true);
+                      setShowQuestionBareme(true);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "DS_142_08" && includeDetailedSolutions
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    2. عناصر الإجابة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("FICHE_OP2007");
+                      setFicheContentDetailLevel("FULL_WITH_PROOFS");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "FICHE_OP2007" &&
+                      ficheContentDetailLevel === "FULL_WITH_PROOFS"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    3. الجذاذة OP 2007
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("FICHE_OP2007");
+                      setFicheContentDetailLevel("SYNTHETIC_OFFICIAL");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "FICHE_OP2007" &&
+                      ficheContentDetailLevel === "SYNTHETIC_OFFICIAL"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    4. ملخص الدرس
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("DM_SERIE");
+                      setDmSubType("SERIE_TD");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "DM_SERIE" && dmSubType === "SERIE_TD"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    5. سلسلة التمارين
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModule("DM_SERIE");
+                      setDmSubType("DEVOIR_MAISON");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    6. الفرض المنزلي DM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule("DIAGNOSTIC")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "DIAGNOSTIC"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    7. التشخيصي QR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule("REPARTITION_CERTIF")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeModule === "REPARTITION_CERTIF"
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-200/70"
+                    }`}
+                  >
+                    8. التوزيع السنوي
+                  </button>
+                </div>
+
+                {/* ضوابط المعاينة السريعة */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIncludeAnswerWorkspace((v) => !v)}
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
+                      includeAnswerWorkspace
+                        ? "bg-teal-700 text-white border-teal-800"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                    title="ترك فراغ الإجابة الكاملة المعاير للتلميذ تحت كل سؤال"
+                  >
+                    <Edit3 className="w-3 h-3 shrink-0" />
+                    <span>{includeAnswerWorkspace ? "حيز الإجابة ✓" : "حيز الإجابة"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAuditPanel((v) => !v)}
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border whitespace-nowrap shrink-0 ${
+                      showAuditPanel
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <CheckCircle2
+                      className={`w-3 h-3 shrink-0 ${
+                        showAuditPanel ? "text-emerald-300" : "text-teal-700"
+                      }`}
+                    />
+                    <span>تقرير المطابقة</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigDeckCollapsed((v) => !v)}
+                    className={`hidden lg:inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border whitespace-nowrap shrink-0 ${
+                      isConfigDeckCollapsed
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    <Sliders className="w-3 h-3 shrink-0" />
+                    <span>
+                      {isConfigDeckCollapsed ? "إظهار الإعدادات" : "التركيز A4"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMobileConfigSheet(1)}
+                    className="lg:hidden h-7 px-2.5 rounded-lg text-[11px] font-bold bg-slate-900 text-white border border-slate-800 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Sliders className="w-3 h-3 text-amber-300 shrink-0" />
+                    <span>الإعدادات</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* مرصد التدقيق البيداغوجي الشامل واقتراح النقائص (Pedagogical & Technical Diagnostic Panel) */}
         <AnimatePresence initial={false}>
@@ -14423,12 +14581,42 @@ export default function App() {
                 </div>
               </div>
 
-              {/* استوديو الإملاء الصوتي التربوي والرياضي المباشر عبر الميكروفون (Voice-to-Text Studio) */}
+              {/* استوديو الإملاء الصوتي التربوي والرياضي المباشر عبر الميكروفون (Voice-to-Text & Web Speech Lesson Navigation Studio) */}
               {showQuickVoiceDictation && (
                 <div className="pt-1">
                   <DocumentVoiceDictationStudio
                     isFr={isMission || docLang === "FR"}
                     onEnsureInlineEditable={() => setIsInlineEditable(true)}
+                    lessons={allTrackLessons.map((l, idx) => ({
+                      index: idx,
+                      lessonAr: l.lessonAr,
+                      lessonFr: l.lessonFr,
+                    }))}
+                    currentLessonIndex={selectedLessonIdx}
+                    onSelectLessonIndex={(nextIdx) => {
+                      setSelectedLessonIdx(nextIdx);
+                      if (
+                        activeModule === "DS_142_08" ||
+                        activeModule === "DM_SERIE"
+                      ) {
+                        setIsCustomLessonMode(true);
+                        setSelectedLessonIndices((prev) =>
+                          prev.includes(nextIdx) ? prev : [...prev, nextIdx]
+                        );
+                      }
+                      const target = allTrackLessons[nextIdx];
+                      if (target) {
+                        setStatusMessage({
+                          type: "success",
+                          text: `🎙️ تم الانتقال صوتياً إلى الدرس (${
+                            nextIdx + 1
+                          }/${allTrackLessons.length}): « ${target.lessonAr} »`,
+                        });
+                      }
+                    }}
+                    onOpenFullVoiceCommandCenter={() =>
+                      setIsVoiceCommandStudioOpen(true)
+                    }
                     onInsertAtCursor={(txt) => {
                       setIsInlineEditable(true);
                       const sheet = document.getElementById(
@@ -14448,17 +14636,31 @@ export default function App() {
                         );
                       }
                     }}
-                    onAppendHeaderInstruction={(txt) =>
+                    onAppendHeaderInstruction={(txt) => {
                       setCustomHeaderNote((prev) =>
                         prev ? `${prev} · ${txt}` : txt
-                      )
-                    }
-                    onAppendPedagogicalNote={(txt) =>
+                      );
+                      setStatusMessage({
+                        type: "success",
+                        text: `🎙️ تم إدراج تعليمة الترويسة السريعة: « ${txt} »`,
+                      });
+                    }}
+                    onAppendPedagogicalNote={(txt) => {
                       setCustomTopicNote((prev) =>
-                        prev ? `${prev} ${txt}` : txt
-                      )
-                    }
-                    onUpdateDocTitle={(txt) => setCustomDocTitle(txt)}
+                        prev ? `${prev} · ${txt}` : txt
+                      );
+                      setStatusMessage({
+                        type: "success",
+                        text: `🎙️ تم إدراج الملاحظة البيداغوجية السريعة: « ${txt} »`,
+                      });
+                    }}
+                    onUpdateDocTitle={(txt) => {
+                      setCustomDocTitle(txt);
+                      setStatusMessage({
+                        type: "success",
+                        text: `🎙️ تم تحديث عنوان الوثيقة صوتياً إلى: « ${txt} »`,
+                      });
+                    }}
                   />
                 </div>
               )}
@@ -16119,6 +16321,43 @@ export default function App() {
           onSyncLessonsAndSpecMatrix={(payload) => {
             setSimulatedImportedLessons(payload.lessons);
             setIsExamSimulationActive(true);
+            setCustomWeightsMap((prev) => {
+              const next = { ...prev };
+              payload.lessons.forEach((l) => {
+                next[`${currentTrack.code}_${l.lessonFr}`] = l.weight;
+              });
+              return next;
+            });
+            setCustomQuestionBaremesMap((prev) => {
+              const next = { ...prev };
+              payload.lessons.forEach((l) => {
+                if (l.customQuestionBaremes) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionBaremes;
+                }
+              });
+              return next;
+            });
+            setCustomQuestionLevelsMap((prev) => {
+              const next = { ...prev };
+              payload.lessons.forEach((l) => {
+                if (l.customQuestionLevels) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionLevels;
+                }
+              });
+              return next;
+            });
+            setCustomQuestionsMap((prev) => {
+              const next = { ...prev };
+              payload.lessons.forEach((l) => {
+                if (Array.isArray(l.sampleExerciseAr) && Array.isArray(l.sampleExerciseFr)) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = {
+                    ar: l.sampleExerciseAr,
+                    fr: l.sampleExerciseFr,
+                  };
+                }
+              });
+              return next;
+            });
             setN1(payload.n1);
             setN2(payload.n2);
             setN3(payload.n3);
@@ -16136,6 +16375,131 @@ export default function App() {
                 handleExportPDF();
               }, 220);
             }
+          }}
+        />
+      )}
+
+      {showMoroccanPortfolio14208Modal && (
+        <MoroccanPedagogicalPortfolio14208Modal
+          isOpen={showMoroccanPortfolio14208Modal}
+          onClose={() => setShowMoroccanPortfolio14208Modal(false)}
+          trackCode={currentTrack.code}
+          semester={semester}
+          dsKey={dsKey}
+          academicYear={year}
+          teacherName={prof}
+          schoolName={school}
+          activeModule={activeModule}
+          selectedLessons={activeCustomLessons}
+          n1={n1}
+          n2={n2}
+          n3={n3}
+          dsStructureMode={dsStructureMode}
+          includeDetailedSolutions={includeDetailedSolutions}
+          include2DSpecMatrix={include2DSpecMatrix}
+          includePostExamRemediationSheet={includePostExamRemediationSheet}
+          showQuestionBareme={showQuestionBareme}
+          examModel={examModel}
+          subQuestionDecompositionMode={subQuestionDecompositionMode}
+          onApplyDeepPedagogicalFix={(fix) => {
+            setSimulatedImportedLessons(fix.lessons);
+            setIsExamSimulationActive(true);
+            setCustomWeightsMap((prev) => {
+              const next = { ...prev };
+              fix.lessons.forEach((l) => {
+                next[`${currentTrack.code}_${l.lessonFr}`] = l.weight;
+              });
+              return next;
+            });
+            setCustomQuestionBaremesMap((prev) => {
+              const next = { ...prev };
+              fix.lessons.forEach((l) => {
+                if (l.customQuestionBaremes) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionBaremes;
+                }
+              });
+              return next;
+            });
+            setCustomQuestionLevelsMap((prev) => {
+              const next = { ...prev };
+              fix.lessons.forEach((l) => {
+                if (l.customQuestionLevels) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionLevels;
+                }
+              });
+              return next;
+            });
+            setN1(fix.n1);
+            setN2(fix.n2);
+            setN3(fix.n3);
+            setIncludeDetailedSolutions(fix.includeDetailedSolutions);
+            setInclude2DSpecMatrix(fix.include2DSpecMatrix);
+            setIncludePostExamRemediationSheet(fix.includePostExamRemediationSheet);
+            setShowQuestionBareme(fix.showQuestionBareme);
+            setStatusMessage({
+              type: "success",
+              text: `تم ضبط وموازنة الوثيقة وفق المذكرة الوزارية 142-08 والتوجيهات التربوية 2007 (20.00/20 ن · N1=${fix.n1}% · N2=${fix.n2}% · N3=${fix.n3}%)!`,
+            });
+          }}
+          onApplyPortfolioDocument={(doc) => {
+            setSimulatedImportedLessons(doc.rebalancedLessons);
+            setIsExamSimulationActive(true);
+            setCustomWeightsMap((prev) => {
+              const next = { ...prev };
+              doc.rebalancedLessons.forEach((l) => {
+                next[`${currentTrack.code}_${l.lessonFr}`] = l.weight;
+              });
+              return next;
+            });
+            setCustomQuestionBaremesMap((prev) => {
+              const next = { ...prev };
+              doc.rebalancedLessons.forEach((l) => {
+                if (l.customQuestionBaremes) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionBaremes;
+                }
+              });
+              return next;
+            });
+            setCustomQuestionLevelsMap((prev) => {
+              const next = { ...prev };
+              doc.rebalancedLessons.forEach((l) => {
+                if (l.customQuestionLevels) {
+                  next[`${currentTrack.code}_${l.lessonFr}`] = l.customQuestionLevels;
+                }
+              });
+              return next;
+            });
+            setActiveModule(doc.targetModule);
+            if (doc.targetDmSubType) {
+              setDmSubType(doc.targetDmSubType);
+            }
+            if (doc.ficheDetailLevel) {
+              setFicheContentDetailLevel(doc.ficheDetailLevel);
+            }
+            setIncludeDetailedSolutions(doc.enableDetailedSolutions);
+            setInclude2DSpecMatrix(doc.enable2DSpecMatrix);
+            setIncludePostExamRemediationSheet(doc.enablePostExamRemediation);
+            setN1(doc.recommendedN1);
+            setN2(doc.recommendedN2);
+            setN3(doc.recommendedN3);
+            setStatusMessage({
+              type: "success",
+              text: `تم تفعيل وثيقة « ${doc.titleAr} » في ورقة المعاينة A4 وفق المذكرة 142-08 والتوجيهات 2007!`,
+            });
+          }}
+          onExportCurrentDocumentPdf={() => {
+            setShowMoroccanPortfolio14208Modal(false);
+            setTimeout(() => {
+              handleExportPDF();
+            }, 220);
+          }}
+          onOpenDiagnosticModal={() => {
+            setDiagnosticAndSpecStudioTab("DIAGNOSTIC_STUDIO");
+            setShowDiagnosticAndSpecStudioModal(true);
+          }}
+          onOpenDynamicSpecMatrixModal={() => {
+            setDiagnosticAndSpecStudioTab("DYNAMIC_SPEC_MATRIX");
+            setShowDiagnosticAndSpecStudioModal(true);
           }}
         />
       )}

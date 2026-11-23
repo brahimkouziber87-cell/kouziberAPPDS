@@ -1612,10 +1612,16 @@ export function buildAutomatedDynamicSpecMatrix(params: {
       n3Target
     );
 
+    const seedBaremes =
+      lesson.customQuestionBaremes &&
+      lesson.customQuestionBaremes.length === qCount
+        ? lesson.customQuestionBaremes
+        : defaultMeta.map((m) => Number(m.points) || 1);
+
     const questionBaremes = distributePointsToQuestions(
       exPoints,
       qCount,
-      lesson.customQuestionBaremes
+      seedBaremes
     );
 
     const questionLevels: Array<"N1" | "N2" | "N3"> = Array.from(
@@ -2192,12 +2198,24 @@ export function autoRebalanceSpecMatrixTo14208(
       targetN3
     );
 
+    const levels: Array<"N1" | "N2" | "N3"> = meta.map((m) => m.level);
+    const levelCounts = { N1: 0, N2: 0, N3: 0 };
+    levels.forEach((lvl) => {
+      levelCounts[lvl] = (levelCounts[lvl] || 0) + 1;
+    });
+
+    const targetSharesPerQuestion = levels.map((lvl) => {
+      const freq = Math.max(1, levelCounts[lvl]);
+      const rawTarget =
+        lvl === "N1" ? targetN1 : lvl === "N3" ? targetN3 : targetN2;
+      return Math.max(0.25, rawTarget / freq);
+    });
+
     const baremes = distributePointsToQuestions(
       exPoints,
       qCount,
-      meta.map((m) => Number(m.points) || 1)
+      targetSharesPerQuestion
     );
-    const levels: Array<"N1" | "N2" | "N3"> = meta.map((m) => m.level);
 
     return {
       ...lesson,

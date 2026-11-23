@@ -295,14 +295,14 @@ export function generateFullMoroccanPedagogicalFiche(
   const pedagogicalReferencesAr = [
     "التوجيهات التربوية والبرامج الخاصة بتدريس مادة الرياضيات بسلك التعليم الثانوي التأهيلي (مديرية المناهج، نونبر 2007).",
     "الأطر المرجعية للامتحانات الإشهادية (الامتحان الوطني والجهوي للبكالوريا) الصادرة عن المركز الوطني للتقويم والامتحانات.",
-    "المذكرة الوزارية رقم 142-08 الصادرة بتاريخ 04 نونبر 2008 حول التقويم التربوي بالسلك الثانوي التأهيلي.",
+    "المذكرة الوزارية رقم 142-08 الصادرة بتاريخ 16 نونبر 2007 حول التقويم التربوي لمادة الرياضيات بالسلك الثانوي التأهيلي.",
     "الكتب المدرسية المقررة والمصادق عليها من طرف وزارة التربية الوطنية (المفيد، النجاح، في رحاب الرياضيات).",
     "دليل الأستاذ والوثائق الديداكتيكية الصادرة عن المفتشية العامة للشؤون التربوية.",
   ];
   const pedagogicalReferencesFr = [
     "Orientations Pédagogiques pour l'enseignement des Mathématiques au Secondaire Qualifiant (Direction des Curricula, Nov 2007).",
     "Cadres de référence des examens certifiants (Baccalauréat National & Régional, CNEP).",
-    "Note Ministérielle n° 142-08 relative à l'évaluation pédagogique au cycle secondaire qualifiant.",
+    "Note Ministérielle n° 142-08 (16 Novembre 2007) relative à l'évaluation pédagogique des mathématiques au secondaire qualifiant.",
     "Manuels scolaires officiels homologués par le Ministère de l'Éducation Nationale.",
     "Guides pédagogiques de l'enseignant et documents d'accompagnement de l'inspection.",
   ];

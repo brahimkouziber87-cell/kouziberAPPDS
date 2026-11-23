@@ -564,7 +564,7 @@ export const DidacticChecklistModal: React.FC<DidacticChecklistModalProps> = ({
               <div className="bg-slate-50 border border-slate-300 rounded-2xl p-4 space-y-2 text-slate-700 leading-relaxed">
                 <h4 className="font-black text-sm text-slate-950 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
-                  <span>المذكرة الوزارية رقم 142-08 الصادرة بتاريخ 17 نونبر 2008:</span>
+                  <span>المذكرة الوزارية رقم 142-08 الصادرة بتاريخ 16 نونبر 2007:</span>
                 </h4>
                 <p>
                   تحدد هذه المذكرة الإطار المرجعي لتقويم مادة الرياضيات بالسلك الثانوي التأهيلي،
