@@ -3304,6 +3304,153 @@ try {
   assert(false, `Section 41 test crashed: ${e.message}`);
 }
 
+// ----------------------------------------------------------------------
+// 42. TEST ANTIGRAVITY ADDITIONS: OFFICIAL 142-08 22-TRACK CATALOG & MATHRENDERER LRU / MACROS
+// ----------------------------------------------------------------------
+console.log("\n--- 42. Testing Official Note 142-08 22-Track Catalog & MathRenderer Moroccan Macros ---");
+try {
+  const {
+    MOROCCAN_NOTE_14208_OFFICIAL_CATALOG,
+    NOTE_14208_MANDATORY_REGULATORY_RULES,
+    getOfficialNote14208TrackStandards: getStandards,
+  } = await import("./src/utils/moroccanPedagogicalPortfolio14208Engine.ts");
+  const {
+    parseMixedMathText,
+    renderMathHtml,
+  } = await import("./src/components/MathRenderer.tsx");
+
+  const allCatalogConsistent = MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.every(
+    (r) =>
+      r.annualDsCount === r.dsCountS1 + r.dsCountS2 &&
+      r.annualDsHours === r.annualDsCount * r.examDurationHours &&
+      r.coefficient >= 1 &&
+      r.weeklyHours >= 2
+  );
+  const lettres2BacStd = getStandards("2BAC_LETTRES");
+
+  assert(
+    MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.length === 22 &&
+      allCatalogConsistent &&
+      NOTE_14208_MANDATORY_REGULATORY_RULES.length === 4 &&
+      lettres2BacStd.officialDurationAr.includes("مراقبة مستمرة فقط"),
+    `MOROCCAN_NOTE_14208_OFFICIAL_CATALOG validates all 22 official Moroccan high school tracks (annualDsCount = S1+S2, annualDsHours = count×duration, 4 mandatory rules, 2BAC_LETTRES continuous assessment only)`
+  );
+
+  const mixedBilingualSegments = parseMixedMathText(
+    "Montrer que la courbe $(\\Cf)$ dans le repère $\\Oij$ admet une tangente en $x_0 = 1$ et calculer $\\pgcd(540, 378)$."
+  );
+  const renderedHtml = renderMathHtml(
+    "نعتبر المنحنى $(\\Cf)$ في المعلم المتعامد الممنظم $\\Oijk$ حيث $\\Df = ]0, +\\infty[$."
+  );
+
+  assert(
+    mixedBilingualSegments.some((s) => s.type === "inline-math" && s.content.includes("\\Cf")) &&
+      renderedHtml.includes("katex") &&
+      renderedHtml.includes("mathcal"),
+    `MathRenderer parses and renders Moroccan LaTeX macros (\\Cf, \\Df, \\Oij, \\Oijk, \\pgcd) with KaTeX LRU cache`
+  );
+
+  // Verify TCT, 2BAC_SVT_AGRO, and 2BAC_STE_STM provide distinct multi-exercise lessons summing to 100% per DS
+  const tctTrack = CURRICULUM_DB["TCT"];
+  const svtTrack = CURRICULUM_DB["2BAC_SVT_AGRO"];
+  const steTrack = CURRICULUM_DB["2BAC_STE_STM"];
+  const checkMultiLessonDsWeights = (trackObj: typeof tctTrack) =>
+    (["S1", "S2"] as const).every((sem) =>
+      (Object.values(trackObj.semesters[sem]) as LessonItem[][]).every(
+        (dsList: LessonItem[]) =>
+          dsList.length >= 2 &&
+          dsList.reduce((acc: number, item: LessonItem) => acc + item.weight, 0) === 100 &&
+          dsList.every((item: LessonItem) => (item.capacitiesAr?.length ?? 0) >= 1)
+      )
+    );
+
+  assert(
+    checkMultiLessonDsWeights(tctTrack) &&
+      checkMultiLessonDsWeights(svtTrack) &&
+      checkMultiLessonDsWeights(steTrack) &&
+      CURRICULUM_DB["2BAC_ECO_TGC"].semesters.S1.DS2.length >= 2 &&
+      CURRICULUM_DB["1BAC_STE_STM"].semesters.S1.DS1.length >= 2 &&
+      CURRICULUM_DB["1BAC_STE_STM"].semesters.S1.DS2.length >= 2 &&
+      CURRICULUM_DB["1BAC_STE_STM"].semesters.S1.DS3.length >= 2 &&
+      CURRICULUM_DB["1BAC_STE_STM"].semesters.S2.DS1.length >= 2 &&
+      CURRICULUM_DB["1BAC_ECO"].semesters.S2.DS1.length >= 2 &&
+      CURRICULUM_DB["1BAC_ECO"].semesters.S2.DS2.length >= 2 &&
+      CURRICULUM_DB["1BAC_LETTRES"].semesters.S1.DS1.length >= 2 &&
+      CURRICULUM_DB["1BAC_LETTRES"].semesters.S2.DS2.length >= 2 &&
+      CURRICULUM_DB["TCLSH"].semesters.S1.DS1.length >= 2,
+    `CURRICULUM_DB splits TCT, 2BAC_SVT_AGRO, 2BAC_STE_STM, 2BAC_ECO_TGC, 1BAC_STE_STM, 1BAC_ECO, 1BAC_LETTRES, and TCLSH into distinct OP 2007 chapters with weights summing to 100%`
+  );
+
+  // Verify convertArabicMathToLatex, formatMoroccanMathTypography, and diagnoseMathEquationSyntax
+  const {
+    convertArabicMathToLatex,
+    formatMoroccanMathTypography,
+    diagnoseMathEquationSyntax,
+  } = await import("./src/components/MathRenderer.tsx");
+
+  const convertedArabicLatex = convertArabicMathToLatex(
+    "نهـا جذر(x+١) + تكامل جا(x) عندما x -> ما لا نهاية"
+  );
+  assert(
+    convertedArabicLatex.includes("\\lim") &&
+      convertedArabicLatex.includes("\\sqrt{x+1}") &&
+      convertedArabicLatex.includes("\\int") &&
+      convertedArabicLatex.includes("\\sin") &&
+      convertedArabicLatex.includes("\\infty"),
+    `convertArabicMathToLatex accurately converts Arabic math shorthand and Eastern digits into standard LaTeX`
+  );
+
+  const formattedTypo = formatMoroccanMathTypography("(\\frac{2x+1}{x-1}) + \\int_{0}^{1} f(x) dx");
+  assert(
+    formattedTypo.includes("\\left(\\frac{2x+1}{x-1}\\right)") &&
+      formattedTypo.includes("\\displaystyle") &&
+      formattedTypo.includes("\\,\\mathrm{d}x"),
+    `formatMoroccanMathTypography auto-upgrades fraction delimiters to \\left(\\right), adds \\displaystyle, and formats differential dx`
+  );
+
+  const validDiag = diagnoseMathEquationSyntax("$\\forall x \\in \\Rstarplus, \\vect{AB} \\cdot \\vect{AC} = \\frac{1}{2}$");
+  const invalidDiag = diagnoseMathEquationSyntax("$\\frac{x+1}{x-1$");
+  assert(
+    validDiag.isValid === true &&
+      validDiag.unbalancedBraces === 0 &&
+      invalidDiag.isValid === false &&
+      invalidDiag.unbalancedBraces > 0,
+    `diagnoseMathEquationSyntax detects valid Moroccan macro equations and catches unbalanced LaTeX braces`
+  );
+
+  // Verify runDeepPedagogical14208Audit reaches 10/10 (100%) on official 1-chapter DS assessments (e.g., 2BAC_SM S1.DS3 Complex Numbers 20h)
+  const { runDeepPedagogical14208Audit } = await import(
+    "./src/utils/moroccanPedagogicalPortfolio14208Engine.ts"
+  );
+  const smStd = getStandards("2BAC_SM");
+  const singleChapterLessons = CURRICULUM_DB["2BAC_SM"].semesters.S1.DS3;
+  const singleChapterAudit = runDeepPedagogical14208Audit({
+    trackCode: "2BAC_SM",
+    semester: "S1",
+    dsKey: "DS3",
+    lessons: singleChapterLessons,
+    n1: smStd.recommendedN1,
+    n2: smStd.recommendedN2,
+    n3: smStd.recommendedN3,
+    dsStructureMode: "EXERCICES_ET_PROBLEME",
+    includeDetailedSolutions: true,
+    include2DSpecMatrix: true,
+    includePostExamRemediationSheet: true,
+    showQuestionBareme: true,
+    examModel: "BOTH",
+    subQuestionDecompositionMode: "SHOW_THAT_CHAIN",
+  });
+
+  assert(
+    singleChapterLessons.length === 1 &&
+      singleChapterAudit.compliantCount === 10 &&
+      singleChapterAudit.overallScorePercent === 100,
+    `runDeepPedagogical14208Audit achieves 10/10 (100%) compliance on single-chapter 20h DS assessments (2BAC_SM S1.DS3)`
+  );
+} catch (e: any) {
+  assert(false, `Section 42 test crashed: ${e.message}`);
+}
+
 console.log("\n=================================================");
 console.log(`=== TEST SUMMARY: ${passCount} PASSED, ${failCount} FAILED ===`);
 console.log("=================================================");
@@ -3311,4 +3458,5 @@ console.log("=================================================");
 if (failCount > 0) {
   process.exit(1);
 }
+
 

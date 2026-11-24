@@ -482,12 +482,12 @@ export function getOfficialNote14208TrackStandards(
     officialDurationAr = code.startsWith("1BAC")
       ? "ساعة واحدة (1h00) للفرض · 1h30 للجهوي"
       : code.startsWith("2BAC")
-      ? "ساعة واحدة (1h00) للفرض · 1h30 للوطني"
+      ? "ساعة واحدة (1h00) للفرض المحروس (مراقبة مستمرة فقط)"
       : "ساعة واحدة (1h00)";
     officialDurationFr = code.startsWith("1BAC")
       ? "1h (DS) · 1h30 (Régional)"
       : code.startsWith("2BAC")
-      ? "1h (DS) · 1h30 (National)"
+      ? "1h (DS — Contrôle Continu uniquement)"
       : "1 heure (60 min)";
   } else if (code.includes("ARTS")) {
     recommendedN1 = 50;
@@ -767,11 +767,15 @@ export function runDeepPedagogical14208Audit(params: {
       titleAr: "تغطية القدرات المنتظرة المسطرة في التوجيهات التربوية 2007",
       referenceSourceAr: "التوجيهات التربوية 2007 — جداول القدرات المنتظرة",
       status:
-        totalCapacities >= safeLessons.length && weightsPct.length >= 2
+        safeLessons.length >= 1 &&
+        totalCapacities >= safeLessons.length &&
+        weightsPct.length === safeLessons.length
           ? "COMPLIANT"
           : "NEEDS_TUNING",
       statusLabelAr:
-        totalCapacities >= safeLessons.length ? "تغطية شاملة" : "تغطية جزئية",
+        safeLessons.length >= 1 && totalCapacities >= safeLessons.length
+          ? "تغطية شاملة"
+          : "تغطية جزئية",
       measuredValueAr: `${totalCapacities} قدرات منتظرة موزعة على ${specMatrix.domainSummary.length} مجالات`,
       officialStandardAr: "تغطية كافة الوحدات المدرسة في الفترة البينية",
       inspectorNoteAr:

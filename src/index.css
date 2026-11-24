@@ -751,9 +751,10 @@
 /* ==========================================================================
    إمكانية الوصول والتنقل بلوحة المفاتيح وتقليل الحركة (WCAG AA Accessibility)
    ========================================================================== */
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #0f172a;
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -767,22 +768,19 @@
   }
 }
 
-/* ===== Accessibility & usability baseline (added) ===== */
-:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [role="button"],
+  select {
+    min-height: 40px;
   }
 }
-@media (hover: none) and (pointer: coarse) {
-  button, [role="button"], select { min-height: 40px; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
-html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
-::selection { background: rgba(37, 99, 235, 0.22); }
+
+::selection {
+  background: rgba(37, 99, 235, 0.22);
+}

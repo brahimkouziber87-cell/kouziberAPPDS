@@ -24,6 +24,7 @@ import {
 } from "../data/curriculum";
 import {
   buildOfficialMoroccanProfessorPortfolio,
+  computeNote14208SemesterAverage,
   getOfficialNote14208TrackStandards,
   MoroccanPortfolioDocItem,
   runDeepPedagogical14208Audit,
@@ -106,6 +107,9 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
   >("ALL");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [studentDsGrades, setStudentDsGrades] = useState<number[]>([
+    14.5, 13.0, 15.25, 16.0,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -121,6 +125,28 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
   const trackStandard = useMemo(
     () => getOfficialNote14208TrackStandards(trackCode),
     [trackCode]
+  );
+
+  const activeSemesterDsCount = useMemo(() => {
+    const matchedRow = MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.find(
+      (r) =>
+        r.trackCode === trackCode ||
+        trackCode.startsWith(r.trackCode) ||
+        r.trackCode.startsWith(trackCode)
+    );
+    if (matchedRow) {
+      return semester === "S2" ? matchedRow.dsCountS2 : matchedRow.dsCountS1;
+    }
+    return trackStandard.dsCountPerSemester;
+  }, [trackCode, semester, trackStandard.dsCountPerSemester]);
+
+  const semesterAverageCalc = useMemo(
+    () =>
+      computeNote14208SemesterAverage(
+        studentDsGrades.slice(0, activeSemesterDsCount),
+        0
+      ),
+    [studentDsGrades, activeSemesterDsCount]
   );
 
   const auditReport = useMemo(
@@ -852,6 +878,149 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Interactive Note 142-08 Continuous Assessment Average & Remediation Triage Calculator */}
+              <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-950 flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-teal-800 shrink-0" />
+                      <span>
+                        حاسبة معدل المراقبة المستمرة والتفييء الديداكتيكي —{" "}
+                        {trackStandard.trackLabelAr} (
+                        {semester === "S1" ? "الأسدس الأول" : "الأسدس الثاني"}:{" "}
+                        {activeSemesterDsCount} فروض محروسة)
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      {trackStandard.continuousAssessmentSplitAr}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const activeGrades = studentDsGrades.slice(
+                        0,
+                        activeSemesterDsCount
+                      );
+                      const weightedPts = Number(
+                        (
+                          semesterAverageCalc.finalSemesterAverage *
+                          trackStandard.officialCoefficient
+                        ).toFixed(2)
+                      );
+                      const summaryText = [
+                        `■ محضر احتساب معدل المراقبة المستمرة لمادة الرياضيات (المذكرة 142-08)`,
+                        `• المسلك: ${trackStandard.trackLabelAr} (${trackStandard.trackCode}) — ${semester === "S1" ? "الأسدس الأول" : "الأسدس الثاني"}`,
+                        `• نقط الفروض المحروسة: ${activeGrades
+                          .map(
+                            (g: number, i: number) =>
+                              `الفرض ${i + 1}: ${g.toFixed(2)}/20`
+                          )
+                          .join(" | ")}`,
+                        `• معدل المراقبة المستمرة (100% فروض محروسة): ${semesterAverageCalc.finalSemesterAverage.toFixed(2)} / 20`,
+                        `• المعامل الرسمي للمسلك: ${trackStandard.officialCoefficient} — المجموع الموزون: ${weightedPts.toFixed(2)} نقطة`,
+                        `• التفييء والتوجيه الديداكتيكي: ${semesterAverageCalc.remediationTierAr}`,
+                      ].join("\n");
+                      handleCopyText("calc_14208_avg", summaryText);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-black flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    {copiedId === "calc_14208_avg" ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>تم نسخ بطاقة المعدل</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 shrink-0" />
+                        <span>نسخ بطاقة المعدل والتفييء</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                  <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {Array.from({ length: activeSemesterDsCount }).map(
+                      (_, idx) => (
+                        <label
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-white border border-slate-200 flex flex-col gap-1"
+                        >
+                          <span className="text-[11px] font-bold text-slate-600">
+                            نقطة الفرض المحروس {idx + 1} (/20)
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            step={0.25}
+                            value={studentDsGrades[idx] ?? 12}
+                            onChange={(e) => {
+                              const parsed = parseFloat(e.target.value);
+                              const next = [...studentDsGrades];
+                              next[idx] = Number.isFinite(parsed)
+                                ? Math.max(0, Math.min(20, parsed))
+                                : 0;
+                              setStudentDsGrades(next);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono tabular-nums font-black text-slate-950 focus:outline-none focus:border-teal-700"
+                          />
+                        </label>
+                      )
+                    )}
+                  </div>
+
+                  <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200">
+                      <div className="text-[10.5px] font-bold text-slate-500">
+                        المعدل الأسدسي الرسمي (100% فروض)
+                      </div>
+                      <div className="text-lg font-black font-mono tabular-nums text-slate-950 mt-0.5">
+                        {semesterAverageCalc.finalSemesterAverage.toFixed(2)}{" "}
+                        <span className="text-xs font-bold text-slate-500">
+                          / 20
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200">
+                      <div className="text-[10.5px] font-bold text-slate-500">
+                        الحصيلة بالمعامل ({trackStandard.officialCoefficient})
+                      </div>
+                      <div className="text-lg font-black font-mono tabular-nums text-teal-900 mt-0.5">
+                        {(
+                          semesterAverageCalc.finalSemesterAverage *
+                          trackStandard.officialCoefficient
+                        ).toFixed(2)}{" "}
+                        <span className="text-xs font-bold text-slate-500">
+                          / {trackStandard.officialCoefficient * 20}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`p-3 rounded-xl border ${
+                        semesterAverageCalc.remediationTierCode === "EXCELLENCE"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                          : semesterAverageCalc.remediationTierCode ===
+                            "CONSOLIDATION"
+                          ? "bg-amber-50 border-amber-200 text-amber-950"
+                          : "bg-rose-50 border-rose-200 text-rose-950"
+                      }`}
+                    >
+                      <div className="text-[10.5px] font-bold opacity-80">
+                        قرار التفييء البعدي (OP 2007)
+                      </div>
+                      <div className="text-[11px] font-black leading-snug mt-0.5">
+                        {semesterAverageCalc.remediationTierAr}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

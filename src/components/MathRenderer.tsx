@@ -4,19 +4,34 @@ import { sanitizeTrustedPedagogicalHtml } from "../utils/pedagogicalIndexedDbEng
 
 export const KATEX_MOROCCAN_MACROS: Record<string, string> = {
   "\\R": "\\mathbb{R}",
+  "\\Rstar": "\\mathbb{R}^*",
+  "\\Rplus": "\\mathbb{R}^+",
+  "\\Rminus": "\\mathbb{R}^-",
+  "\\Rstarplus": "\\mathbb{R}_+^*",
   "\\N": "\\mathbb{N}",
+  "\\Nstar": "\\mathbb{N}^*",
   "\\Z": "\\mathbb{Z}",
+  "\\Zstar": "\\mathbb{Z}^*",
   "\\Q": "\\mathbb{Q}",
   "\\C": "\\mathbb{C}",
+  "\\Cstar": "\\mathbb{C}^*",
   "\\K": "\\mathbb{K}",
   "\\dx": "\\,\\mathrm{d}x",
   "\\dt": "\\,\\mathrm{d}t",
   "\\du": "\\,\\mathrm{d}u",
+  "\\dy": "\\,\\mathrm{d}y",
+  "\\dz": "\\,\\mathrm{d}z",
   "\\e": "\\mathrm{e}",
-  "\\vect": "\\vec{#1}",
+  "\\i": "\\mathrm{i}",
+  "\\vect": "\\overrightarrow{#1}",
   "\\ds": "\\displaystyle",
   "\\norme": "\\left\\|#1\\right\\|",
   "\\abs": "\\left|#1\\right|",
+  "\\pscal": "\\left\\langle #1 \\,\\middle|\\, #2 \\right\\rangle",
+  "\\intervalleFF": "\\left[#1\\,;\\,#2\\right]",
+  "\\intervalleOO": "\\left]#1\\,;\\,#2\\right[",
+  "\\intervalleFO": "\\left[#1\\,;\\,#2\\right[",
+  "\\intervalleOF": "\\left]#1\\,;\\,#2\\right]",
   "\\llbracket": "[\\![",
   "\\rrbracket": "]\\!]",
   "\\Cf": "\\mathcal{C}_f",
@@ -33,12 +48,174 @@ export const KATEX_MOROCCAN_MACROS: Record<string, string> = {
   "\\PPCM": "\\mathrm{PPCM}",
   "\\Re": "\\mathrm{Re}",
   "\\Im": "\\mathrm{Im}",
+  "\\Arg": "\\mathrm{arg}",
   "\\conj": "\\overline{#1}",
   "\\Oij": "(O;\\,\\vec{i},\\,\\vec{j})",
   "\\Ouv": "(O;\\,\\vec{u},\\,\\vec{v})",
   "\\Oijk": "(O;\\,\\vec{i},\\,\\vec{j},\\,\\vec{k})",
   "\\mathscr": "\\mathcal{#1}",
+  "\\systeme": "\\left\\{\\begin{aligned}#1\\end{aligned}\\right.",
 };
+
+const ARABIC_INDIC_DIGIT_MAP: Record<string, string> = {
+  "٠": "0",
+  "١": "1",
+  "٢": "2",
+  "٣": "3",
+  "٤": "4",
+  "٥": "5",
+  "٦": "6",
+  "٧": "7",
+  "٨": "8",
+  "٩": "9",
+};
+
+/**
+ * يحول الاختصارات الرياضية المكتوبة بالعربية والأرقام المشرقية إلى أوامر LaTeX قياسية
+ * (مثال: نهـا ← \lim ، تكامل ← \int ، جذر(...) ← \sqrt{...} ، جا ← \sin ، جتا ← \cos ، ظا ← \tan ، لو ← \ln).
+ */
+export function convertArabicMathToLatex(input: string): string {
+  if (!input) return "";
+  let out = input.replace(/[٠-٩]/g, (d) => ARABIC_INDIC_DIGIT_MAP[d] ?? d);
+
+  out = out
+    .replace(/ما\s*لا\s*نهاية|مالانهاية/g, "\\infty")
+    .replace(/نهـ+ا|نهاية|نها(?=\s|_|\()/g, "\\lim")
+    .replace(/تكامل(?=\s|_|\^|\()/g, "\\int")
+    .replace(/مجموع(?=\s|_|\^|\()/g, "\\sum")
+    .replace(/جذر\s*\(([^()]+)\)/g, "\\sqrt{$1}")
+    .replace(/جذر\s*([a-zA-Z0-9]+)/g, "\\sqrt{$1}")
+    .replace(/(^|[\s(+\-*/=,:;])جتا(?=\s|\(|[a-zA-Z0-9])/g, "$1\\cos")
+    .replace(/(^|[\s(+\-*/=,:;])جا(?=\s|\(|[a-zA-Z0-9])/g, "$1\\sin")
+    .replace(/(^|[\s(+\-*/=,:;])ظا(?=\s|\(|[a-zA-Z0-9])/g, "$1\\tan")
+    .replace(/(^|[\s(+\-*/=,:;])لو(?=\s|\(|[a-zA-Z0-9])/g, "$1\\ln")
+    .replace(/د\s*\(\s*س\s*\)/g, "f(x)")
+    .replace(/ح_ن/g, "u_n");
+
+  return out;
+}
+
+export interface MathEquationDiagnosticResult {
+  isValid: boolean;
+  normalizedLatex: string;
+  formattedLatex: string;
+  unbalancedBraces: number;
+  unbalancedParentheses: number;
+  unbalancedDollarSigns: boolean;
+  detectedDomainsAr: string[];
+  suggestionsAr: string[];
+}
+
+/**
+ * ينسق معادلة LaTeX وفق الضوابط التيبوغرافية الرسمية لمواضيع البكالوريا المغربية:
+ * - تكبير الأقواس تلقائياً \left( ... \right) حول الكسور والجذور
+ * - إضافة \displaystyle قبل النهايات والتكاملات والمجاميع لضمان وضوح الحدود
+ * - تنسيق تفاضل التكامل \,\mathrm{d}x والفواصل المنقوطة للمجالات
+ */
+export function formatMoroccanMathTypography(latex: string): string {
+  if (!latex) return "";
+  let s = normalizeMathSyntax(convertArabicMathToLatex(latex.trim()));
+
+  // ترقية الأقواس العادية المحيطة بـ \frac إلى \left( ... \right) إن لم تكن مسبوقة بـ \left
+  s = s.replace(
+    /(?<!\\left)\(\s*(\\frac\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})\s*(?!\\right)\)/g,
+    "\\left($1\\right)"
+  );
+
+  // إضافة \displaystyle تلقائياً قبل \int أو \sum أو \lim إن لم تكن موجودة في بداية الصيغة المركبة
+  if (
+    /\\(?:int|sum|prod|lim|frac)/.test(s) &&
+    !/\\(?:displaystyle|ds)\b/.test(s) &&
+    !s.includes("\\begin{")
+  ) {
+    s = `\\displaystyle ${s}`;
+  }
+
+  // ضبط المسافة الرقيقة قبل تفاضل التكامل dx, dt, du
+  s = s.replace(/([^,\\])\s*\\mathrm\{d\}([xtyuz])\b/g, "$1\\,\\mathrm{d}$2");
+
+  return s.trim();
+}
+
+/**
+ * يفحص سلامة المعادلة الرياضية ويكتشف الأقواس أو الحاضنات غير المتوازنة والمجال الرياضي.
+ */
+export function diagnoseMathEquationSyntax(rawLatex: string): MathEquationDiagnosticResult {
+  const cleaned = (rawLatex || "").trim();
+  const normalizedLatex = normalizeMathSyntax(convertArabicMathToLatex(cleaned));
+  const formattedLatex = formatMoroccanMathTypography(cleaned);
+
+  let braceDepth = 0;
+  let parenDepth = 0;
+  let dollarCount = 0;
+
+  for (let i = 0; i < normalizedLatex.length; i++) {
+    const ch = normalizedLatex[i];
+    const prev = i > 0 ? normalizedLatex[i - 1] : "";
+    if (prev === "\\") continue;
+    if (ch === "{") braceDepth++;
+    else if (ch === "}") braceDepth--;
+    else if (ch === "(") parenDepth++;
+    else if (ch === ")") parenDepth--;
+    else if (ch === "$") dollarCount++;
+  }
+
+  const detectedDomainsAr: string[] = [];
+  if (/\\(?:lim|int|frac\{\\mathrm\{d\}|f'|f''|ln|exp)/.test(normalizedLatex)) {
+    detectedDomainsAr.push("التحليل ودراسة الدوال");
+  }
+  if (/\b(?:u_n|v_n|u_\{n\+1\}|v_\{n\+1\})|\\sum/.test(normalizedLatex)) {
+    detectedDomainsAr.push("المتتاليات العددية");
+  }
+  if (/\\(?:overline|Arg|Re|Im)|\\mathrm\{i\}|\bi\b|\\mathbb\{C\}|\\C\b/.test(normalizedLatex)) {
+    detectedDomainsAr.push("الأعداد العقدية");
+  }
+  if (/\\(?:vec|vect|overrightarrow|Oij|Oijk|perp|parallel)/.test(normalizedLatex)) {
+    detectedDomainsAr.push("الهندسة المتجهية والفضائية");
+  }
+  if (/\\(?:binom|Card|card)|P\([^)]+\)|p_k/.test(normalizedLatex)) {
+    detectedDomainsAr.push("حساب الاحتمالات والتعداد");
+  }
+  if (/\\(?:pgcd|ppcm|PGCD|PPCM|equiv)|\\mathbb\{Z\}|\\mathbb\{N\}/.test(normalizedLatex)) {
+    detectedDomainsAr.push("الحسابيات في Z و N");
+  }
+  if (detectedDomainsAr.length === 0 && normalizedLatex.length > 0) {
+    detectedDomainsAr.push("الجبر والمعادلات العامة");
+  }
+
+  const suggestionsAr: string[] = [];
+  if (braceDepth !== 0) {
+    suggestionsAr.push(
+      braceDepth > 0
+        ? `يوجد ${braceDepth} حاضنة مفتوحة '{' غير مغلقة بـ '}'`
+        : `يوجد ${Math.abs(braceDepth)} حاضنة إغلاق '}' زائدة`
+    );
+  }
+  if (parenDepth !== 0) {
+    suggestionsAr.push(
+      parenDepth > 0
+        ? `يوجد ${parenDepth} قوس مفتوح '(' غير مغلق بـ ')'`
+        : `يوجد ${Math.abs(parenDepth)} قوس إغلاق ')' زائد`
+    );
+  }
+  if (dollarCount % 2 !== 0) {
+    suggestionsAr.push("عدد علامات الدولار $ غير زوجي؛ تأكد من إغلاق محدد الصيغة $...$");
+  }
+  if (/\\frac(?![\s{])/.test(normalizedLatex)) {
+    suggestionsAr.push("استعمل الحاضنات مع الكسر: \\frac{البسط}{المقام}");
+  }
+
+  return {
+    isValid: braceDepth === 0 && parenDepth === 0 && dollarCount % 2 === 0,
+    normalizedLatex,
+    formattedLatex,
+    unbalancedBraces: braceDepth,
+    unbalancedParentheses: parenDepth,
+    unbalancedDollarSigns: dollarCount % 2 !== 0,
+    detectedDomainsAr,
+    suggestionsAr,
+  };
+}
 
 const UNICODE_SUB_MAP: Record<string, string> = {
   "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
@@ -61,7 +238,7 @@ const UNICODE_SUP_MAP: Record<string, string> = {
  */
 export function normalizeMathSyntax(latex: string): string {
   if (!latex) return "";
-  let s = latex
+  let s = convertArabicMathToLatex(latex)
     .replace(/([a-zA-Z0-9])\u0304/g, "\\overline{$1}")
     .replace(/[₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜ]+/g, (m) => {
       const mapped = Array.from(m).map((ch) => UNICODE_SUB_MAP[ch] ?? ch).join("");
@@ -77,13 +254,21 @@ export function normalizeMathSyntax(latex: string): string {
     .replace(/u⃗/g, "\\vec{u}")
     .replace(/v⃗/g, "\\vec{v}")
     .replace(/w⃗/g, "\\vec{w}")
-    .replace(/([A-Z]'?[A-Z]'?)⃗/g, "\\vec{$1}")
+    .replace(/([A-Z]'?[A-Z]'?)⃗/g, "\\overrightarrow{$1}")
     .replace(/([0a-zA-Z]'?)⃗/g, "\\vec{$1}")
+    .replace(/\\vec\{([A-Z]'?[A-Z]'?)\}/g, "\\overrightarrow{$1}")
+    .replace(/√\[([0-9nmk]+)\]\(([^)]+)\)/g, "\\sqrt[$1]{$2}")
     .replace(/√\(([^)]+)\)/g, "\\sqrt{$1}")
     .replace(/√([a-zA-Z0-9]+)/g, "\\sqrt{$1}")
+    .replace(/ℝ\^\*_\+/g, "\\mathbb{R}_+^*")
+    .replace(/ℝ_\+\^\*/g, "\\mathbb{R}_+^*")
+    .replace(/ℝ\^\*/g, "\\mathbb{R}^*")
     .replace(/ℝ/g, "\\mathbb{R}")
+    .replace(/ℂ\^\*/g, "\\mathbb{C}^*")
     .replace(/ℂ/g, "\\mathbb{C}")
+    .replace(/ℕ\^\*/g, "\\mathbb{N}^*")
     .replace(/ℕ/g, "\\mathbb{N}")
+    .replace(/ℤ\^\*/g, "\\mathbb{Z}^*")
     .replace(/ℤ/g, "\\mathbb{Z}")
     .replace(/ℚ/g, "\\mathbb{Q}")
     .replace(/∞/g, "\\infty")
@@ -97,6 +282,7 @@ export function normalizeMathSyntax(latex: string): string {
     .replace(/±/g, "\\pm ")
     .replace(/⇔/g, "\\iff ")
     .replace(/⇒/g, "\\implies ")
+    .replace(/↦/g, "\\mapsto ")
     .replace(/→/g, "\\to ")
     .replace(/∈/g, "\\in ")
     .replace(/∉/g, "\\notin ")
@@ -133,6 +319,7 @@ export function normalizeMathSyntax(latex: string): string {
     .replace(/!=/g, "\\neq ")
     .replace(/<=>/g, "\\iff ")
     .replace(/=>/g, "\\implies ")
+    .replace(/\|->/g, "\\mapsto ")
     .replace(/->/g, "\\to ");
 
   // Normalisation des intégrales et sommes abrégées : ∫_a^b ... dx, ∑_{k=0}^n ...
