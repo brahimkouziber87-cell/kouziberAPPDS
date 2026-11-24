@@ -42,21 +42,33 @@ export function generateExerciseCorrection(
   questionsAr: string[] = [],
   questionsFr: string[] = []
 ): ExerciseCorrection {
-  const titleFr = lesson.lessonFr.toLowerCase();
-  const titleAr = lesson.lessonAr;
-  const weight = lesson.weight || 25;
+  const safeLesson: LessonItem = (typeof lesson === "object" && lesson !== null)
+    ? lesson
+    : {
+        lessonAr: typeof lesson === "string" ? lesson : "الدرس",
+        lessonFr: typeof lesson === "string" ? lesson : "Leçon",
+        weight: 25,
+        hours: "10h",
+        capacitiesAr: [],
+        capacitiesFr: []
+      };
+  const titleFr = (safeLesson.lessonFr || "").toLowerCase();
+  const titleAr = safeLesson.lessonAr || "";
+  const weight = safeLesson.weight || 25;
   const totalPoints = ((weight * 20) / 100).toFixed(1);
+  const capsAr = safeLesson.capacitiesAr || [];
+  const capsFr = safeLesson.capacitiesFr || [];
 
   const solutions: QuestionSolution[] = [];
 
   const activeCustomSolAr =
-    model === "B" && lesson.sampleSolutionModelB_Ar && lesson.sampleSolutionModelB_Ar.length > 0
-      ? lesson.sampleSolutionModelB_Ar
-      : lesson.sampleSolutionAr;
+    model === "B" && safeLesson.sampleSolutionModelB_Ar && safeLesson.sampleSolutionModelB_Ar.length > 0
+      ? safeLesson.sampleSolutionModelB_Ar
+      : safeLesson.sampleSolutionAr;
   const activeCustomSolFr =
-    model === "B" && lesson.sampleSolutionModelB_Fr && lesson.sampleSolutionModelB_Fr.length > 0
-      ? lesson.sampleSolutionModelB_Fr
-      : lesson.sampleSolutionFr;
+    model === "B" && safeLesson.sampleSolutionModelB_Fr && safeLesson.sampleSolutionModelB_Fr.length > 0
+      ? safeLesson.sampleSolutionModelB_Fr
+      : safeLesson.sampleSolutionFr;
 
   if (
     (activeCustomSolAr && activeCustomSolAr.length > 0) ||
@@ -246,6 +258,40 @@ Or $n \\ge 0 \\implies n+9 \\ge 9 > 8$. L'ensemble des solutions dans $\\mathbb{
         "0.25 pt : Déduction rigoureuse de l'ensemble vide",
       ],
     });
+
+    solutions.push({
+      questionNumber: "4",
+      questionText: questionsFr[3] || questionsAr[3] || "Résolution dans ℕ² de x² - y² = 28",
+      solutionTextAr: `حل المعادلة $x^2 - y^2 = 28$ في $\\mathbb{N}^2$ :
+نعمل الطرف الأيسر باستعمال المتطابقة الهامة : $(x - y)(x + y) = 28$.
+بما أن $x, y \\in \\mathbb{N}$ و $x^2 - y^2 = 28 > 0$، فإن $x > y$، ومنه $(x - y) \\in \\mathbb{N}^*$ و $(x + y) \\in \\mathbb{N}^*$ مع $x - y < x + y$.
+علاوة على ذلك، مجموعهما $(x - y) + (x + y) = 2x$ عدد زوجي، إذن العددان $(x - y)$ و $(x + y)$ لهما نفس الزوجية.
+قواسم العدد 28 هي : $28 = 1 \\times 28 = 2 \\times 14 = 4 \\times 7$.
+الجداء الوحيد لعاملين لهما نفس الزوجية مع $d_1 < d_2$ هو $2 \\times 14$.
+إذن نحصل على النظمة : $\\begin{cases} x - y = 2 \\\\ x + y = 14 \\end{cases} \\iff \\begin{cases} 2x = 16 \\\\ y = x - 2 \\end{cases} \\iff \\begin{cases} x = 8 \\\\ y = 6 \\end{cases}$.
+مجموعة الحلول في $\\mathbb{N}^2$ هي : $\\mathcal{S} = \\{(8, 6)\\}$.`,
+      solutionTextFr: `Résolution dans $\\mathbb{N}^2$ de l'équation $x^2 - y^2 = 28$ :
+On factorise grâce à l'identité remarquable : $(x - y)(x + y) = 28$.
+Comme $x, y \\in \\mathbb{N}$ et $x^2 - y^2 = 28 > 0$, on a $x > y$, donc $x - y$ et $x + y$ sont deux diviseurs positifs de 28 tels que $x - y < x + y$.
+De plus, $(x + y) + (x - y) = 2x$ est pair, donc $(x - y)$ et $(x + y)$ ont la même parité.
+Les décompositions de 28 en produit de deux entiers sont $1 \\times 28$, $2 \\times 14$ et $4 \\times 7$.
+Le seul couple de diviseurs de même parité est $(2, 14)$.
+On résout le système : $\\begin{cases} x - y = 2 \\\\ x + y = 14 \\end{cases} \\iff \\begin{cases} 2x = 16 \\\\ y = x - 2 \\end{cases} \\iff \\begin{cases} x = 8 \\\\ y = 6 \\end{cases}$.
+Conclusion : $\\mathcal{S} = \\{(8, 6)\\}$ (vérification : $8^2 - 6^2 = 64 - 36 = 28$).`,
+      bareme: "2.00 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : تعميل التعبير $(x - y)(x + y) = 28$ ومقارنة العاملين",
+        "0.75 ن : توظيف شرط نفس الزوجية لفرز قواسم العدد 28",
+        "0.75 ن : حل النظمة واستنتاج الزوج الوحيد $(8, 6)$",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Factorisation $(x - y)(x + y) = 28$ et ordre des facteurs",
+        "0.75 pt : Argument de même parité pour sélectionner le couple $(2, 14)$",
+        "0.75 pt : Résolution du système et conclusion $\\mathcal{S} = \\{(8, 6)\\}$",
+      ],
+      pedagogicalNoteAr: "توجيه للمصحح: يمنح نصف النقطة للتلميذ الذي درس جميع الحالات الثلاث لقواسم 28 واستبعد الحالتين غير الصحيحتين.",
+      pedagogicalNoteFr: "Remarque correcteur : Accorder la totalité des points si l'élève teste les 3 systèmes et élimine ceux qui ne donnent pas d'entiers naturels.",
+    });
   } else if (titleFr.includes("suite") || titleAr.includes("متتاليات")) {
     const a = model === "A" ? "3" : "4";
     const b = model === "A" ? "2" : "3";
@@ -258,7 +304,7 @@ Or $n \\ge 0 \\implies n+9 \\ge 9 > 8$. L'ensemble des solutions dans $\\mathbb{
 - من أجل $n = 0$ : لدينا $u_0 = ${u0} > 0$، إذن الخاصية محققة من أجل $n = 0$.
 - نفترض أن $u_n > 0$ من أجل عدد صحيح طبيعي $n$ ثابت، ولنبين أن $u_{n+1} > 0$ :
   لدينا $u_{n+1} = \\frac{${a}u_n + ${b}}{u_n + 2}$.
-  بما أن $u_n > 0$ (حسب فرضية الترجع)، فإن البسط ${a}u_n + ${b} > 0$ والمقام $u_n + 2 > 0$.
+  بما أن $u_n > 0$ (حسب فرضية الترجع)، فإن البسط $${a}u_n + ${b} > 0$ والمقام $u_n + 2 > 0$.
   ومنه خارج عددين موجبين قطعا موجب قطعا، إذن $u_{n+1} > 0$.
 - الخلاصة: حسب مبدأ الاستدلال بالترجع، فإن $u_n > 0$ لكل $n \\in \\mathbb{N}$.
 
@@ -268,7 +314,7 @@ Or $n \\ge 0 \\implies n+9 \\ge 9 > 8$. L'ensemble des solutions dans $\\mathbb{
       solutionTextFr: `1. Démonstration par récurrence que $u_n > 0$ pour tout $n \\in \\mathbb{N}$ :
 - Initialisation ($n = 0$) : $u_0 = ${u0} > 0$, la proposition est vraie au rang 0.
 - Hérédité : Supposons que $u_n > 0$ pour un certain $n \\in \\mathbb{N}$. Montrons que $u_{n+1} > 0$.
-  On a $u_{n+1} = \\frac{${a}u_n + ${b}}{u_n + 2}$. Par hypothèse de récurrence, $u_n > 0$, donc ${a}u_n + ${b} > 0$ et $u_n + 2 > 0$.
+  On a $u_{n+1} = \\frac{${a}u_n + ${b}}{u_n + 2}$. Par hypothèse de récurrence, $u_n > 0$, donc $${a}u_n + ${b} > 0$ et $u_n + 2 > 0$.
   Le quotient de deux réels strictement positifs est strictement positif, d'où $u_{n+1} > 0$.
 - Conclusion : D'après le principe de récurrence, $\\forall n \\in \\mathbb{N},\\; u_n > 0$.
 
@@ -390,7 +436,12 @@ Le point $D$ est confondu avec $C$.`,
         "0.25 pt : Déduction géométrique",
       ],
     });
-  } else if (titleFr.includes("logarithm") || titleFr.includes("exponentielle") || titleAr.includes("دوال") || titleAr.includes("لوغاريتم")) {
+  } else if (
+    titleFr.includes("logarithm") ||
+    titleFr.includes("exponentielle") ||
+    titleAr.includes("لوغاريتم") ||
+    titleAr.includes("أسي")
+  ) {
     const k = model === "A" ? "2" : "3";
     solutions.push({
       questionNumber: "1",
@@ -431,7 +482,7 @@ Comme $\\lim_{x \\to +\\infty} [f(x) - (${k}x - 1)] = 0$, la droite d'équation 
       solutionTextAr: `1. حساب المشتقة $f'(x)$ لكل $x > 0$ :
 الدالة $f$ قابلة للاشتقاق على $]0, +\\infty[$ كمجموع وخارج دوال اعتيادية قابلة للاشتقاق.
 $f'(x) = (${k}x - 1)' + \\left(\\frac{\\ln x}{x}\\right)' = ${k} + \\frac{(\\frac{1}{x})x - (\\ln x)(1)}{x^2} = ${k} + \\frac{1 - \\ln x}{x^2} = \\frac{${k}x^2 + 1 - \\ln x}{x^2}$.
-بما أن ${k}x^2 + 1 - \\ln x > 0$ لكل $x > 0$، فإن $f'(x) > 0$ قطعا على $]0, +\\infty[$.
+بما أن $${k}x^2 + 1 - \\ln x > 0$ لكل $x > 0$، فإن $f'(x) > 0$ قطعا على $]0, +\\infty[$.
 2. جدول التغيرات :
 الدالة $f$ تزايدية قطعا على المجال $]0, +\\infty[$.
 3. الوضع النسبي وإنشاء المنحنى $(C_f)$ :
@@ -472,7 +523,7 @@ Signe de $f'(x)$ : $f'(x) > 0$ sur $]0, +\\infty[$, la fonction est strictement 
 $\\vec{AB} \\wedge \\vec{AC} = \\begin{vmatrix} 0 & 1 \\\\ -1 & -1 \\end{vmatrix}\\vec{i} - \\begin{vmatrix} 2 & 0 \\\\ -1 & -1 \\end{vmatrix}\\vec{j} + \\begin{vmatrix} 2 & 0 \\\\ 0 & 1 \\end{vmatrix}\\vec{k} = (0 - (-1))\\vec{i} - (-2 - 0)\\vec{j} + (2 - 0)\\vec{k} = \\vec{i} + 2\\vec{j} + 2\\vec{k}$.
 بما أن $\\vec{AB} \\wedge \\vec{AC} \\neq \\vec{0}$، فإن النقط $A$ و $B$ و $C$ غير مستقيمية وتحدد مستوى $(P)$ متجهته المنظمية $\\vec{n}(1, 2, 2)$.
 2. المعادلة الديكارتية للمستوى $(P)$ :
-تكتب على الشكل $1x + 2y + 2z + d = 0$. وبما أن $A(1,0,2) \\in (P)$، فإن $1 + 0 + 4 + d = 0 \\implies d = -5$ (أو للمتغير الآخر $d = -${dPlane}) ومنه المعادلة المختصرة: $x + 2y + 2z - ${dPlane} = 0$.`,
+تكتب على الشكل $1x + 2y + 2z + d = 0$. وبما أن $A(1,0,2) \\in (P)$، فإن $1 + 0 + 4 + d = 0 \\implies d = -5$ (أو للمتغير الآخر $d = -${dPlane}$) ومنه المعادلة المختصرة: $x + 2y + 2z - ${dPlane} = 0$.`,
       solutionTextFr: `1. Calcul du produit vectoriel $\\vec{AB} \\wedge \\vec{AC}$ :
 On a $\\vec{AB}(2, 0, -1)$ et $\\vec{AC}(0, 1, -1)$.
 Par calcul des déterminants extraits :
@@ -580,12 +631,156 @@ $X(\\Omega) = \\{0, 1, 2, 3\\}$. On détermine $P(X = k)$ pour chaque valeur pui
         "0.25 pt : Calcul de l'espérance mathématique $E(X)$",
       ],
     });
+  } else if (titleFr.includes("vector") || titleAr.includes("المتجهي")) {
+    const isModelA = model === "A";
+    const k1 = isModelA ? "\\frac{3}{2}" : "\\frac{9}{2}";
+    const k2 = isModelA ? "3\\vec{AC} - \\vec{AB}" : "5\\vec{AC} - 3\\vec{AB}";
+    const kMN = isModelA ? "-\\frac{5}{2}\\vec{AB} + 3\\vec{AC}" : "-\\frac{15}{2}\\vec{AB} + 5\\vec{AC}";
+    solutions.push({
+      questionNumber: "1",
+      questionText: questionsFr[0] || questionsAr[0] || "Construction vectorielle des points M et N",
+      solutionTextAr: `إنشاء النقطتين $M$ و $N$ في المثلث $ABC$ :
+- النقطة $M$ تحقق $\\vec{AM} = ${k1}\\vec{AB}$ : تنتمي إلى نصف المستقيم $[AB)$ خارج القطعة $[AB]$.
+- النقطة $N$ تحقق $\\vec{AN} = ${k2}$ : ننشئ متوازي الأضلاع المحدد بالمتجهتين انطلاقاً من الرأس $A$.`,
+      solutionTextFr: `Construction géométrique des points $M$ et $N$ :
+- Pour $M$ tel que $\\vec{AM} = ${k1}\\vec{AB}$ : placer $M$ sur la demi-droite $[AB)$ au-delà de $B$ en reportant la fraction correspondante de $AB$.
+- Pour $N$ tel que $\\vec{AN} = ${k2}$ : construire la somme vectorielle par la règle du parallélogramme à partir de l'origine $A$.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "0.75 ن : دقة إنشاء النقطة M على الحامل (AB) مع احترام المنحى والمنظم",
+        "0.75 ن : دقة إنشاء النقطة N كتركيب متجهتين من الأصل A",
+      ],
+      baremeBreakdownFr: [
+        "0.75 pt : Placement exact du point $M$ sur la droite $(AB)$",
+        "0.75 pt : Construction exacte du point $N$ par combinaison linéaire",
+      ],
+    });
+
+    solutions.push({
+      questionNumber: "2",
+      questionText: questionsFr[1] || questionsAr[1] || "Relation de Chasles : expression de MN⃗ et MP⃗",
+      solutionTextAr: `1. إثبات علاقة المتجهة $\\vec{MN}$ باستعمال علاقة شال :
+$\\vec{MN} = \\vec{MA} + \\vec{AN} = -\\vec{AM} + \\vec{AN} = -${k1}\\vec{AB} + (${k2}) = ${kMN}$.
+2. التعبير عن المتجهة $\\vec{MP}$ بدلالة $\\vec{AB}$ و $\\vec{AC}$ حيث $\\vec{BP} = \\frac{6}{5}\\vec{BC}$ :
+حسب علاقة شال : $\\vec{MP} = \\vec{MB} + \\vec{BP} = (\\vec{MA} + \\vec{AB}) + \\frac{6}{5}(\\vec{BA} + \\vec{AC})$
+$\\vec{MP} = \\left(-\\frac{3}{2} + 1 - \\frac{6}{5}\\right)\\vec{AB} + \\frac{6}{5}\\vec{AC} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.`,
+      solutionTextFr: `1. Expression de $\\vec{MN}$ par la relation de Chasles :
+$\\vec{MN} = \\vec{MA} + \\vec{AN} = -\\vec{AM} + \\vec{AN} = -${k1}\\vec{AB} + (${k2}) = ${kMN}$.
+2. Expression de $\\vec{MP}$ en fonction de $\\vec{AB}$ et $\\vec{AC}$ (avec $\\vec{BP} = \\frac{6}{5}\\vec{BC}$) :
+Par la relation de Chasles : $\\vec{MP} = \\vec{MA} + \\vec{AB} + \\vec{BP} = -\\frac{3}{2}\\vec{AB} + \\vec{AB} + \\frac{6}{5}(\\vec{BA} + \\vec{AC})$
+$\\vec{MP} = -\\frac{1}{2}\\vec{AB} - \\frac{6}{5}\\vec{AB} + \\frac{6}{5}\\vec{AC} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.`,
+      bareme: "2.00 pt",
+      baremeBreakdownAr: [
+        "1.00 ن : إدراج النقطة A بعلاقة شال وتبسيط تعبير $\\vec{MN}$",
+        "1.00 ن : تفكيك $\\vec{MP}$ و $\\vec{BC}$ بعلاقة شال والوصول للتعبير المختزل",
+      ],
+      baremeBreakdownFr: [
+        "1.00 pt : Application de la relation de Chasles pour établir $\\vec{MN}$",
+        "1.00 pt : Décomposition de $\\vec{MP}$ et $\\vec{BC}$ dans la base $(\\vec{AB}, \\vec{AC})$",
+      ],
+    });
+
+    solutions.push({
+      questionNumber: "3",
+      questionText: questionsFr[2] || questionsAr[2] || "Colinéarité de MN⃗ et MP⃗ et alignement",
+      solutionTextAr: `استقامية المتجهتين $\\vec{MN}$ و $\\vec{MP}$ واستنتاج استقامية النقط :
+نلاحظ من السؤال السابق أن :
+$\\vec{MN} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC} = \\frac{5}{2}\\left(-\\vec{AB} + \\frac{6}{5}\\vec{AC}\\right) = \\frac{5}{2}\\vec{MP}$.
+إذن توجد علاقة خطية $\\vec{MN} = k\\vec{MP}$ مع $k = \\frac{5}{2} \\in \\mathbb{R}$، وبالتالي المتجهتان $\\vec{MN}$ و $\\vec{MP}$ مستقيميتان.
+وبما أن لهما نقطة مشتركة $M$، فإن النقط $M$ و $N$ و $P$ نقط مستقيمية.`,
+      solutionTextFr: `Colinéarité de $\\vec{MN}$ et $\\vec{MP}$ et alignement des points $M, N, P$ :
+En factorisant par $\\frac{5}{2}$ dans l'expression de $\\vec{MN}$ :
+$\\vec{MN} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC} = \\frac{5}{2}\\left(-\\vec{AB} + \\frac{6}{5}\\vec{AC}\\right) = \\frac{5}{2}\\vec{MP}$.
+Les vecteurs $\\vec{MN}$ et $\\vec{MP}$ sont donc colinéaires ($k = \\frac{5}{2}$).
+Ayant le point $M$ en commun, on en déduit que les points $M, N$ et $P$ sont alignés.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "1.00 ن : إيجاد معامل الاستقامية $k = \\frac{5}{2}$ بحيث $\\vec{MN} = \\frac{5}{2}\\vec{MP}$",
+        "0.50 ن : استنتاج استقامية النقط $M$ و $N$ و $P$",
+      ],
+      baremeBreakdownFr: [
+        "1.00 pt : Mise en évidence du coefficient de colinéarité $\\vec{MN} = \\frac{5}{2}\\vec{MP}$",
+        "0.50 pt : Conclusion rigoureuse sur l'alignement des points $M, N$ et $P$",
+      ],
+    });
+  } else if (titleFr.includes("projection") || titleAr.includes("الإسقاط")) {
+    solutions.push({
+      questionNumber: "1",
+      questionText: questionsFr[0] || questionsAr[0] || "Conservation du coefficient de colinéarité par projection",
+      solutionTextAr: `التعبير عن المتجهة $\\vec{AD'}$ بدلالة $\\vec{AC}$ :
+ليكن $p$ الإسقاط على المستقيم $(AC)$ بتوازٍ مع المستقيم $(BC)$.
+لدينا : $p(A) = A$ (لأن $A \\in (AC)$)، و $p(B) = C$ (لأن $C \\in (AC)$ و $(BC) \\parallel (BC)$)، و $p(D) = D'$.
+بما أن النقطة $D$ تحقق العلاقة المتجهية $\\vec{AD} = \\frac{1}{3}\\vec{AB}$، وحسب خاصية الحفاظ على معامل استقامية متجهتين بالإسقاط، فإن :
+$\\vec{AD'} = \\frac{1}{3}\\vec{AC}$.`,
+      solutionTextFr: `Expression de $\\vec{AD'}$ en fonction de $\\vec{AC}$ :
+Soit $p$ la projection sur $(AC)$ parallèlement à $(BC)$.
+On a $p(A) = A$, $p(B) = C$ et $p(D) = D'$.
+Comme $\\vec{AD} = \\frac{1}{3}\\vec{AB}$, et que la projection conserve le coefficient de colinéarité (forme vectorielle du théorème de Thalès), on obtient directement :
+$\\vec{AD'} = \\frac{1}{3}\\vec{AC}$.`,
+      bareme: "1.00 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : تحديد صور النقط A و B و D بالإسقاط p",
+        "0.50 ن : تطبيق خاصية الحفاظ على معامل الاستقامية واستنتاج $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Identification des projetés de $A, B$ et $D$ sur $(AC)$ parallèlement à $(BC)$",
+        "0.50 pt : Conservation du coefficient de colinéarité $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$",
+      ],
+    });
+
+    solutions.push({
+      questionNumber: "2",
+      questionText: questionsFr[1] || questionsAr[1] || "Conservation du milieu d'un segment par projection",
+      solutionTextAr: `إثبات أن $J$ منتصف القطعة $[AC]$ :
+ليكن $p'$ الإسقاط على المستقيم $(AC)$ بتوازٍ مع المستقيم $(AB)$.
+لدينا $p'(B) = A$ (لأن $A \\in (AC)$ و $(BA) \\parallel (AB)$)، و $p'(C) = C$، و $p'(I) = J$.
+بما أن $I$ منتصف القطعة $[BC]$ (أي $\\vec{BI} = \\frac{1}{2}\\vec{BC}$)، وبما أن الإسقاط يحافظ على المنتصف، فإن $J = p'(I)$ هي منتصف القطعة $[AC]$، أي $\\vec{AJ} = \\frac{1}{2}\\vec{AC}$.`,
+      solutionTextFr: `Démonstration que $J$ est le milieu du segment $[AC]$ :
+Soit $p'$ la projection sur $(AC)$ parallèlement à $(AB)$.
+On a $p'(B) = A$, $p'(C) = C$ et $p'(I) = J$.
+Comme $I$ est le milieu de $[BC]$ ($\\vec{BI} = \\frac{1}{2}\\vec{BC}$) et que la projection conserve le milieu d'un segment, son projeté $J$ est le milieu de $[AC]$, d'où $\\vec{AJ} = \\frac{1}{2}\\vec{AC}$.`,
+      bareme: "1.00 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : تحديد مساقط B و C و I على (AC) بتوازٍ مع (AB)",
+        "0.50 ن : توظيف خاصية الحفاظ على المنتصف بالإسقاط",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Identification des images de $B, C$ et $I$ par la projection $p'$",
+        "0.50 pt : Application de la conservation du milieu par projection",
+      ],
+    });
+
+    solutions.push({
+      questionNumber: "3",
+      questionText: questionsFr[2] || questionsAr[2] || "Relation vectorielle D'J⃗ = (1/6)AC⃗ et réciproque",
+      solutionTextAr: `1. إثبات أن $\\vec{D'J} = \\frac{1}{6}\\vec{AC}$ :
+حسب علاقة شال : $\\vec{D'J} = \\vec{AJ} - \\vec{AD'} = \\frac{1}{2}\\vec{AC} - \\frac{1}{3}\\vec{AC} = \\left(\\frac{3 - 2}{6}\\right)\\vec{AC} = \\frac{1}{6}\\vec{AC}$.
+2. استنتاج مسقط النقطة $K$ (حيث $\\vec{BK} = \\frac{1}{3}\\vec{BC}$) على $(AC)$ بتوازٍ مع $(AB)$ :
+بالإسقاط $p'$ على $(AC)$ بتوازٍ مع $(AB)$، مسقط $B$ هو $A$ ومسقط $C$ هو $C$.
+بما أن $\\vec{BK} = \\frac{1}{3}\\vec{BC}$ و $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$، فإن $D'$ هي مسقط النقطة $K$ على $(AC)$ بتوازٍ مع $(AB)$.`,
+      solutionTextFr: `1. Preuve que $\\vec{D'J} = \\frac{1}{6}\\vec{AC}$ :
+Par la relation de Chasles : $\\vec{D'J} = \\vec{AJ} - \\vec{AD'} = \\frac{1}{2}\\vec{AC} - \\frac{1}{3}\\vec{AC} = \\frac{1}{6}\\vec{AC}$.
+2. Déduction pour le point $K$ tel que $\\vec{BK} = \\frac{1}{3}\\vec{BC}$ :
+Par la projection $p'$ sur $(AC)$ parallèlement à $(AB)$, l'image de $B$ est $A$ et l'image de $C$ est $C$.
+Comme $\\vec{BK} = \\frac{1}{3}\\vec{BC}$ et $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$, l'unicité du projeté assure que $D'$ est le projeté de $K$ sur $(AC)$ parallèlement à $(AB)$.`,
+      bareme: "1.00 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : حساب $\\vec{D'J} = \\vec{AJ} - \\vec{AD'} = \\frac{1}{6}\\vec{AC}$",
+        "0.50 ن : استنتاج أن $D'$ مسقط $K$ بتوظيف الخاصية العكسية",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Calcul vectoriel $\\vec{D'J} = \\vec{AJ} - \\vec{AD'} = \\frac{1}{6}\\vec{AC}$",
+        "0.50 pt : Déduction par conservation du rapport $\\frac{1}{3}$",
+      ],
+    });
   } else {
     // حل عام مهيكل وفق النموذج البيداغوجي المغربي لجميع الدروس الأخرى
-    const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
-    const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
-    const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;
-    const cap1Fr = lesson.capacitiesFr[1] || cap0Fr;
+    const capsAr = safeLesson.capacitiesAr || [];
+    const capsFr = safeLesson.capacitiesFr || [];
+    const cap0Ar = capsAr[0] || safeLesson.lessonAr;
+    const cap1Ar = capsAr[1] || cap0Ar;
+    const cap0Fr = capsFr[0] || safeLesson.lessonFr;
+    const cap1Fr = capsFr[1] || cap0Fr;
 
     solutions.push({
       questionNumber: "1",
@@ -647,11 +842,11 @@ $X(\\Omega) = \\{0, 1, 2, 3\\}$. On détermine $P(X = k)$ pour chaque valeur pui
       const cleanQAr = qArText.replace(/^\d+[\.\)]\s*/, "");
       const cleanQFr = qFrText.replace(/^\d+[\.\)]\s*/, "");
       const capAr =
-        lesson.capacitiesAr[qIdx % Math.max(1, lesson.capacitiesAr.length)] ||
-        lesson.lessonAr;
+        (capsAr.length > 0 ? capsAr[qIdx % capsAr.length] : null) ||
+        safeLesson.lessonAr;
       const capFr =
-        lesson.capacitiesFr[qIdx % Math.max(1, lesson.capacitiesFr.length)] ||
-        lesson.lessonFr;
+        (capsFr.length > 0 ? capsFr[qIdx % capsFr.length] : null) ||
+        safeLesson.lessonFr;
 
       const lowerQ = `${qArText} ${qFrText}`.toLowerCase();
       let specificStepsAr = `1. استثمار نتائج الأسئلة السابقة وتوظيف خاصية « ${capAr} ».\n2. إجراء التحويلات الجبرية أو التحليلية اللازمة مع تعليل كل تكافؤ أو استلزام منطقي.\n3. استخلاص النتيجة النهائية وتأطيرها بوضوح.`;
@@ -659,7 +854,16 @@ $X(\\Omega) = \\{0, 1, 2, 3\\}$. On détermine $P(X = k)$ pour chaque valeur pui
       let noteAr = "توجيه بيداغوجي للمصحح: تقبل كل طريقة رياضية مكافئة وسليمة، مع عدم معاقبة التلميذ مرتين على خطأ حسابي سابق.";
       let noteFr = "Directive d'évaluation : Valoriser toute démarche mathématique équivalente et cohérente (erreur reportée non doublement sanctionnée).";
 
-      if (lowerQ.includes("مشتق") || lowerQ.includes("تغيرات") || lowerQ.includes("dériv") || lowerQ.includes("variation")) {
+      const isTcGeneralFunctions =
+        lesson.lessonAr.includes("عموميات") ||
+        lesson.lessonAr.includes("مرجعية") ||
+        lesson.lessonAr.includes("اعتيادية") ||
+        lesson.lessonFr.toLowerCase().includes("généralités");
+
+      if (
+        !isTcGeneralFunctions &&
+        (lowerQ.includes("مشتق") || lowerQ.includes("تغيرات") || lowerQ.includes("dériv") || lowerQ.includes("variation"))
+      ) {
         specificStepsAr = `1. التذكير بقابلية الاشتقاق على مجال الدراسة وتطبيق قواعد اشتقاق العمليات والمركب.\n2. توحيد المقامات وتعميل التعبير البسطي لربط إشارة المشتقة بإشارة التعبير المساعد.\n3. استنتاج رتابة الدالة بدقة وإنشاء جدول التغيرات مستوفياً لمجالات التعريف والنهايات والقيم الحدية.`;
         specificStepsFr = `1. Justifier la dérivabilité sur l'intervalle d'étude et appliquer les formules de dérivation.\n2. Factoriser l'expression obtenue afin d'identifier clairement le signe de la dérivée.\n3. En déduire le sens de variation strict et dresser le tableau de variations complet (bornes, signes, flèches et extremums).`;
         noteAr = "خطأ شائع يجب الانتباه إليه: نسيان تبرير قابلية الاشتقاق قبل حساب المشتقة أو إغفال إشارة المقام في جدول التغيرات.";
@@ -669,7 +873,7 @@ $X(\\Omega) = \\{0, 1, 2, 3\\}$. On détermine $P(X = k)$ pour chaque valeur pui
         specificStepsFr = `1. Calculer la limite aux bornes en levant l'indétermination éventuelle par factorisation ou croissances comparées.\n2. Vérifier que lim [f(x) - (ax + b)] = 0 pour établir l'équation de l'asymptote.\n3. Étudier le signe de la différence f(x) - y pour préciser la position relative de (C_f) et de la droite.`;
         noteAr = "خطأ شائع: الاكتفاء بحساب النهاية دون صياغة التأويل الهندسي الصريح (معادلة المستقيم المقارب والوضع النسبي).";
         noteFr = "Point de vigilance : Exiger la formulation géométrique complète (équation de l'asymptote et voisinage concerné).";
-      } else if (lowerQ.includes("تكامل") || lowerQ.includes("مساح") || lowerQ.includes("أصلي") || lowerQ.includes("intégral") || lowerQ.includes("aire") || lowerQ.includes("primitive")) {
+      } else if (lowerQ.includes("تكامل") || lowerQ.includes("أصلي") || /\bintégral/.test(lowerQ) || /\bprimitive/.test(lowerQ)) {
         specificStepsAr = `1. التحقق من اتصال الدالة على مجال المكاملة وتحديد الدالة الأصلية أو وضع عناصر المكاملة بالأجزاء (u, v').\n2. تطبيق صيغة نيوتن-لايبنتز [F(x)]_a^b مع تعويض المحدين العلوي والسفلي بدقة.\n3. بالنسبة لحساب المساحة الهندسية: ضرب التكامل في وحدة المساحة ||i⃗|| × ||j⃗|| مع مراعاة القيمة المطلقة |f(x) - y|.`;
         specificStepsFr = `1. Justifier la continuité sur le segment d'intégration et identifier une primitive ou poser l'intégration par parties.\n2. Appliquer la formule fondamentale [F(x)]_a^b en détaillant le calcul aux bornes.\n3. Pour le calcul d'aire : multiplier l'intégrale de |f(x) - y| par l'unité d'aire graphique ||i⃗|| × ||j⃗|| en cm².`;
         noteAr = "خطأ شائع: نسيان القيمة المطلقة أو عدم ضرب النتيجة في وحدة المساحة (cm²) عند الانتقال من التكامل إلى المساحة الهندسية.";
@@ -852,15 +1056,36 @@ Les centres $\\Omega_m$ décrivent le segment ouvert porté par la droite perpen
       solFr = `Modélisation par la loi binomiale $Y_n \\sim \\mathcal{B}(n, p)$ :
 - Par indépendance des $n$ épreuves de Bernoulli : $p_n = 1 - P(Y_n = 0) = 1 - (1-p)^n$.
 - Résolution de l'inéquation : $1 - (1-p)^n \\ge 0,99 \\iff (1-p)^n \\le 0,01 \\iff n \\ge \\frac{\\ln(0,01)}{\\ln(1-p)}$ (car $\\ln(1-p) < 0$).`;
+    } else if (subCat === "هندسة مستوية" || titleFr.includes("vector") || titleFr.includes("projection")) {
+      solAr = `منهجية البرهان في الهندسة المستوية (علاقة شال والاستقامية والإسقاط) :
+1. نختار أساساً متجهياً موحداً للمثلث $ABC$، وليكن $(\\vec{AB}, \\vec{AC})$.
+2. نطبق علاقة شال لتفكيك كل متجهة مطلوبة بدلالة $\\vec{AB}$ و $\\vec{AC}$ مع احترام الإشارة عند قلب المنحى ($\\vec{MA} = -\\vec{AM}$).
+3. في حالة منتصف القطعة $I$: نُعوّض $\\vec{GB} + \\vec{GC} = 2\\vec{GI}$، وفي حالة الإسقاط نُطبّق خاصية الحفاظ على معامل الاستقامية $\\vec{AD'} = k\\vec{AC}$.`;
+      solFr = `Démarche en géométrie plane (Chasles, colinéarité & projection) :
+1. Exprimer tous les vecteurs dans une même base $(\\vec{AB}, \\vec{AC})$ via la relation de Chasles.
+2. Pour le centre de gravité $G$ : utiliser $\\vec{GB} + \\vec{GC} = 2\\vec{GI}$ et $\\vec{GA} + 2\\vec{GI} = \\vec{0} \\implies \\vec{AG} = \\frac{2}{3}\\vec{AI}$.
+3. Par projection parallèlement à $(BC)$, le rapport de colinéarité est conservé : $\\vec{AG'} = \\frac{2}{3}\\vec{AJ}$.`;
+    } else if (subCat === "حسابيات" || subCat === "جبر" || subCat === "منطق ومجموعات" || lesson.category === "Algebra") {
+      solAr = `منهجية الحل في الجبر والحسابيات :
+1. في دراسة الزوجية والقابلية للقسمة: نُفصّل الحالات ($n = 2k$ أو $n = 2k+1$) أو نُعمّل التعبير على شكل جداء أعداد صحيحة متتالية.
+2. في حل المعادلات في $\\mathbb{N}^2$: نُحوّل المعادلة إلى جداء عاملين يساوي عدداً صحيحاً ثم نُطابق مع قواسمه الموجبة مع مراعاة نفس الزوجية أو الترتيب.`;
+      solFr = `Méthode en Algèbre et Arithmétique :
+1. Pour la parité et la divisibilité : utiliser la disjonction des cas ou factoriser en produit d'entiers consécutifs.
+2. Pour les équations dans $\\mathbb{N}^2$ : factoriser sous forme de produit égal à un entier constant puis étudier les diviseurs positifs.`;
     } else {
-      solAr = `حل المسألة التوليفية ($u_{n+1} = f(u_n)$) :
-1. البرهان بالترجع على التأطير: نتحقق من صحة الخاصية من أجل $n=0$، ثم نفترض أن $u_n \\in I$ ونستعمل رتابة $f$ وصورة المجال $f(I) \\subset I$.
-2. دراسة الرتابة: إشارة الفرق $u_{n+1} - u_n = f(u_n) - u_n$ هي نفس إشارة $f(x) - x$ على المجال $I$.
-3. التقارب والنهاية: بما أن $(u_n)$ رتيبة ومحصورة فهي متقاربة، وبما أن $f$ متصلة على $I$ فإن النهاية $L$ تحقق $f(L) = L$.`;
-      solFr = `Résolution du problème de synthèse ($u_{n+1} = f(u_n)$) :
-1. Récurrence sur le bornage : Initialisation pour $n=0$, puis hérédité par croissance de $f$ et stabilité de l'intervalle $f(I) \\subset I$.
-2. Monotonie : Le signe de $u_{n+1} - u_n = f(u_n) - u_n$ est déterminé par la position relative de $(C_f)$ par rapport à la première bissectrice $y = x$.
-3. Convergence et point fixe : Suite monotone et bornée donc convergente vers $L \\in I$ solution de $f(L) = L$ par continuité de $f$.`;
+      const cleanQ = qAr.replace(/^\d+[\.\)]\s*/, "");
+      const capsAr = lesson?.capacitiesAr || [];
+      const capsFr = lesson?.capacitiesFr || [];
+      const capArText = capsAr.length > 0 ? capsAr[qIdx % capsAr.length] : (lesson?.lessonAr || "الرياضيات");
+      const capFrText = capsFr.length > 0 ? capsFr[qIdx % capsFr.length] : (lesson?.lessonFr || "Mathématiques");
+      solAr = `عناصر الإجابة المنهجية للسؤال (${qIdx + 1}) — « ${cleanQ} » :
+1. تحديد المعطيات والشروط اللازمة لتطبيق الخاصية المرتبطة بـ « ${capArText} ».
+2. إنجاز خطوات البرهان أو الحساب الجبري بدقة متناهية.
+3. تأطير النتيجة النهائية والتحقق من ملاءمتها لمجموعة الدراسة.`;
+      solFr = `Éléments de réponse pour la question (${qIdx + 1}) :
+1. Identifier les hypothèses requises pour « ${capFrText} ».
+2. Développer les étapes de calcul ou de démonstration avec rigueur.
+3. Encadrer le résultat final et formuler la conclusion.`;
     }
 
     return {

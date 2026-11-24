@@ -420,47 +420,63 @@ export function buildCustomEvaluationGrid(
       const synthProb = generateMoroccanSynthesisProblem(lessons, modelCode);
       const probExNum = currentExNum++;
       const probWeight = 42.5;
-      const probQuestions: EvaluationQuestionRow[] = synthProb.parts.map(
+      let globalProbQIdx = 0;
+      const probQuestions: EvaluationQuestionRow[] = synthProb.parts.flatMap(
         (part, pIdx) => {
           const lvl: "N1" | "N2" | "N3" =
             pIdx === 0 ? "N1" : pIdx === 1 ? "N2" : "N3";
-          const row: EvaluationQuestionRow = {
-            exerciseIndex: exercises.length,
-            exerciseNumber: probExNum,
-            exerciseTitleAr: synthProb.titleAr,
-            exerciseTitleFr: synthProb.titleFr,
-            subCategoryAr: "مسألة توليفية شاملة",
-            subCategoryFr: "Problème de Synthèse",
-            exerciseWeight: probWeight,
-            exerciseTotalPoints: 8.5,
-            questionIndex: pIdx,
-            questionCode: `Prob-P${pIdx + 1}`,
-            questionLabelAr: `مسألة - ج${pIdx + 1}`,
-            questionLabelFr: `Prob - P${pIdx + 1}`,
-            questionSnippetAr: part.partTitleAr,
-            questionSnippetFr: part.partTitleFr,
-            capacityAr:
-              part.questionsAr[0]?.slice(0, 75) || "التوليف والنمذجة الرياضية",
-            capacityFr:
-              part.questionsFr[0]?.slice(0, 75) || "Synthèse et modélisation",
-            levelCode: lvl,
-            levelLabelAr:
-              lvl === "N1"
-                ? "تطبيق مباشر (N1)"
-                : lvl === "N2"
-                ? "تعبئة وتوليف (N2)"
-                : "تعمق ومبادرة (N3)",
-            levelLabelFr:
-              lvl === "N1"
-                ? "Application directe (N1)"
-                : lvl === "N2"
-                ? "Mobilisation (N2)"
-                : "Initiative & P3 (N3)",
-            boenCompetencyFr: "Chercher / Modéliser / Raisonner",
-            points: Number(parseFloat(part.partPoints || "2.5").toFixed(2)),
-          };
-          allQuestions.push(row);
-          return row;
+          const partPts = parseFloat(part.partPoints || "2.5");
+          const qCountInPart = Math.max(1, part.questionsFr.length);
+          const firstQPts = Number((Math.round((partPts / qCountInPart) * 4) / 4).toFixed(2));
+          return part.questionsFr.map((qFr, qI) => {
+            const qAr = part.questionsAr[qI] || qFr;
+            const qPts =
+              qI === qCountInPart - 1
+                ? Number(Math.max(0.25, partPts - firstQPts * (qCountInPart - 1)).toFixed(2))
+                : firstQPts;
+            const qNum = ++globalProbQIdx;
+            const cleanAr = qAr.replace(/^\d+[\.\)]\s*/, "").trim();
+            const cleanFr = qFr.replace(/^\d+[\.\)]\s*/, "").trim();
+            const row: EvaluationQuestionRow = {
+              exerciseIndex: exercises.length,
+              exerciseNumber: probExNum,
+              exerciseTitleAr: synthProb.titleAr,
+              exerciseTitleFr: synthProb.titleFr,
+              subCategoryAr: "مسألة توليفية شاملة",
+              subCategoryFr: "Problème de Synthèse",
+              exerciseWeight: probWeight,
+              exerciseTotalPoints: 8.5,
+              questionIndex: qNum - 1,
+              questionCode: `Prob-Q${qNum}`,
+              questionLabelAr: `م - س${qNum}`,
+              questionLabelFr: `Prob - Q${qNum}`,
+              questionSnippetAr:
+                cleanAr.length > 85 ? `${cleanAr.slice(0, 82)}...` : cleanAr,
+              questionSnippetFr:
+                cleanFr.length > 85 ? `${cleanFr.slice(0, 82)}...` : cleanFr,
+              capacityAr:
+                cleanAr.slice(0, 75) || "التوليف والنمذجة الرياضية",
+              capacityFr:
+                cleanFr.slice(0, 75) || "Synthèse et modélisation",
+              levelCode: lvl,
+              levelLabelAr:
+                lvl === "N1"
+                  ? "تطبيق مباشر (N1)"
+                  : lvl === "N2"
+                  ? "تعبئة وتوليف (N2)"
+                  : "تعمق ومبادرة (N3)",
+              levelLabelFr:
+                lvl === "N1"
+                  ? "Application directe (N1)"
+                  : lvl === "N2"
+                  ? "Mobilisation (N2)"
+                  : "Initiative & P3 (N3)",
+              boenCompetencyFr: "Chercher / Modéliser / Raisonner",
+              points: qPts,
+            };
+            allQuestions.push(row);
+            return row;
+          });
         }
       );
 
@@ -1490,13 +1506,19 @@ export function calculateExamTimeBalance(params: {
   hasSynthesisProblem?: boolean;
 }): ExamTimeSimulationResult {
   const { durationStr, questions, hasQcm = false, hasSynthesisProblem = false } = params;
-  const officialMinutes = durationStr.includes("4")
-    ? 240
-    : durationStr.includes("3")
-    ? 180
-    : durationStr.includes("2")
-    ? 120
-    : 60;
+  const officialMinutes =
+    durationStr.includes("4") || durationStr.includes("240")
+      ? 240
+      : durationStr.includes("3") || durationStr.includes("180")
+      ? 180
+      : durationStr.includes("1h30") || durationStr.includes("90")
+      ? 90
+      : durationStr.includes("2") ||
+        durationStr.includes("120") ||
+        durationStr.includes("ساعتان") ||
+        durationStr.includes("ساعتين")
+      ? 120
+      : 60;
 
   let teacherMins = 0;
   questions.forEach((q) => {

@@ -572,7 +572,7 @@ export function validateAndNormalizeExamConfigJSON(
   let n1 = rawN1;
   let n2 = rawN2;
   let n3 = rawN3;
-  if (sumN !== 100 || rawN1 < 5 || rawN2 < 5 || rawN3 < 5) {
+  if (sumN !== 100 || rawN1 < 5 || rawN2 < 5 || rawN3 < 0) {
     warnings.push(
       `مجموع نسب المستويات المهارية في الملف كان (${sumN}%)؛ تمت موازنته تلقائياً إلى 100% وفق المذكرة 142-08.`
     );

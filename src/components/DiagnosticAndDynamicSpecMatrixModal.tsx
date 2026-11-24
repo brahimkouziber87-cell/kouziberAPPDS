@@ -117,6 +117,17 @@ export const DiagnosticAndDynamicSpecMatrixModal: React.FC<
   }, [initialTab]);
 
   React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  React.useEffect(() => {
     if (trackCode && CURRICULUM_DB[trackCode]) {
       setDiagTrackCode(trackCode);
       setExcludedPrereqIndices([]);
@@ -479,48 +490,49 @@ export const DiagnosticAndDynamicSpecMatrixModal: React.FC<
     >
       <div className="bg-white border-2 border-slate-800 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* TOP HEADER */}
-        <div className="bg-gradient-to-l from-slate-900 via-indigo-950 to-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-xl">
+        <div className="bg-gradient-to-l from-slate-900 via-indigo-950 to-slate-900 text-white px-4 md:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <span className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-xl shrink-0">
               🧭
             </span>
-            <div>
-              <h2 className="text-base md:text-lg font-black tracking-tight text-white">
+            <div className="min-w-0">
+              <h2 className="text-sm md:text-base font-black tracking-tight text-white">
                 استوديو الروائز التشخيصية التفاعلية (QR + PDF) وأتمتة جدول المواصفات الديناميكي
               </h2>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-slate-300 truncate">
                 تشخيص المكتسبات القبلية لكل مستوى دراسي مع تصدير PDF ورمز QR تفاعلي · وتحديث فوري لجدول المواصفات (142-08) عند إضافة أو تعديل أي تمرين
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("DIAGNOSTIC_STUDIO")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === "DIAGNOSTIC_STUDIO"
                   ? "bg-amber-400 text-slate-950 shadow-md"
                   : "bg-slate-800 text-slate-200 hover:bg-slate-700"
               }`}
             >
-              🎯 الاختبارات التشخيصية (المكتسبات + PDF + QR)
+              🎯 الاختبارات التشخيصية (PDF + QR)
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("DYNAMIC_SPEC_MATRIX")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === "DYNAMIC_SPEC_MATRIX"
                   ? "bg-emerald-400 text-slate-950 shadow-md"
                   : "bg-slate-800 text-slate-200 hover:bg-slate-700"
               }`}
             >
-              📊 أتمتة جدول المواصفات الديناميكي ({dynamicSpecMatrix.totals.totalExercises} تمارين)
+              📊 أتمتة جدول المواصفات ({dynamicSpecMatrix.totals.totalExercises} تمارين)
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer"
+              aria-label="إغلاق"
+              className="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer"
             >
               ✕ إغلاق
             </button>

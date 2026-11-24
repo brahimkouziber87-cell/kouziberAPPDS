@@ -121,8 +121,20 @@ export function decomposeQuestionIntoSubQuestions(params: {
     questionIndex = 0,
   } = params;
 
-  const cleanAr = (questionAr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
-  const cleanFr = (questionFr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
+  const rawCleanAr = (questionAr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
+  const rawCleanFr = (questionFr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
+  const hasMultipleExplicitAr =
+    rawCleanAr.split(/(?:^|\s+)(?:أ|ب|ج|د)[\)\-\.]\s+/).filter(Boolean).length >= 2 &&
+    /(?:^|\s+)أ[\)\-\.]\s+/.test(rawCleanAr);
+  const hasMultipleExplicitFr =
+    rawCleanFr.split(/(?:^|\s+)(?:a|b|c|d)[\)\.]\s+/i).filter(Boolean).length >= 2 &&
+    /(?:^|\s+)a[\)\.]\s+/i.test(rawCleanFr);
+  const cleanAr = hasMultipleExplicitAr
+    ? rawCleanAr
+    : rawCleanAr.replace(/^\s*(?:أ|ب|ج|د)[\)\-\.]\s+/, "").trim();
+  const cleanFr = hasMultipleExplicitFr
+    ? rawCleanFr
+    : rawCleanFr.replace(/^\s*(?:a|b|c|d)[\)\.]\s+/i, "").trim();
   const safeParentPts = Math.max(0.25, Number(parentPoints) || 1.0);
 
   if (mode === "NONE") {
@@ -495,15 +507,19 @@ function buildPedagogicalSubStepsForQuestion(
     },
     {
       textAr: isGeometryOrComplex
-        ? "استنتج التأويل الهندسي المباشر للنتيجة السابقة في المعلم المعتمد."
+        ? "استنتج الخاصية الهندسية المباشرة أو طبيعة الشكل في المستوى المعتمد."
         : isSequence
         ? "استنتج سلوك الحدود أو رتابة المتتالية انطلاقاً من النتيجة السابقة."
-        : "استنتج التأويل التحليلي أو الهندسي المباشر للنتيجة المحصل عليها.",
+        : isLimitOrDerivative
+        ? "استنتج التأويل المبياني المباشر للنتيجة المحصل عليها."
+        : "صغ الخلاصة الرياضية المضبوطة وتحقق من صحة النتيجة المحصل عليها.",
       textFr: isGeometryOrComplex
-        ? "En déduire l'interprétation géométrique directe dans le repère considéré."
+        ? "En déduire la propriété géométrique directe ou l'alignement dans le plan considéré."
         : isSequence
         ? "En déduire le comportement ou la monotonie de la suite à partir du résultat précédent."
-        : "En déduire l'interprétation analytique ou graphique directe du résultat obtenu.",
+        : isLimitOrDerivative
+        ? "En déduire l'interprétation graphique directe du résultat obtenu."
+        : "Formuler la conclusion mathématique précise et vérifier la validité du résultat obtenu.",
       level: parentLevel,
       estimatedMinutes: 3,
     },

@@ -268,25 +268,31 @@ export function generateFullMoroccanPedagogicalFiche(
   const lessonFr = lesson.lessonFr;
   const hoursNum = parseInt(lesson.hours, 10) || 12;
 
-  // توزيع الحصص الزمنية البيداغوجية الرسمية
+  // توزيع الحصص الزمنية البيداغوجية الرسمية (مجموع مطابق تماماً للغلاف الزمني 100%)
   const actHours = Math.max(1, Math.round(hoursNum * 0.15));
-  const crsHours = Math.max(2, Math.round(hoursNum * 0.45));
-  const exHours = Math.max(2, Math.round(hoursNum * 0.25));
-  const ticeH = Math.max(1, Math.round(hoursNum * 0.08));
-  const evalH = Math.max(1, hoursNum - actHours - crsHours - exHours - ticeH);
+  const ticeH = hoursNum >= 6 ? 1 : 0;
+  const evalH = hoursNum >= 5 ? 1 : 0;
+  const remainingForCore = Math.max(2, hoursNum - actHours - ticeH - evalH);
+  const exHours = Math.max(1, Math.round(remainingForCore * 0.36));
+  const crsHours = Math.max(1, remainingForCore - exHours);
 
-  // الكفايات العرضية والنوعية المستهدفة
+  // الكفايات العرضية والنوعية المستهدفة حسب السلك
+  const isTC = track.cycle === "TC";
   const targetCompetenciesAr = [
-    "الاستدلال الرياضي والبرهان: توظيف الاستدلال بالاستلزام، التكافؤ، الخلف، الترجع، وفصل الحالات بدقة متناهية.",
-    "الترييض والنمذجة: ترجمة وضعيات هندسية وفيزيائية واقتصادية إلى لغة وصيغ رياضية متناسقة وحلها تحليلياً.",
-    "الحساب والتحكم في الخوارزميات: التمكن من الحساب الجبري، المشتقات، النهايات، المتتاليات، والتكاملات بدقة عددية ورمزية.",
+    "الاستدلال الرياضي والبرهان: توظيف الاستدلال بالاستلزام، التكافؤ، الخلف، وفصل الحالات بدقة متناهية.",
+    "الترييض والنمذجة: ترجمة وضعيات هندسية وعددية وفيزيائية إلى لغة وصيغ رياضية متناسقة وحلها.",
+    isTC
+      ? "الحساب والتحكم في الأدوات: التمكن من الحساب العددي والجبري والمتجهي والإنشاءات الهندسية بدقة."
+      : "الحساب والتحكم في الخوارزميات: التمكن من الحساب الجبري، المشتقات، النهايات، المتتاليات، والتكاملات بدقة عددية ورمزية.",
     "التواصل والتحرير الرياضي: التعبير السليم باللغة الرياضية الصارمة والرموز المعتمدة وتبرير كل خطوة استدلالية.",
     "التوظيف الهادف للتكنولوجيا (TICE): استغلال GeoGebra للتمثيل البصري الديناميكي وبيئة بايثون للتحقق الرقمي والنمذجة.",
   ];
   const targetCompetenciesFr = [
-    "Raisonnement mathématique : Mettre en œuvre avec rigueur la déduction, la contraposée, l'absurde, la récurrence et la disjonction de cas.",
-    "Modélisation mathématique : Traduire des situations géométriques, physiques ou économiques en équations ou fonctions adéquates.",
-    "Calcul et maîtrise algorithmique : Manipuler avec aisance les calculs algébriques, dérivées, limites et intégrales.",
+    "Raisonnement mathématique : Mettre en œuvre avec rigueur la déduction, la contraposée, l'absurde et la disjonction de cas.",
+    "Modélisation mathématique : Traduire des situations géométriques ou numériques en équations ou relations vectorielles.",
+    isTC
+      ? "Calcul et géométrie : Manipuler avec aisance le calcul numérique, algébrique, vectoriel et les constructions géométriques."
+      : "Calcul et maîtrise algorithmique : Manipuler avec aisance les calculs algébriques, dérivées, limites et intégrales.",
     "Communication et rigueur d'argumentation : Rédiger des preuves structurées avec les notations mathématiques officielles.",
     "Intégration efficiente des TICE : Exploiter GeoGebra pour la conjecture visuelle et Python pour l'expérimentation algorithmique.",
   ];
@@ -387,16 +393,30 @@ export function generateFullMoroccanPedagogicalFiche(
     expectedCapacitiesFr: lesson.capacitiesFr,
     prerequisitesAr: track.prereqsAr,
     prerequisitesFr: track.prereqsFr,
-    extensionsAr: [
-      `الامتداد الجامعي وفي الأقسام التحضيرية للمدارس العليا CPGE وكليات العلوم والتقنيات FST والمدارس الوطنية للعلوم التطبيقية ENSA.`,
-      `التوظيف المباشر في الفيزياء والكيمياء (ميكانيك نيوتن، الدارات الكهربائية RLC، الإشعاع النووي، الحركية الكيميائية).`,
-      `النمذجة الرياضية في علوم الاقتصاد والتدبير والمعلوميات والإحصاء والهندسة المدنية.`,
-    ],
-    extensionsFr: [
-      "Prolongement en Classes Préparatoires (CPGE), facultés des sciences et techniques (FST) et écoles d'ingénieurs (ENSA, ENSAM).",
-      "Applications directes en Sciences Physiques (mécanique classique, circuits RLC, radioactivité, cinétique chimique).",
-      "Modélisation en sciences économiques, statistiques appliquées, informatique et traitement du signal.",
-    ],
+    extensionsAr:
+      track.cycle === "TC"
+        ? [
+            `الامتداد المباشر نحو دروس الهندسة المستوية والمستقيم في المستوى بالسنة الأولى بكالوريا (المرجح، الجداء السلمي) والثانية بكالوريا (الهندسة الفضائية).`,
+            `التوظيف في الفيزياء والكيمياء (تمثيل القوى، السرعة، وتوازن جسم صلب خاضع لقوتين أو ثلاث قوى متلاقية).`,
+            `تنمية مهارات البرهان الهندسي والاستدلال المنطقي والإنشاءات الهندسية المضبوطة.`,
+          ]
+        : [
+            `الامتداد الجامعي وفي الأقسام التحضيرية للمدارس العليا CPGE وكليات العلوم والتقنيات FST والمدارس الوطنية للعلوم التطبيقية ENSA.`,
+            `التوظيف المباشر في الفيزياء والكيمياء (ميكانيك نيوتن، الدارات الكهربائية RLC، الإشعاع النووي، الحركية الكيميائية).`,
+            `النمذجة الرياضية في علوم الاقتصاد والتدبير والمعلوميات والإحصاء والهندسة المدنية.`,
+          ],
+    extensionsFr:
+      track.cycle === "TC"
+        ? [
+            "Prolongement direct vers les chapitres de 1ère Bac (Barycentre, Produit scalaire dans le plan) et 2ème Bac (Géométrie dans l'espace).",
+            "Applications directes en Physique (représentation des forces, vecteurs vitesse et équilibre d'un solide).",
+            "Consolidation des compétences de raisonnement géométrique et de construction rigoureuse.",
+          ]
+        : [
+            "Prolongement en Classes Préparatoires (CPGE), facultés des sciences et techniques (FST) et écoles d'ingénieurs (ENSA, ENSAM).",
+            "Applications directes en Sciences Physiques (mécanique classique, circuits RLC, radioactivité, cinétique chimique).",
+            "Modélisation en sciences économiques, statistiques appliquées, informatique et traitement du signal.",
+          ],
     didacticToolsAr,
     didacticToolsFr,
     pedagogicalReferencesAr,
@@ -420,7 +440,7 @@ export function generateFullMoroccanPedagogicalFiche(
  */
 function buildGlobalPlanningMatrix(lesson: LessonItem, totalHours: number): FicheGlobalPlanningSession[] {
   const sessionsCount = Math.min(Math.max(4, Math.round(totalHours / 2)), 8);
-  const title = lesson.lessonAr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
 
   const matrix: FicheGlobalPlanningSession[] = [];
 
@@ -604,14 +624,14 @@ function buildOfficialDidacticSteps(
       phaseFr: "Phase 4 : Intégration TICE & Algorithmique (GeoGebra & Python)",
       durationMinutes: ticeH * 55,
       objectifsAr: [
-        "توظيف برمجية GeoGebra 6 للمحاكاة البصرية الديناميكية، والتأكد من المنحنيات والمماسات وتقاطع الأشكال.",
-        "كتابة وتنفيذ سكريبت بايثون لحساب القيم المقربة أو خوارزمية التفرع الثنائي ودراسة السلوك التقاربي.",
-        "المقارنة النقدية بين المخرجات الرقمية والحساب الجبري التحليلي.",
+        "توظيف برمجية GeoGebra 6 للمحاكاة البصرية الديناميكية والتحقق من الخاصيات الهندسية أو المنحنيات.",
+        "كتابة وتنفيذ سكريبت بايثون للتحقق الرقمي أو اختبار الشروط الرياضية (الاستقامية، الجذور، القيم المقربة).",
+        "المقارنة النقدية بين المخرجات الرقمية والبرهان الجبري أو الهندسي.",
         "تنمية الفكر الخوارزمي والحس النقدي لدى المتعلم.",
       ],
       objectifsFr: [
-        "Exploiter GeoGebra 6 pour la manipulation dynamique de figures, courbes et tangentes.",
-        "Implémenter et exécuter un algorithme Python (dichotomie, calcul approché, suites) pour valider les résultats.",
+        "Exploiter GeoGebra 6 pour la manipulation dynamique de figures, vecteurs ou courbes.",
+        "Implémenter et exécuter un script Python adapté au chapitre pour valider les conjectures.",
         "Développer l'esprit critique par la confrontation entre résultat théorique et simulation numérique.",
         "Renforcer la pensée algorithmique inscrite au curriculum officiel.",
       ],
@@ -1098,114 +1118,301 @@ function buildDetailedSessionScenarios(
  * بناء جدول الصيغ والقواعد الرسمية المركزة (Formulaire de synthèse)
  */
 function buildOfficialFormulasSummary(lesson: LessonItem): FicheFormulaSummaryItem[] {
-  const title = lesson.lessonAr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
+  const titleFr = (lesson.lessonFr || "").toLowerCase();
 
-  if (title.includes("اتصال") || title.includes("نهايات") || title.includes("continuité") || title.includes("limites")) {
+  if (title.includes("اتصال") || title.includes("نهايات") || titleFr.includes("continuit") || titleFr.includes("limite")) {
     return [
       {
         titleAr: "تعريف الاتصال في نقطة",
         titleFr: "Continuité en un point",
-        latex: "\\lim_{x \\to x_0} f(x) = f(x_0)",
-        domainOrCondition: "x_0 \\in D_f \\text{ و } D_f \\text{ يحتوي على مجال مفتوح مركزه } x_0",
+        latex: "$\\lim_{x \\to x_0} f(x) = f(x_0)$",
+        domainOrCondition: "$x_0 \\in D_f$ و $D_f$ يحتوي على مجال مفتوح مركزه $x_0$",
       },
       {
         titleAr: "الاتصال على اليمين واليسار",
         titleFr: "Continuité unilatérale",
-        latex: "\\lim_{x \\to x_0^+} f(x) = \\lim_{x \\to x_0^-} f(x) = f(x_0)",
-        domainOrCondition: "f \\text{ معرفة على مجال من النمط } [x_0, x_0+\\alpha[ \\text{ و } ]x_0-\\alpha, x_0]",
+        latex: "$\\lim_{x \\to x_0^+} f(x) = \\lim_{x \\to x_0^-} f(x) = f(x_0)$",
+        domainOrCondition: "$f$ معرفة على مجال من النمط $[x_0, x_0+\\alpha[$ و $]x_0-\\alpha, x_0]$",
       },
       {
         titleAr: "مبرهنة القيم الوسيطية (TVI)",
         titleFr: "Théorème des Valeurs Intermédiaires",
-        latex: "f(a) \\cdot f(b) < 0 \\implies \\exists c \\in ]a, b[ : f(c) = 0",
-        domainOrCondition: "f \\text{ متصلة على } [a, b] \\text{ (وإذا كانت رتيبة قطعا فالحل } c \\text{ وحيد)}",
+        latex: "$f(a) \\cdot f(b) < 0 \\implies \\exists c \\in ]a, b[ : f(c) = 0$",
+        domainOrCondition: "$f$ متصلة على $[a, b]$ (وإذا كانت رتيبة قطعا فالحل $c$ وحيد)",
       },
       {
         titleAr: "مشتقة الدالة العكسية",
         titleFr: "Dérivée de la réciproque",
-        latex: "(f^{-1})'(y_0) = \\frac{1}{f'(x_0)} = \\frac{1}{f'(f^{-1}(y_0))}",
-        domainOrCondition: "f(x_0) = y_0 \\text{ مع } f'(x_0) \\neq 0 \\text{ و } f \\text{ قابلة للاشتقاق في } x_0",
+        latex: "$(f^{-1})'(y_0) = \\frac{1}{f'(x_0)} = \\frac{1}{f'(f^{-1}(y_0))}$",
+        domainOrCondition: "$f(x_0) = y_0$ مع $f'(x_0) \\neq 0$ و $f$ قابلة للاشتقاق في $x_0$",
       },
       {
-        titleAr: "صورة قطعة بدالة متصلة ورتيبة تزايدية",
+        titleAr: "صورة قطعة بدالة متصلة وتزايدية",
         titleFr: "Image d'un segment",
-        latex: "f([a, b]) = [f(a), f(b)]",
-        domainOrCondition: "f \\text{ متصلة وتزايدية قطعا على } [a, b]",
+        latex: "$f([a, b]) = [f(a), f(b)]$",
+        domainOrCondition: "$f$ متصلة وتزايدية قطعا على $[a, b]$",
       },
     ];
   }
 
-  if (title.includes("اشتقاق") || title.includes("dérivation") || title.includes("دوال") || title.includes("fonctions")) {
+  if (
+    (title.includes("اشتقاق") || titleFr.includes("dériv") || title.includes("دراسة الدوال") || titleFr.includes("étude de fonctions")) &&
+    !title.includes("عموميات") &&
+    !title.includes("مرجعية")
+  ) {
     return [
       {
         titleAr: "العدد المشتق ومعادلة المماس",
         titleFr: "Nombre dérivé & Tangente",
-        latex: "y = f'(x_0)(x - x_0) + f(x_0)",
-        domainOrCondition: "f \\text{ قابلة للاشتقاق في } x_0 \\text{ أي أن } \\lim_{x \\to x_0} \\frac{f(x)-f(x_0)}{x-x_0} = f'(x_0) \\in \\mathbb{R}",
+        latex: "$y = f'(x_0)(x - x_0) + f(x_0)$",
+        domainOrCondition: "$f$ قابلة للاشتقاق في $x_0$ أي $\\lim_{x \\to x_0} \\frac{f(x)-f(x_0)}{x-x_0} = f'(x_0) \\in \\mathbb{R}$",
       },
       {
         titleAr: "مشتقة مركب دالتين",
         titleFr: "Dérivée d'une composée",
-        latex: "(g \\circ f)'(x) = f'(x) \\cdot (g' \\circ f)(x) = f'(x) \\cdot g'(f(x))",
-        domainOrCondition: "f \\text{ قابلة للاشتقاق في } x \\text{ و } g \\text{ قابلة للاشتقاق في } f(x)",
+        latex: "$(g \\circ f)'(x) = f'(x) \\cdot (g' \\circ f)(x) = f'(x) \\cdot g'(f(x))$",
+        domainOrCondition: "$f$ قابلة للاشتقاق في $x$ و $g$ قابلة للاشتقاق في $f(x)$",
       },
       {
-        titleAr: "مشتقة القوة العامة والجذر n-ième",
-        titleFr: "Dérivée de u^r et racine n-ième",
-        latex: "(u^n)' = n \\cdot u' \\cdot u^{n-1} \\quad ; \\quad (\\sqrt[n]{u})' = \\frac{u'}{n \\cdot \\sqrt[n]{u^{n-1}}}",
-        domainOrCondition: "u(x) > 0 \\text{ لكل } x \\text{ في حالة الجذور الرتبة } n",
+        titleAr: "مشتقة القوة العامة والجذر",
+        titleFr: "Dérivée de u^n et racine n-ième",
+        latex: "$(u^n)' = n \\cdot u' \\cdot u^{n-1}$ و $(\\sqrt[n]{u})' = \\frac{u'}{n \\cdot \\sqrt[n]{u^{n-1}}}$",
+        domainOrCondition: "$u(x) > 0$ لكل $x$ في حالة الجذور من الرتبة $n$",
       },
       {
         titleAr: "نقطة الانعطاف والتقعر",
         titleFr: "Inflexion et concavité",
-        latex: "f''(x_0) = 0 \\text{ مع تغير إشارة } f'' \\implies A(x_0, f(x_0)) \\text{ نقطة انعطاف}",
-        domainOrCondition: "f \\text{ قابلة للاشتقاق مرتين في جوار } x_0",
+        latex: "$f''(x_0) = 0$ مع تغير إشارة $f''$ $\\implies A(x_0, f(x_0))$ نقطة انعطاف",
+        domainOrCondition: "$f$ قابلة للاشتقاق مرتين في جوار $x_0$",
       },
     ];
   }
 
-  if (title.includes("متتاليات") || title.includes("suites")) {
+  if (title.includes("دوال") || titleFr.includes("fonctions")) {
+    return [
+      {
+        titleAr: "زوجية دالة عددية",
+        titleFr: "Parité d'une fonction",
+        latex: "$f(-x) = f(x)$ (زوجية) ، $f(-x) = -f(x)$ (فردية)",
+        domainOrCondition: "لكل $x \\in D_f$ يجب أن يكون $-x \\in D_f$",
+      },
+      {
+        titleAr: "معدل التغير والرتابة",
+        titleFr: "Taux de variation et monotonie",
+        latex: "$T(x, y) = \\frac{f(x) - f(y)}{x - y}$",
+        domainOrCondition: "$T \\ge 0$ تزايدية و $T \\le 0$ تناقصية على المجال $I$",
+      },
+      {
+        titleAr: "الدالة المرجعية المربعة والهذلولية",
+        titleFr: "Fonctions de référence",
+        latex: "$f(x) = ax^2$ و $g(x) = \\frac{k}{x}$",
+        domainOrCondition: "شلجم رأسه $O(0,0)$ وهذلول مقارباه محورا المعلم",
+      },
+    ];
+  }
+
+  if (title.includes("متتاليات") || titleFr.includes("suite")) {
     return [
       {
         titleAr: "الحد العام لمتتالية حسابية",
         titleFr: "Suite arithmétique",
-        latex: "u_n = u_p + (n - p)r \\quad ; \\quad S_n = \\frac{(n - p + 1)(u_p + u_n)}{2}",
-        domainOrCondition: "r \\in \\mathbb{R} \\text{ هو الأساس}",
+        latex: "$u_n = u_p + (n - p)r$ و $S_n = \\frac{(n - p + 1)(u_p + u_n)}{2}$",
+        domainOrCondition: "$r \\in \\mathbb{R}$ هو أساس المتتالية الحسابية",
       },
       {
         titleAr: "الحد العام لمتتالية هندسية",
         titleFr: "Suite géométrique",
-        latex: "u_n = u_p \\cdot q^{n - p} \\quad ; \\quad S_n = u_p \\cdot \\frac{1 - q^{n - p + 1}}{1 - q} \\quad (q \\neq 1)",
-        domainOrCondition: "q \\in \\mathbb{R}^* \\text{ هو الأساس}",
+        latex: "$u_n = u_p \\cdot q^{n - p}$ و $S_n = u_p \\cdot \\frac{1 - q^{n - p + 1}}{1 - q}$",
+        domainOrCondition: "$q \\in \\mathbb{R}^* \\setminus \\{1\\}$ هو الأساس",
       },
       {
-        titleAr: "تقارب المتتالية الهندسية q^n",
+        titleAr: "تقارب المتتالية الهندسية",
         titleFr: "Limite de q^n",
-        latex: "\\lim_{n \\to +\\infty} q^n = 0 \\iff |q| < 1 \\quad ; \\quad \\lim_{n \\to +\\infty} q^n = +\\infty \\iff q > 1",
-        domainOrCondition: "\\text{إذا كان } q \\le -1 \\text{ فالمتتالية ليست لها نهاية}",
+        latex: "$\\lim_{n \\to +\\infty} q^n = 0 \\iff |q| < 1$ و $\\lim_{n \\to +\\infty} q^n = +\\infty \\iff q > 1$",
+        domainOrCondition: "إذا كان $q \\le -1$ فالمتتالية ليست لها نهاية",
       },
       {
-        titleAr: "تقارب متتالية تراجعية u_{n+1} = f(u_n)",
+        titleAr: "متتالية تراجعية متقاربة",
         titleFr: "Suite récurrente convergente",
-        latex: "u_{n+1} = f(u_n) \\text{ و } u_n \\to l \\implies f(l) = l",
-        domainOrCondition: "f \\text{ متصلة على } I \\text{ و } f(I) \\subset I \\text{ و } u_0 \\in I",
+        latex: "$u_{n+1} = f(u_n)$ و $u_n \\to l \\implies f(l) = l$",
+        domainOrCondition: "$f$ متصلة على $I$ و $f(I) \\subset I$ و $u_0 \\in I$",
       },
     ];
   }
 
-  // ملخص قوانين عام شامل
+  if (
+    (title.includes("متجهي") ||
+      title.includes("إسقاط") ||
+      titleFr.includes("vectoriel") ||
+      titleFr.includes("projection")) &&
+    !title.includes("فضاء") &&
+    !title.includes("جداء متجهي") &&
+    !titleFr.includes("espace") &&
+    !titleFr.includes("produit vectoriel")
+  ) {
+    return [
+      {
+        titleAr: "علاقة شال ومجموع متجهتين",
+        titleFr: "Relation de Chasles",
+        latex: "$\\vec{AB} + \\vec{BC} = \\vec{AC}$ و $\\vec{AB} = -\\vec{BA}$",
+        domainOrCondition: "لكل ثلاث نقط $A, B, C$ من المستوى",
+      },
+      {
+        titleAr: "استقامية متجهتين ونقط",
+        titleFr: "Colinéarité et alignement",
+        latex: "$\\vec{v} = k\\vec{u}\\; (k \\in \\mathbb{R})$ و $\\vec{AC} = k\\vec{AB}$",
+        domainOrCondition: "$\\vec{u} \\neq \\vec{0}$ (شرط استقامية $A, B, C$)",
+      },
+      {
+        titleAr: "التمثيل المتجهي لمنتصف قطعة",
+        titleFr: "Milieu d'un segment",
+        latex: "$\\vec{IA} + \\vec{IB} = \\vec{0} \\iff \\vec{AI} = \\frac{1}{2}\\vec{AB}$",
+        domainOrCondition: "ولكل $M$ من المستوى: $\\vec{MA} + \\vec{MB} = 2\\vec{MI}$",
+      },
+      {
+        titleAr: "قاعدة متوازي الأضلاع والإسقاط",
+        titleFr: "Parallélogramme et projection",
+        latex: "$\\vec{AB} = \\vec{DC} \\iff \\vec{AB} + \\vec{AD} = \\vec{AC}$",
+        domainOrCondition: "الإسقاط يحافظ على معامل الاستقامية والمنتصف",
+      },
+    ];
+  }
+
+  if (title.includes("مثلث") || titleFr.includes("trigonom")) {
+    return [
+      {
+        titleAr: "العلاقة الأساسية للحساب المثلثي",
+        titleFr: "Relation fondamentale",
+        latex: "$\\cos^2(x) + \\sin^2(x) = 1$ و $\\tan(x) = \\frac{\\sin(x)}{\\cos(x)}$",
+        domainOrCondition: "لكل $x \\in \\mathbb{R}$ (وللظل $x \\neq \\frac{\\pi}{2} + k\\pi$)",
+      },
+      {
+        titleAr: "معادلات مثلثية مرجعية",
+        titleFr: "Équations trigonométriques",
+        latex: "$\\cos(x) = \\cos(\\alpha) \\iff x = \\pm\\alpha + 2k\\pi$",
+        domainOrCondition: "حيث $k \\in \\mathbb{Z}$",
+      },
+    ];
+  }
+
+  if (title.includes("إحصاء") || titleFr.includes("statistiq")) {
+    return [
+      {
+        titleAr: "المعدل الحسابي والتباين",
+        titleFr: "Moyenne et variance",
+        latex: "$\\bar{x} = \\frac{1}{N}\\sum n_i x_i$ و $V = \\frac{1}{N}\\sum n_i x_i^2 - \\bar{x}^2$",
+        domainOrCondition: "حيث $N = \\sum n_i$ هو الحصيص الإجمالي",
+      },
+      {
+        titleAr: "الانحراف الطرازي",
+        titleFr: "Écart-type",
+        latex: "$\\sigma = \\sqrt{V}$",
+        domainOrCondition: "مؤشر التشتت الموجب حول المعدل الحسابي",
+      },
+    ];
+  }
+
+  if (title.includes("احتمال") || title.includes("تعداد") || titleFr.includes("probabilit") || titleFr.includes("dénombrement")) {
+    return [
+      {
+        titleAr: "التآلفات والاحتمال المنتظم",
+        titleFr: "Combinaisons et équiprobabilité",
+        latex: "$C_n^p = \\frac{n!}{p!(n-p)!}$ و $P(A) = \\frac{\\text{card}(A)}{\\text{card}(\\Omega)}$",
+        domainOrCondition: "في حالة تساوي الاحتمالات ($0 \\le p \\le n$)",
+      },
+      {
+        titleAr: "اتحاد حدثين والأمل الرياضي",
+        titleFr: "Union et espérance",
+        latex: "$P(A \\cup B) = P(A) + P(B) - P(A \\cap B)$ و $E(X) = \\sum x_i p_i$",
+        domainOrCondition: "لكل حدثين $A$ و $B$ من $\\Omega$",
+      },
+    ];
+  }
+
+  if (title.includes("عقدي") || titleFr.includes("complexe")) {
+    return [
+      {
+        titleAr: "المعيار والشكل المثلثي والأسي",
+        titleFr: "Module et formes trigonométrique/exponentielle",
+        latex: "$z = a + ib = r(\\cos\\theta + i\\sin\\theta) = re^{i\\theta}$",
+        domainOrCondition: "$r = |z| = \\sqrt{a^2+b^2}$ و $\\theta \\equiv \\arg(z)\\;[2\\pi]$",
+      },
+      {
+        titleAr: "تفسير النسب العقدية هندسياً",
+        titleFr: "Interprétation géométrique",
+        latex: "$\\left|\\frac{z_C - z_A}{z_B - z_A}\\right| = \\frac{AC}{AB}$ و $\\arg\\left(\\frac{z_C - z_A}{z_B - z_A}\\right) \\equiv (\\vec{AB}, \\vec{AC})\\;[2\\pi]$",
+        domainOrCondition: "تحديد استقامية النقط أو تعامد المستقيمات",
+      },
+    ];
+  }
+
+  if (title.includes("منطق") || title.includes("مجموعات") || titleFr.includes("logique") || titleFr.includes("ensemble")) {
+    return [
+      {
+        titleAr: "الاستلزام المضاد للعكس ونفي عبارة",
+        titleFr: "Contraposée et négation",
+        latex: "$(P \\implies Q) \\iff (\\overline{Q} \\implies \\overline{P})$",
+        domainOrCondition: "وقوانين مورغان: $\\overline{P \\land Q} \\iff \\overline{P} \\lor \\overline{Q}$",
+      },
+      {
+        titleAr: "البرهان بالترجع",
+        titleFr: "Raisonnement par récurrence",
+        latex: "$P(n_0)$ صحيحة و $(\\forall n \\ge n_0,\\; P(n) \\implies P(n+1))$",
+        domainOrCondition: "تستعمل للبرهنة على خاصية لكل $n \\ge n_0$",
+      },
+    ];
+  }
+
+  if (title.includes("حدود") || title.includes("معادل") || title.includes("متراجح") || title.includes("نظم") || title.includes("ترتيب") || titleFr.includes("polyn") || titleFr.includes("équat") || titleFr.includes("ordre")) {
+    return [
+      {
+        titleAr: "مميز ثلاثية الحدود من الدرجة الثانية",
+        titleFr: "Discriminant du second degré",
+        latex: "$\\Delta = b^2 - 4ac$ و $x_{1,2} = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$",
+        domainOrCondition: "للمعادلة $ax^2 + bx + c = 0$ ($a \\neq 0$) عندما $\\Delta \\ge 0$",
+      },
+      {
+        titleAr: "محددة نظمة معادلتين (كرامر)",
+        titleFr: "Déterminant d'un système 2×2",
+        latex: "$D = ab' - a'b \\neq 0 \\implies x = \\frac{D_x}{D},\\; y = \\frac{D_y}{D}$",
+        domainOrCondition: "شرط وجود الحل الوحيد للنظمة الخطية",
+      },
+    ];
+  }
+
+  if (title.includes("حسابيات") || titleFr.includes("arithm")) {
+    return [
+      {
+        titleAr: "القاسم المشترك الأكبر والمضاعف الأصغر",
+        titleFr: "PGCD et PPCM",
+        latex: "$\\mathrm{PGCD}(a,b) \\times \\mathrm{PPCM}(a,b) = a \\times b$",
+        domainOrCondition: "لكل عددين صحيحين طبيعيين غير منعدمين $a$ و $b$",
+      },
+      {
+        titleAr: "قابلية القسمة والزوجية",
+        titleFr: "Divisibilité et parité",
+        latex: "$a = bk$ ($k \\in \\mathbb{Z}$) يعني $b$ يقسم $a$",
+        domainOrCondition: "جداء عددين صحيحين متتابعين $n(n+1)$ عدد زوجي دائماً",
+      },
+    ];
+  }
+
+  // ملخص موضوعاتي محايد مرتبط بقدرات الدرس الفعلية
+  const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
+  const cap1Ar = lesson.capacitiesAr[1] || cap0Ar;
   return [
     {
-      titleAr: "العلاقة التأسيسية للدرس",
-      titleFr: "Relation constitutive fondamentale",
-      latex: "\\forall x \\in D, \\quad \\mathcal{R}(x) \\iff \\mathcal{P}(x)",
-      domainOrCondition: "احترام شروط الوجود ومجال الصلاحية",
+      titleAr: `الخاصية المحورية: ${lesson.lessonAr}`,
+      titleFr: lesson.lessonFr,
+      latex: `توظيف « ${cap0Ar} » وفق الشروط الرياضية للدرس`,
+      domainOrCondition: "التحقق من مجال الصلاحية ومعطيات الوضعية",
     },
     {
-      titleAr: "خاصية التكافؤ والاستلزام",
-      titleFr: "Équivalence caractéristique",
-      latex: "A \\implies B \\iff \\overline{B} \\implies \\overline{A} \\quad (\\text{الاستلزام المضاد للعكس})",
-      domainOrCondition: "قواعد المنطق الرياضي الصارم",
+      titleAr: "القاعدة الإجرائية للاستنتاج",
+      titleFr: "Règle opératoire de synthèse",
+      latex: `الربط المنطقي مع « ${cap1Ar} »`,
+      domainOrCondition: "صياغة التعليل والنتيجة النهائية بدقة",
     },
   ];
 }
@@ -1214,15 +1421,23 @@ function buildOfficialFormulasSummary(lesson: LessonItem): FicheFormulaSummaryIt
  * بناء الوضعية الانطلاقية البنائية الشاملة
  */
 function buildIntroductoryActivity(lesson: LessonItem, track: TrackData) {
-  const title = lesson.lessonAr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
+
+  const isPlanarGeo =
+    (lesson.subCategory === "هندسة مستوية" ||
+      title.includes("متجهي") ||
+      title.includes("إسقاط") ||
+      (lesson.lessonFr || "").toLowerCase().includes("dans le plan")) &&
+    lesson.subCategory !== "هندسة فضائية" &&
+    !title.includes("فضاء") &&
+    !title.includes("فلكة");
 
   const isGeo =
-    lesson.subCategory === "هندسة فضائية" ||
-    lesson.subCategory === "هندسة مستوية" ||
-    lesson.category === "Geometry" ||
-    title.includes("فلكة") ||
-    title.includes("جداء") ||
-    title.includes("فضاء");
+    !isPlanarGeo &&
+    (lesson.subCategory === "هندسة فضائية" ||
+      title.includes("فلكة") ||
+      title.includes("جداء متجهي") ||
+      title.includes("فضاء"));
 
   const isSuites = title.includes("متتاليات") || title.includes("suites");
   const isExpLog = title.includes("لوغاريتم") || title.includes("أسية") || title.includes("ln") || title.includes("exp");
@@ -1230,6 +1445,41 @@ function buildIntroductoryActivity(lesson: LessonItem, track: TrackData) {
   const isComplex = title.includes("عقدية") || title.includes("complexe");
   const isProba = title.includes("احتمال") || title.includes("probabilité");
   const isArith = title.includes("حسابيات") || title.includes("arithmétique");
+
+  if (isPlanarGeo) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: تركيب الإزاحات والقوى في المستوى والإنشاء المتجهي`,
+      titleFr: `Activité d'introduction : Translations, composition de vecteurs et alignement dans le plan`,
+      problemContextAr: `ليكن $ABC$ مثلثاً في المستوى. يتحرك جسم من النقطة $A$ وفق إزاحة متجهتها $\\vec{u} = \\frac{3}{2}\\vec{AB}$ ليصل إلى $M$، ثم ننشئ النقطة $N$ بحيث $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$. نريد التعبير عن المسار المباشر $\\vec{MN}$ بدلالة $\\vec{AB}$ و$\\vec{AC}$ وفحص استقامية النقط.`,
+      problemContextFr: `Soit $ABC$ un triangle du plan. On considère les points $M$ et $N$ définis par $\\vec{AM} = \\frac{3}{2}\\vec{AB}$ et $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$. On cherche à exprimer $\\vec{MN}$ en fonction de $\\vec{AB}$ et $\\vec{AC}$ et à caractériser l'alignement de points du plan.`,
+      questionsAr: [
+        "1. أنشئ شكلاً هندسياً مناسباً ومثل النقطتين M و N انطلاقاً من الرأس A.",
+        "2. باستعمال علاقة شال، عبر عن المتجهة MN⃗ بدلالة AB⃗ و AC⃗.",
+        "3. لتكن I منتصف القطعة [BC]. بين أن AB⃗ + AC⃗ = 2AI⃗.",
+        "4. متى تكون متجهتان u⃗ و v⃗ مستقيميتين؟ استنتج شرط استقامية ثلاث نقط M و N و P.",
+      ],
+      questionsFr: [
+        "1. Construire une figure soignée et placer les points M et N à partir du sommet A.",
+        "2. À l'aide de la relation de Chasles, exprimer MN⃗ en fonction de AB⃗ et AC⃗.",
+        "3. Soit I le milieu de [BC]. Montrer que AB⃗ + AC⃗ = 2AI⃗.",
+        "4. À quelle condition deux vecteurs u⃗ et v⃗ sont-ils colinéaires ? En déduire la condition d'alignement de M, N et P.",
+      ],
+      expectedConjecturesAr: [
+        "اكتشاف أن إدراج النقطة $A$ بعلاقة شال ($\\vec{MN} = \\vec{MA} + \\vec{AN}$) يبسط التعبير المتجهي.",
+        "الربط بين استقامية ثلاث نقط $M, N, P$ ووجود عدد حقيقي $k$ بحيث $\\vec{MN} = k\\vec{MP}$.",
+        "تمييز منتصف قطعة $[BC]$ بالعلاقة المتجهية $\\vec{IB} + \\vec{IC} = \\vec{0}$.",
+      ],
+      expectedConjecturesFr: [
+        "Découvrir que l'insertion du point $A$ par Chasles ($\\vec{MN} = \\vec{MA} + \\vec{AN}$) simplifie les combinaisons vectorielles.",
+        "Relier l'alignement de $M, N, P$ à l'existence d'un réel $k$ tel que $\\vec{MN} = k\\vec{MP}$.",
+        "Caractériser le milieu $I$ de $[BC]$ par $\\vec{IB} + \\vec{IC} = \\vec{0}$.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين المتجهة والمسافة (المنظم)، نسيان إشارة الناقص عند قلب المتجهة (-AB⃗ = BA⃗)، وصعوبة اختيار نقطة الوصل المناسبة عند تطبيق علاقة شال.",
+      epistemologicalObstaclesFr:
+        "Confusion entre vecteur et longueur, oubli du changement de signe lors de l'inversion (-AB⃗ = BA⃗), et difficulté à choisir le point intermédiaire pertinent dans la relation de Chasles.",
+    };
+  }
 
   if (isGeo) {
     return {
@@ -1301,7 +1551,331 @@ function buildIntroductoryActivity(lesson: LessonItem, track: TrackData) {
     };
   }
 
-  // وضعية الدوال والنهايات والاتصال والاشتقاق (الافتراضية الرائدة)
+  // وضعية الأعداد العقدية
+  if (isComplex) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: من استحالة حل المعادلة x² + 1 = 0 في ℝ إلى بناء الأعداد العقدية في « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction : de l'impossibilité de x² + 1 = 0 dans ℝ à la construction des nombres complexes (« ${lesson.lessonFr} »)`,
+      problemContextAr: `لا تقبل المعادلة x² + 1 = 0 أي حل في ℝ لأن مربع كل عدد حقيقي موجب. نقبل وجود عدد جديد i يحقق i² = −1 ونحتفظ بقواعد الحساب المألوفة. نربط كل نقطة M(x, y) من المستوى المنسوب إلى معلم متعامد ممنظم بالعدد z = x + iy.`,
+      problemContextFr: `L'équation x² + 1 = 0 n'a aucune solution réelle car un carré réel est positif. On admet l'existence d'un nombre i tel que i² = −1, en conservant les règles de calcul usuelles. À tout point M(x, y) du plan rapporté à un repère orthonormé, on associe z = x + iy.`,
+      questionsAr: [
+        "1. بين أن المعادلة x² + 1 = 0 لا تقبل حلاً في ℝ، ثم أعط حلين للمعادلة z² + 1 = 0 بدلالة i.",
+        "2. أحسب (1 + i)² و (2 + 3i)(1 − i) بنشر الجداء واستعمال i² = −1.",
+        "3. حدد العدد المرفق بكل من النقطتين A(2, 1) و B(−1, 3) ثم أحسب zB − zA وأعط تأويلاً هندسياً له.",
+        "4. من أجل z = x + iy أحسب (x + iy)(x − iy) وقارنه بالمسافة OM² .",
+      ],
+      questionsFr: [
+        "1. Montrer que x² + 1 = 0 n'a pas de solution dans ℝ, puis donner deux solutions de z² + 1 = 0 à l'aide de i.",
+        "2. Calculer (1 + i)² et (2 + 3i)(1 − i) en développant et en utilisant i² = −1.",
+        "3. Déterminer les nombres associés à A(2, 1) et B(−1, 3), puis calculer zB − zA et l'interpréter géométriquement.",
+        "4. Pour z = x + iy, calculer (x + iy)(x − iy) et le comparer à OM².",
+      ],
+      expectedConjecturesAr: [
+        "إدراك أن i ليس عدداً حقيقياً وأن i² = −1 يسمح بحل معادلات جديدة.",
+        "ملاحظة أن zB − zA يرتبط بالمتجهة AB⃗ (الفرق بين اللاحقين يمثل المتجهة).",
+        "تخمين أن (x + iy)(x − iy) = x² + y² عدد حقيقي موجب يساوي OM².",
+      ],
+      expectedConjecturesFr: [
+        "Comprendre que i n'est pas réel et que i² = −1 permet de résoudre de nouvelles équations.",
+        "Observer que zB − zA correspond au vecteur AB⃗.",
+        "Conjecturer que (x + iy)(x − iy) = x² + y² est un réel positif égal à OM².",
+      ],
+      epistemologicalObstaclesAr:
+        "التعامل مع i كأنه عدد حقيقي (مثلاً كتابة i² = 1 أو ترتيب الأعداد العقدية)، والخلط بين √(−1) والرمز i عند حساب الجذور، وعدم الربط بين الكتابة الجبرية والتمثيل الهندسي.",
+      epistemologicalObstaclesFr:
+        "Traiter i comme un réel (écrire i² = 1, ordonner des complexes), confusion sur √(−1), et absence de lien entre écriture algébrique et représentation géométrique.",
+    };
+  }
+
+  // وضعية الاحتمالات
+  if (isProba) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: سحب كرات من كيس لبناء مفاهيم « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction : tirages dans une urne pour construire les notions de « ${lesson.lessonFr} »`,
+      problemContextAr: `يحتوي كيس على 10 كرات لا يمكن التمييز بينها باللمس: 4 حمراء و3 بيضاء و3 خضراء. نسحب عشوائياً كرتين في آن واحد، ثم نكرر التجربة بسحب كرتين على التوالي وبدون إحلال.`,
+      problemContextFr: `Une urne contient 10 boules indiscernables au toucher : 4 rouges, 3 blanches et 3 vertes. On tire au hasard simultanément deux boules, puis on répète l'expérience par tirages successifs sans remise.`,
+      questionsAr: [
+        "1. حدد عدد السحبات الممكنة عند سحب كرتين في آن واحد.",
+        "2. أحسب احتمال الحدث A: « الكرتان حمراوان ».",
+        "3. أحسب احتمال الحدث B: « الكرتان من نفس اللون ».",
+        "4. في حالة السحب على التوالي وبدون إحلال، أحسب احتمال الحصول على كرة حمراء في السحب الثاني علماً أن السحب الأول أعطى كرة حمراء، وقارنه باحتمال الحصول على كرة حمراء في سحب واحد.",
+      ],
+      questionsFr: [
+        "1. Déterminer le nombre de tirages possibles lorsqu'on tire simultanément deux boules.",
+        "2. Calculer la probabilité de l'événement A : « les deux boules sont rouges ».",
+        "3. Calculer la probabilité de l'événement B : « les deux boules sont de la même couleur ».",
+        "4. En tirages successifs sans remise, calculer la probabilité d'obtenir une rouge au second tirage sachant que la première est rouge, et la comparer à la probabilité d'obtenir une rouge en un tirage.",
+      ],
+      expectedConjecturesAr: [
+        "استعمال التراكيب لعد الحالات الممكنة والحالات الملائمة وتساوي الاحتمال.",
+        "إدراك أن احتمال الاتحاد لحدثين غير متلائمين هو مجموع احتماليهما.",
+        "ملاحظة أن المعلومة « الأولى حمراء » تغير احتمال الحدث، مما يمهد لمفهوم الاحتمال الشرطي وعدم الاستقلال.",
+      ],
+      expectedConjecturesFr: [
+        "Utiliser les combinaisons pour dénombrer cas possibles et cas favorables (équiprobabilité).",
+        "Comprendre que la probabilité d'une réunion d'événements incompatibles est la somme des probabilités.",
+        "Observer que l'information « la première est rouge » modifie la probabilité, ce qui prépare la probabilité conditionnelle et la non-indépendance.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين السحب المتتالي بإحلال وبدونه، وبين الترتيب والتراكيب، وبين الأحداث غير المتلائمة والأحداث المستقلة.",
+      epistemologicalObstaclesFr:
+        "Confusion entre tirages avec et sans remise, entre arrangements et combinaisons, et entre événements incompatibles et indépendants.",
+    };
+  }
+
+  // وضعية الحسابيات
+  if (isArith) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: من القسمة الإقليدية إلى القاسم المشترك الأكبر والتوافقات في « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction : de la division euclidienne au PGCD et aux congruences (« ${lesson.lessonFr} »)`,
+      problemContextAr: `نريد تبليط مستطيل أبعاده 84 سم و30 سم بمربعات متطابقة دون قص ودون فراغ، ثم دراسة دورية بواقي قوى عدد صحيح عند القسمة على 5.`,
+      problemContextFr: `On souhaite paver un rectangle de 84 cm sur 30 cm avec des carrés identiques sans découpe ni vide, puis étudier la périodicité des restes des puissances d'un entier dans la division par 5.`,
+      questionsAr: [
+        "1. أنجز القسمة الإقليدية للعدد 84 على 30، ثم للعدد 30 على الباقي، واستمر إلى أن تحصل على باقٍ منعدم. ماذا تلاحظ؟",
+        "2. استنتج أكبر طول ممكن لضلع المربع ثم عبر عنه باستعمال PGCD(84, 30).",
+        "3. ابحث عن زوج (u, v) من ℤ² يحقق 84u + 30v = 6 انطلاقاً من خطوات الخوارزمية.",
+        "4. أحسب باقي القسمة الإقليدية للعدد 7ⁿ على 5 من أجل n من 0 إلى 5، وخمن ما يحدث للبواقي.",
+      ],
+      questionsFr: [
+        "1. Effectuer la division euclidienne de 84 par 30, puis de 30 par le reste, et poursuivre jusqu'à un reste nul. Que constate-t-on ?",
+        "2. En déduire le plus grand côté possible du carré et l'exprimer avec PGCD(84, 30).",
+        "3. Trouver un couple (u, v) de ℤ² tel que 84u + 30v = 6 en remontant les étapes de l'algorithme.",
+        "4. Calculer le reste de la division euclidienne de 7ⁿ par 5 pour n de 0 à 5 et conjecturer le comportement des restes.",
+      ],
+      expectedConjecturesAr: [
+        "إدراك أن آخر باقٍ غير منعدم في خوارزمية إقليدس هو القاسم المشترك الأكبر.",
+        "تخمين وجود علاقة بيزو: PGCD(a, b) تركيب خطي صحيح للعددين a و b.",
+        "ملاحظة أن البواقي تتكرر بدورية 4: 1، 2، 4، 3، 1، 2، ...",
+      ],
+      expectedConjecturesFr: [
+        "Comprendre que le dernier reste non nul de l'algorithme d'Euclide est le PGCD.",
+        "Conjecturer l'existence d'une relation de Bézout : le PGCD est une combinaison linéaire entière de a et b.",
+        "Observer que les restes se répètent avec une période 4 : 1, 2, 4, 3, 1, 2, ...",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين القاسم والمضاعف، وبين PGCD و PPCM، وعدم التمييز بين القسمة العادية والقسمة الإقليدية، وصعوبة الصعود في خوارزمية إقليدس لإيجاد معاملات بيزو.",
+      epistemologicalObstaclesFr:
+        "Confusion entre diviseur et multiple, entre PGCD et PPCM, entre division décimale et euclidienne, et difficulté à remonter l'algorithme d'Euclide pour obtenir les coefficients de Bézout.",
+    };
+  }
+
+  // وضعية الدوال اللوغاريتمية والأسية
+  if (isExpLog) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: من خاصية تحويل الجداء إلى مجموع إلى بناء « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction : de la transformation d'un produit en somme à la construction de « ${lesson.lessonFr} »`,
+      problemContextAr: `نبحث عن دالة g معرفة على ]0, +∞[ تحقق g(xy) = g(x) + g(y)، ثم ندرس سلوك المقدار (eʰ − 1)/h عندما يقترب h من الصفر.`,
+      problemContextFr: `On cherche une fonction g définie sur ]0, +∞[ vérifiant g(xy) = g(x) + g(y), puis on étudie le comportement de (eʰ − 1)/h lorsque h tend vers 0.`,
+      questionsAr: [
+        "1. باستعمال الآلة الحاسبة، أحسب ln 2 و ln 3 و ln 6 وقارن ln 6 مع ln 2 + ln 3.",
+        "2. أحسب ln 8 وقارنه مع 3 ln 2، ثم عمم الملاحظة.",
+        "3. أحسب (eʰ − 1)/h من أجل h = 0.1 ثم h = 0.01 ثم h = 0.001. ماذا تلاحظ؟",
+        "4. استنتج تخميناً حول العدد المشتق للدالة x ↦ eˣ عند 0.",
+      ],
+      questionsFr: [
+        "1. À la calculatrice, calculer ln 2, ln 3 et ln 6 et comparer ln 6 à ln 2 + ln 3.",
+        "2. Calculer ln 8 et le comparer à 3 ln 2, puis généraliser.",
+        "3. Calculer (eʰ − 1)/h pour h = 0,1 puis 0,01 puis 0,001. Que constate-t-on ?",
+        "4. En déduire une conjecture sur le nombre dérivé de x ↦ eˣ en 0.",
+      ],
+      expectedConjecturesAr: [
+        "تخمين أن ln(ab) = ln a + ln b وأن ln(aⁿ) = n ln a.",
+        "ملاحظة أن (eʰ − 1)/h يقترب من 1 عندما يقترب h من 0.",
+        "ربط ذلك بكون الدالة الأسية مشتقتها نفسها.",
+      ],
+      expectedConjecturesFr: [
+        "Conjecturer ln(ab) = ln a + ln b et ln(aⁿ) = n ln a.",
+        "Observer que (eʰ − 1)/h tend vers 1 quand h tend vers 0.",
+        "Relier cela au fait que la fonction exponentielle est égale à sa dérivée.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين ln(a + b) و ln a + ln b، وبين eᵃ⁺ᵇ و eᵃ + eᵇ، ونسيان مجموعة تعريف الدالة اللوغاريتمية.",
+      epistemologicalObstaclesFr:
+        "Confusion entre ln(a + b) et ln a + ln b, entre eᵃ⁺ᵇ et eᵃ + eᵇ, et oubli de l'ensemble de définition de ln.",
+    };
+  }
+
+  // وضعية الحساب التكاملي
+  if (isIntegral) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: حساب مساحة حيز تحت منحنى بتقريبه بمستطيلات في « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction : aire sous une courbe approchée par des rectangles (« ${lesson.lessonFr} »)`,
+      problemContextAr: `نعتبر الدالة f(x) = x² على المجال [0, 1] ونريد تقدير مساحة الحيز المحصور بين منحنى f ومحور الأفاصيل والمستقيمين x = 0 و x = 1 بتقطيع المجال إلى n أجزاء متساوية الطول.`,
+      problemContextFr: `Soit f(x) = x² sur [0, 1]. On veut estimer l'aire du domaine délimité par la courbe de f, l'axe des abscisses et les droites x = 0 et x = 1 en découpant [0, 1] en n intervalles de même longueur.`,
+      questionsAr: [
+        "1. من أجل n = 4، أحسب مجموع مساحات المستطيلات السفلية Sₙ ومجموع مساحات المستطيلات العلوية Tₙ.",
+        "2. أعط تأطيراً للمساحة 𝒜 المطلوبة انطلاقاً من النتيجة السابقة.",
+        "3. كرر الحساب من أجل n = 10 بواسطة جدول أو برنامج. ماذا تلاحظ على سعة التأطير؟",
+        "4. قارن القيمة التي يقترب منها التأطير مع F(1) − F(0) حيث F(x) = x³/3.",
+      ],
+      questionsFr: [
+        "1. Pour n = 4, calculer la somme Sₙ des aires des rectangles inférieurs et la somme Tₙ des aires des rectangles supérieurs.",
+        "2. En déduire un encadrement de l'aire 𝒜 cherchée.",
+        "3. Refaire le calcul pour n = 10 avec un tableur ou un programme. Que devient l'amplitude de l'encadrement ?",
+        "4. Comparer la valeur vers laquelle l'encadrement semble converger avec F(1) − F(0) où F(x) = x³/3.",
+      ],
+      expectedConjecturesAr: [
+        "ملاحظة أن Sₙ و Tₙ يؤطران المساحة وأن الفرق Tₙ − Sₙ يتناقص كلما زاد n.",
+        "تخمين أن المساحة تساوي 1/3.",
+        "الربط بين المساحة والدالة الأصلية F(1) − F(0).",
+      ],
+      expectedConjecturesFr: [
+        "Observer que Sₙ et Tₙ encadrent l'aire et que Tₙ − Sₙ diminue quand n augmente.",
+        "Conjecturer que l'aire vaut 1/3.",
+        "Faire le lien entre l'aire et la primitive F(1) − F(0).",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين المساحة والتكامل عندما تكون الدالة سالبة، وبين الدالة الأصلية والدالة المشتقة، ونسيان وحدة المساحة.",
+      epistemologicalObstaclesFr:
+        "Confusion entre aire et intégrale lorsque f est négative, entre primitive et dérivée, et oubli de l'unité d'aire.",
+    };
+  }
+
+  // وضعية مبادئ في المنطق (1BAC)
+  if (title.includes("منطق") || (lesson.lessonFr || "").toLowerCase().includes("logique")) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: صحة العبارات الرياضية والمكممات وأنواع الاستدلال`,
+      titleFr: `Activité d'introduction : Valeur de vérité, quantificateurs et modes de raisonnement`,
+      problemContextAr: `في حصة للرياضيات، اقترح أستاذ العبارة التالية: « لكل عدد حقيقي $x$، إذا كان $x > 2$ فإن $x^2 > 4$ ». ثم سأل التلاميذ: هل العبارة العكسية صحيحة دائماً؟ وكيف نصوغ نفي عبارة تحتوي على المكمم الكوني $\\forall$؟`,
+      problemContextFr: `Un professeur propose l'implication : « Pour tout réel $x$, si $x > 2$ alors $x^2 > 4$ ». La réciproque est-elle toujours vraie ? Comment formuler la négation d'une assertion quantifiée par $\\forall$ ?`,
+      questionsAr: [
+        "1. تحقق من صحة العبارة الأصلية، ثم ابحث عن مثال مضاد يثبت خطأ العبارة العكسية.",
+        "2. أكتب العبارة باستعمال المكممات والربط المنطقي $\\implies$.",
+        "3. صغ نفي العبارة: « $\\forall x \\in \\mathbb{R},\\; x^2 - 4x + 5 > 0$ ».",
+        "4. عبر عن الاستلزام المضاد للعكس للعبارة الأولى وتحقق من صحته.",
+      ],
+      questionsFr: [
+        "1. Vérifier que l'implication directe est vraie et donner un contre-exemple infirmant la réciproque.",
+        "2. Écrire la proposition à l'aide des quantificateurs et du symbole $\\implies$.",
+        "3. Donner la négation de : « $\\forall x \\in \\mathbb{R},\\; x^2 - 4x + 5 > 0$ ».",
+        "4. Formuler la contraposée de la première implication et vérifier sa véracité.",
+      ],
+      expectedConjecturesAr: [
+        "إدراك أن مثالاً مضاداً واحداً يكفي لإبطال عبارة مكممة بـ $\\forall$.",
+        "الربط بين نفي $\\forall$ وظهور المكمم الوجودي $\\exists$.",
+        "ملاحظة أن العبارة واستلزامها المضاد للعكس لهما نفس قيمة الحقيقة.",
+      ],
+      expectedConjecturesFr: [
+        "Comprendre qu'un seul contre-exemple suffit pour infirmer une proposition universelle.",
+        "Relier la négation de $\\forall$ à l'apparition de $\\exists$.",
+        "Observer qu'une implication et sa contraposée ont la même valeur de vérité.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين الاستلزام والتكافؤ، وصعوبة التمييز بين عكس الاستلزام والاستلزام المضاد للعكس، وإغفال تغيير المكمم عند النفي.",
+      epistemologicalObstaclesFr:
+        "Confusion entre implication et équivalence, entre réciproque et contraposée, et oubli de l'inversion du quantificateur lors de la négation.",
+    };
+  }
+
+  // وضعية الاتصال (Limites et Continuité - 2BAC)
+  if (title.includes("اتصال") || (lesson.lessonFr || "").toLowerCase().includes("continuit")) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: استمرارية المنحنى والتمديد بالاتصال في نقطة x₀`,
+      titleFr: `Activité d'introduction : Continuité graphique et prolongement par continuité en x₀`,
+      problemContextAr: `نعتبر الدالة $f$ المعرفة على $\\mathbb{R} \\setminus \\{2\\}$ بـ $f(x) = \\frac{x^2 - 4}{x - 2}$. رغم أن العدد $2$ لا ينتمي إلى مجموعة التعريف، نلاحظ أن قيم $f(x)$ تقترب من قيمة منتهية محددة عندما يقترب $x$ من $2$.`,
+      problemContextFr: `Soit $f$ définie sur $\\mathbb{R} \\setminus \\{2\\}$ par $f(x) = \\frac{x^2 - 4}{x - 2}$. Bien que $2 \\notin \\mathcal{D}_f$, les valeurs $f(x)$ se rapprochent d'un réel fini lorsque $x$ tend vers $2$.`,
+      questionsAr: [
+        "1. بسط تعبير $f(x)$ من أجل كل $x \\neq 2$ ثم احسب $\\lim_{x \\to 2} f(x)$.",
+        "2. كيف يبدو التمثيل المبياني للدالة $f$ بجوار النقطة ذات الأفصول $2$؟",
+        "3. ما هي القيمة التي يجب إسنادها لـ $f(2)$ ليصبح المنحنى متصلاً دون انقطاع في $2$؟",
+        "4. صغ شرط اتصال دالة عددية في نقطة $x_0$ باستعمال النهاية.",
+      ],
+      questionsFr: [
+        "1. Simplifier $f(x)$ pour $x \\neq 2$ et calculer $\\lim_{x \\to 2} f(x)$.",
+        "2. Quelle est l'allure de la courbe $(C_f)$ au voisinage de $x_0 = 2$ ?",
+        "3. Quelle valeur attribuer à $f(2)$ pour combler la discontinuité en $2$ ?",
+        "4. Formuler la condition de continuité en $x_0$ à l'aide de la limite.",
+      ],
+      expectedConjecturesAr: [
+        "ملاحظة أن التمديد بالاتصال يملأ الثغرة النقطية في المنحنى عند $x_0 = 2$.",
+        "استنتاج الشرط الأساسي للاتصال في نقطة: $\\lim_{x \\to x_0} f(x) = f(x_0)$.",
+      ],
+      expectedConjecturesFr: [
+        "Observer que le prolongement par continuité comble le point manquant de la courbe.",
+        "Déduire le critère de continuité : $\\lim_{x \\to x_0} f(x) = f(x_0)$.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين وجود النهاية في نقطة ووجود الصورة، أو الاعتقاد بأن كل دالة متصلة قابلة للاشتقاق تلقائياً.",
+      epistemologicalObstaclesFr:
+        "Confusion entre existence de la limite et existence de l'image, ou assimilation erronée entre continuité et dérivabilité.",
+    };
+  }
+
+  // وضعية النسب المئوية والمعادلات (TCLSH / 1BAC_ECO)
+  if (
+    title.includes("نسب") ||
+    title.includes("برمجة خطية") ||
+    title.includes("حساب عددي") ||
+    (lesson.lessonFr || "").toLowerCase().includes("pourcentage") ||
+    (lesson.lessonFr || "").toLowerCase().includes("programmation linéaire")
+  ) {
+    return {
+      titleAr: `وضعية انطلاق استكشافية: النسب المئوية والتطور المتتالي ونمذجة المعادلات`,
+      titleFr: `Activité d'introduction : Pourcentages, évolutions successives et mise en équation`,
+      problemContextAr: `في مكتبة مدرسية، عُرضت موسوعة ثمنها $400\\text{ DH}$ لتخفيض بنسبة $20\\%$ خلال الأسبوع الأول، ثم خُفّض ثمنها الجديد بنسبة $10\\%$ في الأسبوع الثاني. هل التخفيض الإجمالي يساوي $30\\%$؟`,
+      problemContextFr: `Une encyclopédie coûtant $400\\text{ DH}$ subit une baisse de $20\\%$ puis une seconde baisse de $10\\%$. La baisse globale est-elle égale à $30\\%$ ?`,
+      questionsAr: [
+        "1. احسب الثمن بعد التخفيض الأول، ثم الثمن النهائي بعد التخفيض الثاني.",
+        "2. احسب النسبة المئوية الحقيقية للتخفيض الإجمالي وقارنها بـ $30\\%$.",
+        "3. إذا كان الثمن بعد تخفيض $t\\%$ هو $320\\text{ DH}$، اكتب المعادلة التي تحدد $t$.",
+      ],
+      questionsFr: [
+        "1. Calculer le prix après la première baisse, puis le prix final après la seconde baisse.",
+        "2. Calculer le taux de baisse global réel et le comparer à $30\\%$.",
+        "3. Si le prix après une baisse de $t\\%$ est $320\\text{ DH}$, écrire l'équation vérifiée par $t$.",
+      ],
+      expectedConjecturesAr: [
+        "إدراك أن التطورات المتتالية تُضرب معاملاتها الضربيّة ولا تُجمع نسبها المئوية.",
+        "الربط بين الوضعية الواقعية والمعادلات من الدرجة الأولى والثانية.",
+      ],
+      expectedConjecturesFr: [
+        "Comprendre que les coefficients multiplicateurs se multiplient lors d'évolutions successives.",
+        "Traduire une situation économique ou quotidienne en équation du 1er ou 2nd degré.",
+      ],
+      epistemologicalObstaclesAr:
+        "جمع النسب المئوية المتتالية خطأً ($20\\% + 10\\% = 30\\%$) بدل ضرب المعاملين الضربيين ($0,8 \\times 0,9 = 0,72$).",
+      epistemologicalObstaclesFr:
+        "Additionner les pourcentages successifs au lieu de multiplier les coefficients multiplicateurs.",
+    };
+  }
+
+  // وضعية الدوال المرجعية والعموميات حول الدوال (الجذع المشترك — بدون اشتقاق أو نهايات)
+  if (track.cycle === "TC") {
+    const cap0Ar = lesson.capacitiesAr[0] || lesson.lessonAr;
+    const cap0Fr = lesson.capacitiesFr[0] || lesson.lessonFr;
+    return {
+      titleAr: `وضعية انطلاق استكشافية (الجذع المشترك): نمذجة وضعية عددية لـ « ${lesson.lessonAr} »`,
+      titleFr: `Activité d'introduction (Tronc Commun) : Modélisation pour « ${lesson.lessonFr} »`,
+      problemContextAr: `نريد إحاطة حديقة مستطيلة الشكل مساحتها متغيرة باستعمال سياج طوله الإجمالي $20\\text{ m}$، حيث نضع $x$ طول أحد الضلعين. ندرس الدالة $S(x) = x(10 - x)$ لتحديد مجموعة تعريفها، تغيراتها، والقيمة القصوى الممكنة للمساحة عبر « ${cap0Ar} ».`,
+      problemContextFr: `On souhaite clôturer un jardin rectangulaire avec $20\\text{ m}$ de grillage en notant $x$ l'une des dimensions. On modélise l'aire par $S(x) = x(10 - x)$ afin d'étudier son ensemble de définition, ses variations et son extremum via « ${cap0Fr} ».`,
+      questionsAr: [
+        "1. حدد القيم الممكنة للعدد $x$ (مجموعة تعريف الدالة $S$) في سياق الوضعية.",
+        "2. تحقق أنه لكل $x \\in [0, 10]$ لدينا: $S(x) = 25 - (x - 5)^2$.",
+        "3. ادرس تغيرات الدالة $S$ على $[0, 5]$ وعلى $[5, 10]$ باستعمال معدل التغير أو الترتيب.",
+        "4. استنتج القيمة القصوى للمساحة وأبعاد الحديقة الموافقة لها.",
+      ],
+      questionsFr: [
+        "1. Déterminer l'ensemble de définition de $S$ dans le contexte du problème.",
+        "2. Vérifier que pour tout $x \\in [0, 10]$ : $S(x) = 25 - (x - 5)^2$.",
+        "3. Étudier les variations de $S$ sur $[0, 5]$ et $[5, 10]$.",
+        "4. En déduire l'aire maximale et les dimensions optimales du rectangle.",
+      ],
+      expectedConjecturesAr: [
+        "إدراك ارتباط المساحة بحدودية من الدرجة الثانية (شلجم).",
+        "ملاحظة التماثل حول المحور $x = 5$ وبلوغ القيمة القصوى $25\\text{ m}^2$ عند المربع.",
+      ],
+      expectedConjecturesFr: [
+        "Reconnaître une fonction polynôme du second degré (parabole).",
+        "Conjecturer la symétrie par rapport à $x = 5$ et l'extremum en $x = 5$.",
+      ],
+      epistemologicalObstaclesAr:
+        "الخلط بين مجموعة التعريف الجبرية ومجموعة التعريف السياقية، وصعوبة قراءة مجال التغيرات انطلاقاً من التمثيل المبياني.",
+      epistemologicalObstaclesFr:
+        "Confusion entre domaine algébrique et domaine contextuel, et lecture des extremums sur un graphique.",
+    };
+  }
+
+  // وضعية الدوال والنهايات والاتصال والاشتقاق (البكالوريا)
   return {
     titleAr: `وضعية انطلاق استكشافية: من السرعة اللحظية وميل القاطع إلى بناء المفهوم الدقيق لـ « ${lesson.lessonAr} »`,
     titleFr: `Activité d'introduction : De la vitesse instantanée et sécante au concept rigoureux de « ${lesson.lessonFr} »`,
@@ -1326,7 +1900,7 @@ function buildIntroductoryActivity(lesson: LessonItem, track: TrackData) {
     ],
     expectedConjecturesFr: [
       "Observer que le taux se stabilise vers 6 quand h tend vers 0.",
-      "Conjecturer que la tangente est la limite géométrique des sécantes sécantes.",
+      "Conjecturer que la tangente est la limite géométrique des sécantes.",
       "Reconnaître la forme indéterminée 0/0 et la nécessité de la factorisation préalable.",
     ],
     epistemologicalObstaclesAr:
@@ -1340,7 +1914,7 @@ function buildIntroductoryActivity(lesson: LessonItem, track: TrackData) {
  * بناء المحتوى العلمي والمعرفي الكامل والمفصل للدرس (التعاريف، المبرهنات، البراهين، الأمثلة المحلولة)
  */
 function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): FicheCourseSection[] {
-  const title = lesson.lessonAr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
 
   // 1. درس النهايات والاتصال (Limites et Continuité)
   if (title.includes("اتصال") || title.includes("نهايات") || title.includes("continuité") || title.includes("limites")) {
@@ -1357,14 +1931,14 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Continuité en un point x₀",
             contentAr: "لتكن f دالة عددية معرفة على مجال مفتوح I يحتوي على x₀. نقول إن f متصلة في x₀ إذا وفقط إذا كانت النهاية عند x₀ منتهية وتساوي تماماً الصورة f(x₀). أي بالترميز الرياضي الصارم: lim_{x → x₀} f(x) = f(x₀).",
             contentFr: "Soit f une fonction définie sur un intervalle ouvert I contenant x₀. f est continue en x₀ ssi lim_{x → x₀} f(x) = f(x₀).",
-            notationMath: "\\lim_{x \\to x_0} f(x) = f(x_0) \\iff \\forall \\varepsilon > 0, \\exists \\alpha > 0, \\forall x \\in D_f : (|x - x_0| < \\alpha \\implies |f(x) - f(x_0)| < \\varepsilon)",
+            notationMath: "$\\lim_{x \\to x_0} f(x) = f(x_0) \\iff \\forall \\varepsilon > 0, \\exists \\alpha > 0, \\forall x \\in D_f : (|x - x_0| < \\alpha \\implies |f(x) - f(x_0)| < \\varepsilon)$",
           },
           {
             termAr: "الاتصال على اليمين وعلى اليسار في نقطة",
             termFr: "Continuité unilatérale (à droite et à gauche)",
             contentAr: "تكون الدالة f متصلة في x₀ إذا وفقط إذا كانت متصلة على اليمين وعلى اليسار في x₀ معاً، أي: lim_{x → x₀⁺} f(x) = lim_{x → x₀⁻} f(x) = f(x₀).",
             contentFr: "f est continue en x₀ si et seulement si lim_{x → x₀⁺} f(x) = lim_{x → x₀⁻} f(x) = f(x₀).",
-            notationMath: "\\lim_{x \\to x_0^+} f(x) = \\lim_{x \\to x_0^-} f(x) = f(x_0)",
+            notationMath: "$\\lim_{x \\to x_0^+} f(x) = \\lim_{x \\to x_0^-} f(x) = f(x_0)$",
           },
           {
             termAr: "التمديد بالاتصال في نقطة",
@@ -1401,7 +1975,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
               "1. نحدد المعطى: قيمة الدالة في النقطة 2 هي f(2) = 3.",
               "2. نحسب النهاية عندما يؤول x إلى 2: نلاحظ أن التعويض المباشر يعطي (0/0) وهو شكل غير محدد.",
               "3. نعمل البسط: x² - x - 2 = (x - 2)(x + 1).",
-              "4. نختزل من أجل x ≠ 2: f(x) = ((x - 2)(x + 1))/(x - 2) = x + 1.",
+              "4. نختزل من أجل $x \\neq 2$: $f(x) = \\frac{(x - 2)(x + 1)}{x - 2} = x + 1$.",
               "5. نحسب النهاية: lim_{x → 2} f(x) = lim_{x → 2} (x + 1) = 2 + 1 = 3.",
               "6. بما أن lim_{x → 2} f(x) = f(2) = 3، فإن الدالة f متصلة في النقطة x₀ = 2.",
             ],
@@ -1441,7 +2015,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Image d'un intervalle par une fonction continue",
             contentAr: "صورة مجال I بدالة متصلة f هي مجال J = f(I). وصورة قطعة [a, b] بدالة متصلة هي قطعة [m, M] حيث m هي القيمة الدنوية و M هي القيمة القصوية للدالة f على [a, b].",
             contentFr: "L'image d'un intervalle par une fonction continue est un intervalle. L'image d'un segment [a, b] est un segment [m, M].",
-            notationMath: "f([a, b]) = [\\min_{[a, b]} f, \\max_{[a, b]} f]",
+            notationMath: "$f([a, b]) = [\\min_{[a, b]} f, \\max_{[a, b]} f]$",
           },
         ],
         theorems: [
@@ -1510,14 +2084,14 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Fonction réciproque f⁻¹",
             contentAr: "إذا كانت f متصلة ورتيبة قطعا على مجال I، فإنها تقابل من I نحو المجال J = f(I). وتوجد دالة عكسية وحيدة يرمز لها بـ f⁻¹ معرفة من J نحو I، بحيث تحقق: ∀x ∈ I, ∀y ∈ J : (f(x) = y ⇔ f⁻¹(y) = x).",
             contentFr: "Si f est continue et strictement monotone sur I, elle réalise une bijection de I sur J = f(I). Sa réciproque f⁻¹ : J → I vérifie : f(x) = y ⇔ f⁻¹(y) = x.",
-            notationMath: "\\forall x \\in I, f^{-1}(f(x)) = x \\quad \\text{et} \\quad \\forall y \\in J, f(f^{-1}(y)) = y",
+            notationMath: "$\\forall x \\in I,\\; f^{-1}(f(x)) = x$ و $\\forall y \\in J,\\; f(f^{-1}(y)) = y$",
           },
           {
             termAr: "دالة الجذر من الرتبة n (Racine n-ième)",
             termFr: "Fonction racine n-ième (x ↦ ⁿ√x)",
             contentAr: "الدالة x ↦ xⁿ متصلة وتزايدية قطعا على [0, +∞[ (لكل n ∈ ℕ*). إذن هي تقابل من [0, +∞[ نحو [0, +∞[. دالتها العكسية تسمى دالة الجذر من الرتبة n ويرمز لها بـ x ↦ ⁿ√x.",
             contentFr: "La fonction x ↦ xⁿ est continue et strictement croissante sur [0, +∞[. Sa bijection réciproque est la fonction racine n-ième x ↦ ⁿ√x.",
-            notationMath: "\\forall x, y \\ge 0 : (\\sqrt[n]{x} = y \\iff x = y^n)",
+            notationMath: "$\\forall x, y \\ge 0 : (\\sqrt[n]{x} = y \\iff x = y^n)$",
           },
         ],
         theorems: [
@@ -1585,7 +2159,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Nombre dérivé en un point x₀",
             contentAr: "تكون الدالة f قابلة للاشتقاق في x₀ إذا كانت نهاية معدل التغير منتهية وتساوي عدداً حقيقياً l. يسمى هذا العدد: العدد المشتق لـ f في x₀ ويرمز له بـ f'(x₀).",
             contentFr: "f est dérivable en x₀ si lim_{x → x₀} (f(x) - f(x₀))/(x - x₀) existe et est finie dans ℝ. Cette limite est notée f'(x₀).",
-            notationMath: "f'(x_0) = \\lim_{x \\to x_0} \\frac{f(x) - f(x_0)}{x - x_0} = \\lim_{h \\to 0} \\frac{f(x_0 + h) - f(x_0)}{h}",
+            notationMath: "$f'(x_0) = \\lim_{x \\to x_0} \\frac{f(x) - f(x_0)}{x - x_0} = \\lim_{h \\to 0} \\frac{f(x_0 + h) - f(x_0)}{h}$",
           },
           {
             termAr: "التقريب التآلفي لدالة عند نقطة",
@@ -1797,7 +2371,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Définition de la fonction ln",
             contentAr: "تسمى دالة اللوغاريتم النيبيري ويرمز لها بـ ln الدالة الأصلية للدالة x ↦ 1/x على المجال ]0, +∞[ والتي تنعدم في 1: ln(1) = 0، ولكل x > 0 فإن ln'(x) = 1/x.",
             contentFr: "La fonction ln est l'unique primitive de x ↦ 1/x sur ]0, +∞[ qui s'annule en 1. Pour tout x > 0, ln'(x) = 1/x et ln(1) = 0.",
-            notationMath: "\\forall x > 0, \\quad \\ln(x) = \\int_1^x \\frac{1}{t} \\, dt",
+            notationMath: "$\\forall x > 0, \\quad \\ln(x) = \\int_1^x \\frac{1}{t} \\, dt$",
           },
         ],
         theorems: [
@@ -1856,7 +2430,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
     ];
   }
 
-  const titleFr = lesson.lessonFr.toLowerCase();
+  const titleFr = (lesson.lessonFr || "").toLowerCase();
 
   // 5. درس الأعداد العقدية والتحويلات النقطية (Nombres Complexes)
   if (title.includes("عقدي") || titleFr.includes("complexe")) {
@@ -1873,14 +2447,14 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Forme algébrique, conjugué et module",
             contentAr: "كل عدد عقدي z يكتب بصفة وحيدة على الشكل الجبري z = a + ib حيث (a,b) ∈ ℝ² و i² = -1. مرافقه هو z̄ = a - ib ومعياره هو المسافة |z| = √(z·z̄) = √(a² + b²).",
             contentFr: "Tout complexe z s'écrit de manière unique z = a + ib avec (a,b) ∈ ℝ² et i² = -1. Son conjugué est z̄ = a - ib et son module est |z| = √(a² + b²).",
-            notationMath: "z = a + ib, \\quad \\overline{z} = a - ib, \\quad |z| = \\sqrt{z\\overline{z}} = \\sqrt{a^2 + b^2}",
+            notationMath: "$z = a + ib, \\quad \\overline{z} = a - ib, \\quad |z| = \\sqrt{z\\overline{z}} = \\sqrt{a^2 + b^2}$",
           },
           {
             termAr: "الشكل المثلثي والترميز الأسي (صيغة أولير وموافر)",
             termFr: "Forme trigonométrique et notation exponentielle",
             contentAr: "لكل عدد عقدي غير منعدم z معياره r = |z| وعمدته θ ≡ arg(z) [2π]، نكتب: z = r(cos θ + i sin θ) = r e^{iθ}.",
             contentFr: "Pour tout z ∈ ℂ*, de module r = |z| et d'argument θ ≡ arg(z) [2π], on a z = r(cos θ + i sin θ) = r e^{iθ}.",
-            notationMath: "z = r(\\cos\\theta + i\\sin\\theta) = r e^{i\\theta}, \\quad (e^{i\\theta})^n = e^{in\\theta} \\text{ (Moivre)}",
+            notationMath: "$z = r(\\cos\\theta + i\\sin\\theta) = r e^{i\\theta}, \\quad (e^{i\\theta})^n = e^{in\\theta}$ (Moivre)",
           },
         ],
         theorems: [
@@ -1960,7 +2534,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Primitive et intégrale définie sur [a, b]",
             contentAr: "لتكن f دالة متصلة على مجال I. نسمي دالة أصلية لـ f على I كل دالة F قابلة للاشتقاق على I تحقق F'(x) = f(x). تكامل f من a إلى b هو العدد الحقيقي: ∫_a^b f(x)dx = [F(x)]_a^b = F(b) - F(a).",
             contentFr: "Soit f continue sur I. Une primitive F vérifie F' = f sur I. L'intégrale de a à b est le réel ∫_a^b f(x)dx = F(b) - F(a).",
-            notationMath: "\\int_a^b f(x)\\,dx = \\Big[F(x)\\Big]_a^b = F(b) - F(a)",
+            notationMath: "$\\int_a^b f(x)\\,dx = \\Big[F(x)\\Big]_a^b = F(b) - F(a)$",
           },
         ],
         theorems: [
@@ -2015,14 +2589,111 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
     ];
   }
 
+  // 6-ب. درس الحساب المتجهي والإسقاط في المستوى (Géométrie plane - TC)
+  if (
+    (title.includes("متجهي") ||
+      title.includes("إسقاط") ||
+      titleFr.includes("vectoriel") ||
+      titleFr.includes("projection") ||
+      lesson.subCategory === "هندسة مستوية") &&
+    !title.includes("فضاء") &&
+    !title.includes("فلكة") &&
+    !title.includes("جداء متجهي") &&
+    !titleFr.includes("espace") &&
+    !titleFr.includes("sphère") &&
+    !titleFr.includes("produit vectoriel")
+  ) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الحساب المتجهي في المستوى: التعاريف، علاقة شال، والاستقامية",
+        titleFr: "I. Calcul vectoriel dans le plan : Définitions, relation de Chasles et colinéarité",
+        axisSummaryAr: "بناء مفهوم المتجهة والعمليات عليها (الجمع والضرب في عدد حقيقي)، وتوظيفها في إثبات الاستقامية والتوازي ومنتصف قطعة.",
+        axisSummaryFr: "Opérations sur les vecteurs du plan, relation de Chasles, colinéarité, alignement de points et milieu d'un segment.",
+        definitions: [
+          {
+            termAr: "المتجهة وتساوي متجهتين وعلاقة شال",
+            termFr: "Vecteur, égalité de deux vecteurs et relation de Chasles",
+            contentAr: "كل نقطتين مختلفتين $A$ و $B$ تحددان متجهة $\\vec{AB}$ مميزة بالاتجاه (حاملها $(AB)$) والمنحى (من $A$ نحو $B$) والمنظم ($AB$). تتساوى متجهتان $\\vec{AB} = \\vec{DC}$ إذا وفقط إذا كان الرباعي $ABCD$ متوازي أضلاع. ولكل ثلاث نقط $A, B, C$ لدينا علاقة شال: $\\vec{AB} + \\vec{BC} = \\vec{AC}$.",
+            contentFr: "Deux vecteurs sont égaux ($\\vec{AB} = \\vec{DC}$) si et seulement si $ABCD$ est un parallélogramme. Pour tous points $A, B, C$ du plan : $\\vec{AB} + \\vec{BC} = \\vec{AC}$ (relation de Chasles).",
+            notationMath: "$\\vec{AB} + \\vec{BC} = \\vec{AC}$ و $\\vec{BA} = -\\vec{AB}$ و $\\vec{AB} + \\vec{AC} = \\vec{AD}$ (متوازي الأضلاع $ABDC$)",
+          },
+          {
+            termAr: "جداء متجهة في عدد حقيقي",
+            termFr: "Multiplication d'un vecteur par un réel",
+            contentAr: "ليكن $\\vec{u}$ متجهة غير منعدمة و $k \\in \\mathbb{R}^*$. المتجهة $k\\vec{u}$ لها نفس اتجاه $\\vec{u}$ ومنظمها $|k|\\|\\vec{u}\\|$، ولها نفس منحى $\\vec{u}$ إذا كان $k > 0$ ومنحى معاكس إذا كان $k < 0$.",
+            contentFr: "Soit $\\vec{u} \\neq \\vec{0}$ et $k \\in \\mathbb{R}^*$. Le vecteur $k\\vec{u}$ a la même direction que $\\vec{u}$, pour norme $|k|\\|\\vec{u}\\|$, le même sens si $k > 0$ et le sens contraire si $k < 0$.",
+            notationMath: "$k(\\vec{u} + \\vec{v}) = k\\vec{u} + k\\vec{v}$, $(k + k')\\vec{u} = k\\vec{u} + k'\\vec{u}$, $k(k'\\vec{u}) = (kk')\\vec{u}$",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "استقامية متجهتين، استقامية ثلاث نقط، وتوازي مستقيمين",
+            nameFr: "Colinéarité de deux vecteurs, alignement et parallélisme",
+            statementAr: "تكون متجهتان $\\vec{u}$ و $\\vec{v}$ مستقيميتين إذا وفقط إذا وجد عدد حقيقي $k$ بحيث $\\vec{v} = k\\vec{u}$ (أو $\\vec{u} = k\\vec{v}$). تكون النقط $A, B, C$ مستقيمية إذا وفقط إذا كانت $\\vec{AB}$ و $\\vec{AC}$ مستقيميتين. ويكون $(AB) \\parallel (CD)$ إذا وفقط إذا كانت $\\vec{AB}$ و $\\vec{CD}$ مستقيميتين.",
+            statementFr: "Deux vecteurs $\\vec{u}$ et $\\vec{v}$ sont colinéaires s'il existe $k \\in \\mathbb{R}$ tel que $\\vec{v} = k\\vec{u}$. Les points $A, B, C$ sont alignés ssi $\\vec{AB}$ et $\\vec{AC}$ sont colinéaires.",
+            conditionsAr: [
+              "التأكد من عدم انعدام المتجهة المرجعية عند كتابة النسبة $k$",
+              "توحيد الأساس المتجهي (مثل $(\\vec{AB}, \\vec{AC})$) قبل مقارنة المعاملات",
+            ],
+            conditionsFr: [
+              "Exprimer les deux vecteurs dans la même base $(\\vec{AB}, \\vec{AC})$",
+              "Mettre en facteur un réel non nul $k$ pour conclure",
+            ],
+            proofAr: "إذا كان $\\vec{AC} = k\\vec{AB}$ فإن النقطة $C$ تنتمي إلى المستقيم $(AB)$ لأن للمتجهتين نفس الاتجاه ونقطة مشتركة $A$، ومنه النقط $A$ و $B$ و $C$ مستقيمية.",
+            proofFr: "Si $\\vec{AC} = k\\vec{AB}$, les droites $(AB)$ et $(AC)$ ont même direction et le point $A$ en commun, donc $A, B, C$ sont alignés.",
+          },
+          {
+            nameAr: "الخاصية المميزة لمنتصف قطعة ومبرهنة المنتصفين",
+            nameFr: "Caractérisation vectorielle du milieu et théorème des milieux",
+            statementAr: "تكون النقطة $I$ منتصف القطعة $[AB]$ إذا وفقط إذا كان $\\vec{IA} + \\vec{IB} = \\vec{0}$ (أي $\\vec{AI} = \\frac{1}{2}\\vec{AB}$). ولكل نقطة $M$ من المستوى لدينا: $\\vec{MA} + \\vec{MB} = 2\\vec{MI}$. وإذا كانت $I$ و $J$ منتصفي $[AB]$ و $[AC]$ على التوالي فإن $\\vec{IJ} = \\frac{1}{2}\\vec{BC}$.",
+            statementFr: "$I$ est le milieu de $[AB]$ ssi $\\vec{IA} + \\vec{IB} = \\vec{0}$ ssi $\\forall M,\\; \\vec{MA} + \\vec{MB} = 2\\vec{MI}$. Dans un triangle $ABC$, si $I$ et $J$ sont les milieux de $[AB]$ et $[AC]$, alors $\\vec{IJ} = \\frac{1}{2}\\vec{BC}$.",
+            proofAr: "بإدراج النقطة $I$ في المجموع: $\\vec{MA} + \\vec{MB} = (\\vec{MI} + \\vec{IA}) + (\\vec{MI} + \\vec{IB}) = 2\\vec{MI} + (\\vec{IA} + \\vec{IB}) = 2\\vec{MI} + \\vec{0} = 2\\vec{MI}$.",
+            proofFr: "Par la relation de Chasles : $\\vec{MA} + \\vec{MB} = 2\\vec{MI} + \\vec{IA} + \\vec{IB} = 2\\vec{MI}$.",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): علاقة شال وإثبات استقامية ثلاث نقط",
+            titleFr: "Exemple résolu (N2) : Relation de Chasles et alignement de points",
+            statementAr: "ليكن $ABC$ مثلثاً، و $M$ و $N$ و $P$ نقطاً بحيث: $\\vec{AM} = \\frac{3}{2}\\vec{AB}$ و $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$ و $\\vec{AP} = \\frac{1}{2}\\vec{AB} + \\frac{6}{5}\\vec{AC}$.\n1) بين باستعمال علاقة شال أن $\\vec{MN} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC}$ و $\\vec{MP} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.\n2) استنتج أن النقط $M$ و $N$ و $P$ مستقيمية.",
+            statementFr: "Soit $ABC$ un triangle, $M, N, P$ tels que : $\\vec{AM} = \\frac{3}{2}\\vec{AB}$, $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$ et $\\vec{AP} = \\frac{1}{2}\\vec{AB} + \\frac{6}{5}\\vec{AC}$.\n1) Montrer que $\\vec{MN} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC}$ et $\\vec{MP} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.\n2) En déduire l'alignement des points $M, N$ et $P$.",
+            solutionStepsAr: [
+              "1. حساب $\\vec{MN}$: حسب علاقة شال، $\\vec{MN} = \\vec{MA} + \\vec{AN} = -\\vec{AM} + \\vec{AN} = -\\frac{3}{2}\\vec{AB} + 3\\vec{AC} - \\vec{AB} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC}$.",
+              "2. حساب $\\vec{MP}$: حسب علاقة شال، $\\vec{MP} = \\vec{MA} + \\vec{AP} = -\\frac{3}{2}\\vec{AB} + \\frac{1}{2}\\vec{AB} + \\frac{6}{5}\\vec{AC} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.",
+              "3. الاستنتاج: نلاحظ أن $\\vec{MN} = \\frac{5}{2}\\left(-\\vec{AB} + \\frac{6}{5}\\vec{AC}\\right) = \\frac{5}{2}\\vec{MP}$. إذن المتجهتان $\\vec{MN}$ و $\\vec{MP}$ مستقيميتان وتشتركان في $M$، ومنه النقط $M$ و $N$ و $P$ مستقيمية.",
+            ],
+            solutionStepsFr: [
+              "1. $\\vec{MN} = \\vec{MA} + \\vec{AN} = -\\frac{3}{2}\\vec{AB} + 3\\vec{AC} - \\vec{AB} = -\\frac{5}{2}\\vec{AB} + 3\\vec{AC}$.",
+              "2. $\\vec{MP} = \\vec{MA} + \\vec{AP} = -\\frac{3}{2}\\vec{AB} + \\frac{1}{2}\\vec{AB} + \\frac{6}{5}\\vec{AC} = -\\vec{AB} + \\frac{6}{5}\\vec{AC}$.",
+              "3. On remarque que $\\vec{MN} = \\frac{5}{2}\\vec{MP}$, donc $\\vec{MN}$ et $\\vec{MP}$ sont colinéaires et les points $M, N, P$ sont alignés.",
+            ],
+            pedagogicalNoteAr: "توجيه: ركز مع التلاميذ على التعبير عن كل المتجهات في نفس الأساس $(\\vec{AB}, \\vec{AC})$ قبل البحث عن معامل الاستقامية $k$.",
+            pedagogicalNoteFr: "Conseil : Toujours exprimer les deux vecteurs dans la même base $(\\vec{AB}, \\vec{AC})$ avant de conclure.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "نسيان عكس الإشارة عند قلب المتجهة: $\\vec{MA} = -\\vec{AM}$ وليس $+\\vec{AM}$.",
+          "الخلط بين تساوي المنظمين ($AB = CD$) وتساوي المتجهتين ($\\vec{AB} = \\vec{CD}$).",
+          "عدم توحيد المتجهات في أساس واحد $(\\vec{AB}, \\vec{AC})$ مما يعقد إيجاد معامل الاستقامية.",
+        ],
+        commonMistakesFr: [
+          "Oublier le signe moins lors du retournement d'un vecteur : $\\vec{MA} = -\\vec{AM}$.",
+          "Confondre l'égalité de longueurs $AB = CD$ avec l'égalité vectorielle $\\vec{AB} = \\vec{CD}$.",
+        ],
+      },
+    ];
+  }
+
   // 7. درس الهندسة الفضائية: الجداء السلمي، الفلكة، والجداء المتجهي (Géométrie dans l'Espace)
   if (
     title.includes("فضاء") ||
     title.includes("فلكة") ||
-    title.includes("متجهي") ||
+    title.includes("جداء متجهي") ||
     titleFr.includes("espace") ||
     titleFr.includes("sphère") ||
-    titleFr.includes("vectoriel")
+    titleFr.includes("produit vectoriel")
   ) {
     return [
       {
@@ -2037,7 +2708,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Équation cartésienne d'un plan, d'une sphère et distance point-plan",
             contentAr: "المستوى (P) المار من A والمنظمي على n(a,b,c) معادلته ax + by + cz + d = 0. مسافة النقطة Ω عن (P) هي d(Ω, (P)) = |ax_Ω + by_Ω + cz_Ω + d| / √(a² + b² + c²).",
             contentFr: "Le plan de vecteur normal n(a,b,c) a pour équation ax + by + cz + d = 0 et d(Ω, (P)) = |ax_Ω + by_Ω + cz_Ω + d| / √(a² + b² + c²).",
-            notationMath: "d(\\Omega, (P)) = \\frac{|ax_\\Omega + by_\\Omega + cz_\\Omega + d|}{\\sqrt{a^2+b^2+c^2}}, \\quad \\vec{u}\\wedge\\vec{v} = \\begin{vmatrix} y & y' \\\\ z & z' \\end{vmatrix}\\vec{i} - \\begin{vmatrix} x & x' \\\\ z & z' \\end{vmatrix}\\vec{j} + \\begin{vmatrix} x & x' \\\\ y & y' \\end{vmatrix}\\vec{k}",
+            notationMath: "$d(\\Omega, (P)) = \\frac{|ax_\\Omega + by_\\Omega + cz_\\Omega + d|}{\\sqrt{a^2+b^2+c^2}}, \\quad \\vec{u}\\wedge\\vec{v} = \\begin{vmatrix} y & y' \\\\ z & z' \\end{vmatrix}\\vec{i} - \\begin{vmatrix} x & x' \\\\ z & z' \\end{vmatrix}\\vec{j} + \\begin{vmatrix} x & x' \\\\ y & y' \\end{vmatrix}\\vec{k}$",
           },
         ],
         theorems: [
@@ -2107,7 +2778,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Probabilité conditionnelle, indépendance et loi binomiale",
             contentAr: "احتمال وقوع الحدث B علماً أن A قد تحقق (حيث P(A) ≠ 0) هو P_A(B) = P(A ∩ B)/P(A). إذا تكررت تجربة برنولي n مرة بصفة مستقلة وباحتمال نجاح p، فإن P(X = k) = C_n^k p^k (1 - p)^{n-k}.",
             contentFr: "Pour P(A) ≠ 0, P_A(B) = P(A ∩ B)/P(A). Si X ~ B(n, p), alors P(X = k) = C_n^k p^k (1 - p)^{n-k}, E(X) = np et V(X) = np(1 - p).",
-            notationMath: "P_A(B) = \\frac{P(A \\cap B)}{P(A)}, \\quad P(X = k) = C_n^k p^k (1-p)^{n-k}, \\quad E(X) = np",
+            notationMath: "$P_A(B) = \\frac{P(A \\cap B)}{P(A)}, \\quad P(X = k) = C_n^k p^k (1-p)^{n-k}, \\quad E(X) = np$",
           },
         ],
         theorems: [
@@ -2153,14 +2824,134 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
     ];
   }
 
-  // 9. درس الحسابيات في Z، البنيات الجبرية، ومبادئ في المنطق (Arithmétique, Algèbre & Logique)
+  // 9-أ. درس مبادئ في الحسابيات في المجموعة N (TC)
+  if ((title.includes("حسابيات") || titleFr.includes("arithmétique")) && track.cycle === "TC") {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. الزوجية، القواسم والمضاعفات، والأعداد الأولية في المجموعة N",
+        titleFr: "I. Parité, divisibilité, nombres premiers, PGCD et PPCM dans ℕ",
+        axisSummaryAr: "توظيف الزوجية والتفكيك إلى جداء عوامل أولية لحل مسائل القسمة والمضاعفات في المجموعة ℕ.",
+        axisSummaryFr: "Étude de la parité, décomposition en facteurs premiers, PGCD et PPCM dans ℕ.",
+        definitions: [
+          {
+            termAr: "العدد الزوجي والفردي، والعدد الأولي",
+            termFr: "Entier pair/impair et nombre premier",
+            contentAr: "يكون $n \\in \\mathbb{N}$ زوجياً إذا كتب على شكل $n = 2k$ ($k \\in \\mathbb{N}$)، وفردياً إذا كتب على شكل $n = 2k + 1$. والعدد الأولي هو عدد صحيح طبيعي أكبر قطعا من 1 لا يقبل إلا قاسمين هما 1 ونفسه.",
+            contentFr: "$n$ est pair ssi $n = 2k$, impair ssi $n = 2k+1$. Un nombre premier admet exactement deux diviseurs positifs : $1$ et lui-même.",
+            notationMath: "$a \\mid b \\iff \\exists k \\in \\mathbb{N},\\; b = k a \\quad ; \\quad \\mathrm{PGCD}(a,b) \\times \\mathrm{PPCM}(a,b) = a \\times b$",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "التفكيك الوحيد إلى جداء عوامل أولية وحساب PGCD و PPCM",
+            nameFr: "Décomposition en facteurs premiers, PGCD et PPCM",
+            statementAr: "كل عدد صحيح طبيعي $n \\ge 2$ يكتب بكيفية وحيدة على شكل جداء عوامل أولية. القاسم المشترك الأكبر $\\mathrm{PGCD}(a,b)$ هو جداء العوامل المشتركة بأصغر أس، والمضاعف المشترك الأصغر $\\mathrm{PPCM}(a,b)$ هو جداء العوامل المشتركة وغير المشتركة بأكبر أس.",
+            statementFr: "Tout entier $n \\ge 2$ se décompose de manière unique en produit de facteurs premiers. Le PGCD prend les facteurs communs avec le plus petit exposant ; le PPCM prend tous les facteurs avec le plus grand exposant.",
+            proofAr: "لكل عددين متتابعين $n$ و $(n+1)$، أحدهما زوجي والآخر فردي، إذن جداؤهما $n(n+1)$ دائماً زوجي ومضاعف للعدد 2.",
+            proofFr: "Pour tout $n \\in \\mathbb{N}$, parmi deux entiers consécutifs $n$ et $n+1$, l'un est pair, donc $n(n+1)$ est pair.",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N1/N2): الزوجية وحساب PGCD و PPCM",
+            titleFr: "Exemple résolu (N1/N2) : Parité et décomposition PGCD/PPCM",
+            statementAr: "1) أدرس زوجية العدد $A = n^2 + 3n + 4$ لكل $n \\in \\mathbb{N}$.\n2) فكك $a = 540$ و $b = 378$ إلى جداء عوامل أولية واستنتج $\\mathrm{PGCD}(a,b)$ و $\\mathrm{PPCM}(a,b)$.",
+            statementFr: "1) Étudier la parité de $A = n^2 + 3n + 4$.\n2) Décomposer $540$ et $378$ en facteurs premiers et déduire PGCD et PPCM.",
+            solutionStepsAr: [
+              "1. نكتب $A = n(n + 1) + 2n + 4 = n(n + 1) + 2(n + 2)$. بما أن $n(n + 1)$ عدد زوجي (جداء عددين متتابعين) و $2(n + 2)$ عدد زوجي، فإن $A$ عدد زوجي لكل $n \\in \\mathbb{N}$.",
+              "2. التفكيك: $540 = 2^2 \\times 3^3 \\times 5$ و $378 = 2 \\times 3^3 \\times 7$.",
+              "3. ومنه $\\mathrm{PGCD}(540, 378) = 2 \\times 3^3 = 54$ و $\\mathrm{PPCM}(540, 378) = 2^2 \\times 3^3 \\times 5 \\times 7 = 3780$.",
+            ],
+            solutionStepsFr: [
+              "1. $A = n(n+1) + 2(n+2)$ est la somme de deux entiers pairs, donc $A$ est pair.",
+              "2. $540 = 2^2 \\times 3^3 \\times 5$ et $378 = 2 \\times 3^3 \\times 7$.",
+              "3. $\\mathrm{PGCD}(540, 378) = 54$ et $\\mathrm{PPCM}(540, 378) = 3780$.",
+            ],
+            pedagogicalNoteAr: "تقبل طريقة فصل الحالات ($n = 2k$ ثم $n = 2k + 1$) في دراسة الزوجية إلى جانب طريقة التعميل.",
+            pedagogicalNoteFr: "Accepter aussi bien la disjonction des cas ($n=2k$ / $n=2k+1$) que la factorisation par $n(n+1)$.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "الاعتقاد أن العدد 1 عدد أولي (العدد 1 ليس أولياً لأن له قاسماً واحداً فقط).",
+          "الخلط بين قاعدة حساب $\\mathrm{PGCD}$ (أصغر أس للعوامل المشتركة) و$\\mathrm{PPCM}$ (أكبر أس لجميع العوامل).",
+        ],
+        commonMistakesFr: [
+          "Croire que $1$ est un nombre premier.",
+          "Confondre les règles des exposants entre PGCD et PPCM.",
+        ],
+      },
+    ];
+  }
+
+  // 9-ب. درس مبادئ في المنطق (1BAC)
+  if (title.includes("منطق") || titleFr.includes("logique")) {
+    return [
+      {
+        sectionNum: 1,
+        titleAr: "I. العبارات والمكممات والعمليات المنطقية وأنواع الاستدلال",
+        titleFr: "I. Assertions, quantificateurs, connecteurs et modes de raisonnement",
+        axisSummaryAr: "ضبط صياغة العبارات الرياضية، نفي المكممات، وبناء البراهين بالاستلزام المضاد للعكس والخلف وفصل الحالات والترجع.",
+        axisSummaryFr: "Quantificateurs, négation, implication, contraposée, absurde, disjonction des cas et récurrence.",
+        definitions: [
+          {
+            termAr: "العبارة والمكمم الكوني والمكمم الوجودي ونفيهما",
+            termFr: "Quantificateurs universel/existentiel et négation",
+            contentAr: "نفي العبارة « $\\forall x \\in E,\\; P(x)$ » هو « $\\exists x \\in E,\\; \\overline{P(x)}$ ». ونفي « $\\exists x \\in E,\\; P(x)$ » هو « $\\forall x \\in E,\\; \\overline{P(x)}$ ».",
+            contentFr: "La négation de « $\\forall x \\in E,\\; P(x)$ » est « $\\exists x \\in E,\\; \\overline{P(x)}$ ».",
+            notationMath: "$(P \\implies Q) \\iff (\\overline{Q} \\implies \\overline{P}) \\quad ; \\quad \\overline{(P \\implies Q)} \\iff (P \\text{ et } \\overline{Q})$",
+          },
+        ],
+        theorems: [
+          {
+            nameAr: "مبادئ الاستدلال الرياضي (مضاد العكس، الخلف، الترجع)",
+            nameFr: "Modes de raisonnement (Contraposée, Absurde, Récurrence)",
+            statementAr: "1) الاستدلال بالمضاد للعكس يرتكز على التكافؤ $(P \\implies Q) \\iff (\\overline{Q} \\implies \\overline{P})$.\n2) الاستدلال بالخلف: للبرهان على صحة $P$، نفترض $\\overline{P}$ ونصل إلى تناقض.\n3) الاستدلال بالترجع: التحقق من $P(n_0)$ ثم إثبات $(P(n) \\implies P(n+1))$ لجميع $n \\ge n_0$.",
+            statementFr: "Contraposée : $(P \\implies Q) \\iff (\\overline{Q} \\implies \\overline{P})$. Absurde : supposer $\\overline{P}$ et aboutir à une contradiction. Récurrence : initialisation + hérédité.",
+            proofAr: "جدول الحقيقة يثبت أن العبارتين $(P \\implies Q)$ و $(\\overline{Q} \\implies \\overline{P})$ لهما نفس قيمة الحقيقة في جميع الحالات.",
+            proofFr: "La table de vérité montre que $(P \\implies Q)$ et $(\\overline{Q} \\implies \\overline{P})$ ont exactement les mêmes valeurs de vérité.",
+          },
+        ],
+        solvedExamples: [
+          {
+            titleAr: "مثال تطبيقي محلول (N2): البرهان بمضاد العكس والترجع",
+            titleFr: "Exemple résolu (N2) : Contraposée et récurrence",
+            statementAr: "1) بين بمضاد العكس أنه لكل $x \\in \\mathbb{R}$: إذا كان $x \\neq 2$ فإن $\\frac{x+1}{x-2} \\neq 1$.\n2) بين بالترجع أن: $\\forall n \\in \\mathbb{N}^*,\\; 1 + 2 + \\dots + n = \\frac{n(n+1)}{2}$.",
+            statementFr: "1) Montrer par contraposée que si $x \\neq 2$ alors $\\frac{x+1}{x-2} \\neq 1$.\n2) Montrer par récurrence que $\\sum_{k=1}^n k = \\frac{n(n+1)}{2}$.",
+            solutionStepsAr: [
+              "1. بمضاد العكس: نفترض أن $\\frac{x+1}{x-2} = 1$، إذن $x + 1 = x - 2 \\implies 1 = -2$ (تناقض مستحيل)، وبشكل مكافئ لا يوجد $x$ يحقق المساواة أو يؤدي الاستلزام لشرط النتيجة.",
+              "2. الترجع: من أجل $n = 1$: $1 = \\frac{1(2)}{2} = 1$ (صحيحة).",
+              "3. نفترض الصحة لـ $n$ ونبرهن لـ $n+1$: $1 + \\dots + n + (n+1) = \\frac{n(n+1)}{2} + (n+1) = \\frac{(n+1)(n+2)}{2}$.",
+            ],
+            solutionStepsFr: [
+              "1. Par contraposée, si $\\frac{x+1}{x-2} = 1$, alors $x+1 = x-2$, ce qui est impossible.",
+              "2. Initialisation pour $n=1$ : $1 = 1$.",
+              "3. Hérédité : $\\frac{n(n+1)}{2} + (n+1) = \\frac{(n+1)(n+2)}{2}$.",
+            ],
+            pedagogicalNoteAr: "تأكيد كتابة المراحل الثلاث للبرهان بالترجع بوضوح تام (التحقق، الافتراض لـ $n$ ثابت، الاستنتاج).",
+            pedagogicalNoteFr: "Exiger la rédaction explicite des trois étapes de la récurrence.",
+            difficultyLevel: "N2",
+          },
+        ],
+        commonMistakesAr: [
+          "نفي الاستلزام $P \\implies Q$ بكتابة $\\overline{P} \\implies \\overline{Q}$ بدلاً من $(P \\text{ و } \\overline{Q})$.",
+          "الخلط في البرهان بالترجع بين «نفترض أن العلاقة صحيحة لكل $n$» والصحيح «نفترض صحتها لرتبة $n$ ثابتة».",
+        ],
+        commonMistakesFr: [
+          "Confondre la négation de $P \\implies Q$ avec $\\overline{P} \\implies \\overline{Q}$.",
+          "Écrire « supposons que la propriété est vraie pour tout $n$ » dans l'hérédité d'une récurrence.",
+        ],
+      },
+    ];
+  }
+
+  // 9-ج. درس الحسابيات في Z والبنيات الجبرية (2BAC SM)
   if (
     title.includes("حسابيات") ||
-    title.includes("منطق") ||
     title.includes("بنيات") ||
     title.includes("زمرة") ||
     titleFr.includes("arithmétique") ||
-    titleFr.includes("logique") ||
     titleFr.includes("structure")
   ) {
     return [
@@ -2176,7 +2967,7 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
             termFr: "Congruence modulo n et théorème de Bézout",
             contentAr: "نقول إن a ≡ b [n] إذا وفقط إذا كان n يقسم الفرق (a - b). يكون العددان الصحيحان a و b أوليين فيما بينهما (a ∧ b = 1) إذا وفقط إذا وجد عددان صحيحان (u, v) ∈ ℤ² بحيث au + bv = 1.",
             contentFr: "a ≡ b [n] ⇔ n | (a - b). Par le théorème de Bézout : a ∧ b = 1 ⇔ ∃ (u, v) ∈ ℤ², au + bv = 1.",
-            notationMath: "a \\equiv b \\pmod n \\iff n \\mid (a - b), \\quad a \\wedge b = 1 \\iff \\exists (u,v)\\in\\mathbb{Z}^2,\\; au + bv = 1",
+            notationMath: "$a \\equiv b \\pmod n \\iff n \\mid (a - b), \\quad a \\wedge b = 1 \\iff \\exists (u,v)\\in\\mathbb{Z}^2,\\; au + bv = 1$",
           },
         ],
         theorems: [
@@ -2244,7 +3035,10 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
     lesson.sampleExerciseFr?.[1] ||
     `Mobiliser les propriétés de « ${cap1Fr} » pour établir le résultat.`;
 
-  const mainFormulaNotation = `\\text{Capacités cibles : } ${cap0Fr} \\;\\cdot\\; ${cap1Fr}`;
+  const mainFormulaNotation =
+    cap1Fr && cap1Fr !== cap0Fr
+      ? `Capacités cibles : ${cap0Fr} · ${cap1Fr}`
+      : `Capacité cible : ${cap0Fr}`;
 
   return [
     {
@@ -2319,7 +3113,60 @@ function buildDetailedCourseContent(lesson: LessonItem, track: TrackData): Fiche
  * بناء تكامل تكنولوجيا المعلومات TICE وبرمجة بايثون للدرس
  */
 function buildTiceAndPythonIntegration(lesson: LessonItem, track: TrackData) {
-  const title = lesson.lessonAr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
+
+  if (
+    (title.includes("متجهي") ||
+      title.includes("إسقاط") ||
+      (lesson.lessonFr || "").toLowerCase().includes("vectoriel") ||
+      (lesson.lessonFr || "").toLowerCase().includes("projection")) &&
+    !title.includes("فضاء")
+  ) {
+    return {
+      geogebraActivity: {
+        titleAr: "الإنشاء الديناميكي للمتجهات وعلاقة شال والاستقامية بـ GeoGebra",
+        titleFr: "Construction dynamique de vecteurs, relation de Chasles et colinéarité",
+        goalAr: "تمثيل التركيبات الخطية $a\\vec{AB} + b\\vec{AC}$ في المثلث $ABC$ والتحقق بصرياً من استقامية النقط وتوازي المستقيمات.",
+        goalFr: "Construire $a\\vec{AB} + b\\vec{AC}$ dans le triangle $ABC$ et conjecturer l'alignement de points.",
+        stepsAr: [
+          "1. ننشئ ثلاث نقط غير مستقيمية A و B و C ونرسم المتجهتين u = Vecteur(A, B) و v = Vecteur(A, C).",
+          "2. ننشئ النقطة M = A + (3/2)*u والنقطة N = A + 3*v - u.",
+          "3. نرسم المتجهة MN = Vecteur(M, N) ونقارن اتجاهها ومنظمها مع المتجهة المركبة.",
+          "4. نحرك رؤوس المثلث A, B, C ونتحقق من بقاء استقامية النقط محفوظة.",
+        ],
+        stepsFr: [
+          "1. Placer trois points A, B, C et créer les vecteurs u = Vecteur(A, B) et v = Vecteur(A, C).",
+          "2. Construire M = A + (3/2)*u et N = A + 3*v - u.",
+          "3. Tracer MN et vérifier son parallélisme / alignement.",
+          "4. Déplacer A, B, C pour observer l'invariance de la propriété vectorielle.",
+        ],
+      },
+      pythonScript: {
+        titleAr: "خوارزمية بايثون لاختبار استقامية متجهتين وثلاث نقط عبر المحددة",
+        titleFr: "Script Python : Test de colinéarité de deux vecteurs et alignement de 3 points",
+        goalAr: "حساب إحداثيات المتجهتين AB⃗ و AC⃗ والتحقق مما إذا كان det(AB⃗, AC⃗) = 0.",
+        goalFr: "Calculer les coordonnées de AB⃗ et AC⃗ et tester det(AB⃗, AC⃗) == 0.",
+        code: `def vecteur(P, Q):
+    return (Q[0] - P[0], Q[1] - P[1])
+
+def sont_colineaires(u, v):
+    det = u[0] * v[1] - u[1] * v[0]
+    return abs(det) < 1e-9, det
+
+A, B, C = (1, 2), (3, 6), (5, 10)
+AB = vecteur(A, B)
+AC = vecteur(A, C)
+alignes, det_val = sont_colineaires(AB, AC)
+print(f"AB = {AB}, AC = {AC}, det = {det_val}")
+print("Points A, B, C alignés :", alignes)`,
+        explanationAr:
+          "تطبق الخوارزمية شرط انعدام المحددة $\\det(\\vec{u}, \\vec{v}) = x y' - y x'$ للتحقق السريع من استقامية ثلاث نقط في المستوى.",
+        explanationFr:
+          "Le script calcule le déterminant x·y' - y·x' pour vérifier la colinéarité et l'alignement.",
+        sampleOutput: "AB = (2, 4), AC = (4, 8), det = 0\nPoints A, B, C alignés : True",
+      },
+    };
+  }
 
   if (title.includes("متتاليات") || title.includes("suites")) {
     return {
@@ -2373,6 +3220,50 @@ print(f"Seuil atteint au rang n = {n_seuil} avec u_n = {val_seuil:.6f}")`,
         explanationFr:
           "Le script calcule par boucle itérative les termes et détermine le rang n où l'écart avec la limite est inférieur à 10⁻⁴.",
         sampleOutput: "u_10 = 1.000017\nSeuil atteint au rang n = 9 avec u_n = 1.000051",
+      },
+    };
+  }
+
+  // محاكاة GeoGebra و Python مكيّفة للجذع المشترك (بدون مماس/اشتقاق أو TVI)
+  if (track.cycle === "TC") {
+    return {
+      geogebraActivity: {
+        titleAr: `محاكاة تفاعلية بـ GeoGebra: استكشاف تغيرات وتمثيل « ${lesson.lessonAr} »`,
+        titleFr: `Simulation GeoGebra 6 : Exploration dynamique de « ${lesson.lessonFr} »`,
+        goalAr: "تغيير المعاملات باستعمال الزالجات لملاحظة تأثيرها على منحنى الدالة أو الدائرة المثلثية وتحديد القيم الحدية.",
+        goalFr: "Utiliser des curseurs pour observer l'évolution graphique et repérer les extremums.",
+        stepsAr: [
+          "1. ننشئ زالجات للمعاملات الأساسية ونكتب الصيغة الجبرية في حقل الإدخال.",
+          "2. نرسم المنحنى الممثل أو الشكل الهندسي الموافق في المعلم المتعامد الممنظم.",
+          "3. نفعّل الأثر ونلاحظ مجالات التزايد والتناقص والتماثل المحوري أو المركزي.",
+        ],
+        stepsFr: [
+          "1. Créer des curseurs paramétriques et saisir l'expression dans le champ de saisie.",
+          "2. Tracer la courbe représentative ou la figure géométrique associée.",
+          "3. Observer les variations, extremums et éléments de symétrie.",
+        ],
+      },
+      pythonScript: {
+        titleAr: `برنامج Python: حساب جدول القيم والبحث عن القيمة القصوى لـ « ${lesson.lessonAr} »`,
+        titleFr: `Script Python : Tableau de valeurs et recherche d'extremum`,
+        goalAr: "حساب صور مجموعة من الأعداد وتحديد القيمة التقريبية للحد الأقصى أو الأدنى على مجال.",
+        goalFr: "Calculer une table de valeurs et approcher un extremum sur un intervalle.",
+        code: `def f(x):
+    return x * (10 - x)
+
+x_max, y_max = 0, f(0)
+for k in range(0, 101):
+    x = k * 0.1
+    y = f(x)
+    if y > y_max:
+        x_max, y_max = x, y
+
+print(f"Maximum atteint en x = {x_max:.1f} : f(x) = {y_max:.2f}")`,
+        explanationAr:
+          "يقوم البرنامج بمسح المجال $[0, 10]$ بخطوة $0.1$ لتحديد القيمة القصوى للدالة والتحقق من التخمين المبياني.",
+        explanationFr:
+          "Le script parcourt l'intervalle $[0, 10]$ avec un pas de $0,1$ pour repérer le maximum.",
+        sampleOutput: "Maximum atteint en x = 5.0 : f(x) = 25.00",
       },
     };
   }
@@ -2515,8 +3406,8 @@ function buildFormativeEvaluation(lesson: LessonItem) {
  * بناء الامتدادات التخصصية المتقاطعة (STEM Links: الفيزياء، علوم المهندس، الاقتصاد والمعلوميات)
  */
 function buildLessonStemExtensions(lesson: LessonItem): FicheStemExtensionItem[] {
-  const title = lesson.lessonAr.toLowerCase();
-  const titleFr = lesson.lessonFr.toLowerCase();
+  const title = (lesson.lessonAr || "").toLowerCase();
+  const titleFr = (lesson.lessonFr || "").toLowerCase();
 
   if (
     title.includes("تكامل") ||

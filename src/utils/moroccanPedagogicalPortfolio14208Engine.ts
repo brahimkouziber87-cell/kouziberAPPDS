@@ -28,6 +28,11 @@ export interface OfficialNote14208TrackStandard {
   officialCoefficient: number;
   weeklyHours: string;
   dsCountPerSemester: number;
+  dsCountSemester1?: number;
+  dsCountSemester2?: number;
+  annualDsCount?: number;
+  annualDsHours?: number;
+  evaluationNatureAr?: string;
   officialDurationAr: string;
   officialDurationFr: string;
   officialDurationMinutes: number;
@@ -41,6 +46,341 @@ export interface OfficialNote14208TrackStandard {
   requiredPortfolioDocumentsAr: string[];
 }
 
+export interface Moroccan14208CatalogRow {
+  levelAr: "الجذع المشترك" | "الأولى بكالوريا" | "الثانية بكالوريا";
+  trackCode: string;
+  trackNameAr: string;
+  coefficient: number;
+  weeklyHours: number;
+  dsCountS1: number;
+  dsCountS2: number;
+  annualDsCount: number;
+  examDurationHours: number;
+  annualDsHours: number;
+  evaluationNatureAr: string;
+}
+
+export const MOROCCAN_NOTE_14208_OFFICIAL_CATALOG: Moroccan14208CatalogRow[] = [
+  // 1. الجذوع المشتركة
+  {
+    levelAr: "الجذع المشترك",
+    trackCode: "TCS",
+    trackNameAr: "الجذع المشترك العلمي (TCS)",
+    coefficient: 4,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "مراقبة مستمرة طيلة السنة (توزيع الحصص: 2س + 2س + 1س)"
+  },
+  {
+    levelAr: "الجذع المشترك",
+    trackCode: "TCT",
+    trackNameAr: "الجذع المشترك التكنولوجي (TCT)",
+    coefficient: 4,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "مراقبة مستمرة طيلة السنة (توزيع الحصص: 2س + 2س + 1س)"
+  },
+  {
+    levelAr: "الجذع المشترك",
+    trackCode: "TCLSH",
+    trackNameAr: "الجذع المشترك للآداب والعلوم الإنسانية (TCLSH)",
+    coefficient: 2,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "مراقبة مستمرة طيلة السنة (2س أو 1س + 1س)"
+  },
+  {
+    levelAr: "الجذع المشترك",
+    trackCode: "TCO",
+    trackNameAr: "الجذع المشترك للتعليم الأصيل (TCO)",
+    coefficient: 2,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "مراقبة مستمرة طيلة السنة (2س أو 1س + 1س)"
+  },
+
+  // 2. الأولى بكالوريا
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_SM",
+    trackNameAr: "العلوم الرياضية (خيار فرنسية / عربية)",
+    coefficient: 9,
+    weeklyHours: 7,
+    dsCountS1: 4,
+    dsCountS2: 4,
+    annualDsCount: 8,
+    examDurationHours: 2,
+    annualDsHours: 16,
+    evaluationNatureAr: "مراقبة مستمرة فقط (تُمتحن وطنياً في الثانية باك)"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_SE",
+    trackNameAr: "العلوم التجريبية (خيار فرنسية / عربية)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "مراقبة مستمرة فقط (تُمتحن وطنياً في الثانية باك)"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_STE_STM",
+    trackNameAr: "العلوم والتكنولوجيات (الميكانيكية والكهربائية)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "مراقبة مستمرة فقط (تُمتحن وطنياً في الثانية باك)"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_ECO",
+    trackNameAr: "العلوم الاقتصادية والتدبير",
+    coefficient: 4,
+    weeklyHours: 4,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "مراقبة مستمرة فقط (تُمتحن وطنياً في الثانية باك)"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_ARTS",
+    trackNameAr: "الفنون التطبيقية",
+    coefficient: 4,
+    weeklyHours: 3,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 1,
+    annualDsHours: 6,
+    evaluationNatureAr: "مراقبة مستمرة فقط (تُمتحن وطنياً في الثانية باك)"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_LETTRES",
+    trackNameAr: "الآداب والعلوم الإنسانية",
+    coefficient: 1,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "امتحان جهوي موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الأولى بكالوريا",
+    trackCode: "1BAC_ASIL",
+    trackNameAr: "التعليم الأصيل (اللغة العربية / العلوم الشرعية)",
+    coefficient: 1,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "امتحان جهوي موحد + مراقبة مستمرة"
+  },
+
+  // 3. الثانية بكالوريا
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_SM",
+    trackNameAr: "العلوم الرياضية (أ) و (ب)",
+    coefficient: 9,
+    weeklyHours: 7,
+    dsCountS1: 4,
+    dsCountS2: 4,
+    annualDsCount: 8,
+    examDurationHours: 2,
+    annualDsHours: 16,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_PC",
+    trackNameAr: "العلوم التجريبية: مسلك العلوم الفيزيائية (PC)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_SVT",
+    trackNameAr: "العلوم التجريبية: مسلك علوم الحياة والأرض (SVT)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_AGRO",
+    trackNameAr: "العلوم التجريبية: مسلك العلوم الزراعية",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_STM",
+    trackNameAr: "العلوم والتكنولوجيات الميكانيكية (STM)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_STE",
+    trackNameAr: "العلوم والتكنولوجيات الكهربائية (STE)",
+    coefficient: 7,
+    weeklyHours: 5,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_ECO",
+    trackNameAr: "العلوم الاقتصادية والتدبير: العلوم الاقتصادية",
+    coefficient: 4,
+    weeklyHours: 4,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_TGC",
+    trackNameAr: "العلوم الاقتصادية والتدبير: علوم التدبير المحاسباتي",
+    coefficient: 4,
+    weeklyHours: 4,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 2,
+    annualDsHours: 12,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_ARTS",
+    trackNameAr: "الفنون التطبيقية",
+    coefficient: 4,
+    weeklyHours: 3,
+    dsCountS1: 3,
+    dsCountS2: 3,
+    annualDsCount: 6,
+    examDurationHours: 1,
+    annualDsHours: 6,
+    evaluationNatureAr: "امتحان وطني موحد + مراقبة مستمرة"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_LETTRES",
+    trackNameAr: "الآداب والعلوم الإنسانية (مسلك الآداب / العلوم الإنسانية)",
+    coefficient: 1,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "مراقبة مستمرة فقط (اجتيزت جهوياً في الأولى باك)"
+  },
+  {
+    levelAr: "الثانية بكالوريا",
+    trackCode: "2BAC_ASIL",
+    trackNameAr: "التعليم الأصيل (مسلك اللغة العربية / العلوم الشرعية)",
+    coefficient: 1,
+    weeklyHours: 2,
+    dsCountS1: 2,
+    dsCountS2: 2,
+    annualDsCount: 4,
+    examDurationHours: 1,
+    annualDsHours: 4,
+    evaluationNatureAr: "مراقبة مستمرة فقط (اجتيزت جهوياً في الأولى باك)"
+  }
+];
+
+export const NOTE_14208_MANDATORY_REGULATORY_RULES = [
+  {
+    id: 1,
+    titleAr: "المراقبة المستمرة (100% فروض محروسة)",
+    ruleAr: "يُحتسب معدل المراقبة المستمرة حصرياً بناءً على نقط الفروض المحروسة داخل القسم (لا توجد أنشطة مندمجة تدخل في احتساب المعدل الرسمي).",
+    articleRefAr: "المذكرة 142-08 — البند 1 (المراقبة المستمرة)"
+  },
+  {
+    id: 2,
+    titleAr: "الإخبار والتعاقد المسبق",
+    ruleAr: "يُخبر التلاميذ بموعد الفرض المحروس ومحتواه المعرفي والمهاري قبل إجرائه بأسبوع على الأقل لضمان شروط التحضير الإيجابي والشفافية.",
+    articleRefAr: "المذكرة 142-08 — البند 2 (البرمجة والإخبار)"
+  },
+  {
+    id: 3,
+    titleAr: "آجال التصحيح واستثمار الأخطاء",
+    ruleAr: "تُرجع أوراق التحرير وتُصحح جماعياً في القسم في أجل لا يتعدى أسبوعين من تاريخ إجراء الفرض، مع رصد الأخطاء وبناء حصة دعم علاجي فوري.",
+    articleRefAr: "المذكرة 142-08 — البند 3 (التصحيح والتغذية الراجعة)"
+  },
+  {
+    id: 4,
+    titleAr: "البكالوريا المهنية",
+    ruleAr: "يتراوح المعامل بين 2 و 4 والغلاف الزمني الأسبوعي بين 2 و 4 ساعات حسب البطاقة التقنية التخصصية المعتمدة لكل مسلك مهني.",
+    articleRefAr: "المذكرة 142-08 — البند 4 (المسالك المهنية)"
+  }
+];
+
 export interface Note14208ContinuousAssessmentResult {
   dsAverage: number;
   activitiesAverage: number;
@@ -53,7 +393,8 @@ export interface Note14208ContinuousAssessmentResult {
 
 /**
  * حاسبة معدل المراقبة المستمرة وفق المذكرة الوزارية رقم 142-08 (16 نونبر 2007):
- * 75% لمعدل الفروض المحروسة المنجزة داخل القسم + 25% للأنشطة المندمجة والفروض المنزلية
+ * نقطة المراقبة المستمرة للدورة = المعدل الحسابي للنقط المحصل عليها في الفروض المحروسة فقط (المحور الثاني من المذكرة).
+ * الفروض المنزلية والأنشطة لا تدخل في احتساب المعدل (تُمرَّر للتتبع فقط).
  */
 export function computeNote14208SemesterAverage(
   dsGrades: number[],
@@ -70,10 +411,10 @@ export function computeNote14208SemesterAverage(
     ? Math.max(0, Math.min(20, activitiesGrade))
     : 0;
 
-  const weightedDsPart = Number((dsAverage * 0.75).toFixed(2));
-  const weightedActivitiesPart = Number((clampedAct * 0.25).toFixed(2));
+  const weightedDsPart = Number(dsAverage.toFixed(2));
+  const weightedActivitiesPart = 0;
   const finalSemesterAverage = Number(
-    Math.min(20, dsAverage * 0.75 + clampedAct * 0.25).toFixed(2)
+    Math.min(20, dsAverage).toFixed(2)
   );
 
   let remediationTierCode: "EXCELLENCE" | "CONSOLIDATION" | "REMEDIATION" =
@@ -105,106 +446,61 @@ export function computeNote14208SemesterAverage(
 export function getOfficialNote14208TrackStandards(
   trackCode: string
 ): OfficialNote14208TrackStandard {
-  const track: TrackData =
-    CURRICULUM_DB[trackCode] || CURRICULUM_DB["2BAC_PC"];
-  const code = (track.code || "2BAC_PC").toUpperCase();
+  const code = (trackCode || "2BAC_PC").toUpperCase();
+  const track: TrackData | undefined =
+    CURRICULUM_DB[trackCode] || CURRICULUM_DB[code];
 
-  let officialCoefficient = 7;
-  let weeklyHours = "5 ساعات أسبوعياً";
-  let dsCountPerSemester = track.dsCount || 3;
-  let officialDurationAr = "ساعتان (2h00)";
-  let officialDurationFr = "2 heures (120 min)";
-  let officialDurationMinutes = 120;
+  const catalogMatch = MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.find(
+    (r) => r.trackCode === code || r.trackCode === trackCode || (track && r.trackCode === track.code)
+  );
+
+  let officialCoefficient = catalogMatch?.coefficient ?? 7;
+  let weeklyHours = catalogMatch ? `${catalogMatch.weeklyHours} ساعات أسبوعياً` : "5 ساعات أسبوعياً";
+  let dsCountPerSemester = catalogMatch?.dsCountS1 ?? (track?.dsCount || 3);
+  let examHours = catalogMatch?.examDurationHours ?? 2;
+  let officialDurationMinutes = examHours * 60;
+  let officialDurationAr = examHours === 1 ? "ساعة واحدة (1h00)" : "ساعتان (2h00)";
+  let officialDurationFr = `${examHours} heure${examHours > 1 ? "s" : ""} (${officialDurationMinutes} min)`;
   let recommendedN1 = 35;
   let recommendedN2 = 45;
   let recommendedN3 = 20;
 
-  if (code === "2BAC_SM") {
-    officialCoefficient = 9;
-    weeklyHours = "7 ساعات أسبوعياً";
-    dsCountPerSemester = 4;
-    officialDurationAr = "ساعتان (2h00) للفرض · 4 ساعات للوطني";
-    officialDurationFr = "2h (DS) · 4h (National)";
-    officialDurationMinutes = 120;
-    recommendedN1 = 25;
-    recommendedN2 = 45;
-    recommendedN3 = 30;
-  } else if (code === "1BAC_SM") {
-    officialCoefficient = 9;
-    weeklyHours = "7 ساعات أسبوعياً";
-    dsCountPerSemester = 4;
-    officialDurationAr = "ساعتان (2h00) للفرض";
-    officialDurationFr = "2 heures (120 min)";
-    officialDurationMinutes = 120;
-    recommendedN1 = 25;
-    recommendedN2 = 45;
-    recommendedN3 = 30;
-  } else if (
-    code === "2BAC_PC" ||
-    code.startsWith("2BAC_SVT") ||
-    code === "2BAC_STE_STM"
-  ) {
-    officialCoefficient = 7;
-    weeklyHours = "5 ساعات أسبوعياً";
-    dsCountPerSemester = 3;
-    officialDurationAr = "ساعتان (2h00) للفرض · 3 ساعات للوطني";
-    officialDurationFr = "2h (DS) · 3h (National)";
-    officialDurationMinutes = 120;
-    recommendedN1 = 35;
-    recommendedN2 = 45;
+  if (code.includes("SM")) {
+    recommendedN1 = 30;
+    recommendedN2 = 50;
     recommendedN3 = 20;
-  } else if (code === "1BAC_SE" || code === "1BAC_STE_STM") {
-    officialCoefficient = 7;
-    weeklyHours = "5 ساعات أسبوعياً";
-    dsCountPerSemester = 3;
-    officialDurationAr = "ساعتان (2h00)";
-    officialDurationFr = "2 heures (120 min)";
-    officialDurationMinutes = 120;
-    recommendedN1 = 35;
-    recommendedN2 = 45;
-    recommendedN3 = 20;
-  } else if (code === "TCS" || code === "TCT") {
-    officialCoefficient = 4;
-    weeklyHours = "5 ساعات أسبوعياً";
-    dsCountPerSemester = 3;
-    officialDurationAr = "ساعتان (2h00)";
-    officialDurationFr = "2 heures (120 min)";
-    officialDurationMinutes = 120;
-    recommendedN1 = 45;
-    recommendedN2 = 40;
-    recommendedN3 = 15;
-  } else if (code.includes("ECO")) {
-    officialCoefficient = 4;
-    weeklyHours = "4 ساعات أسبوعياً";
-    dsCountPerSemester = 3;
     officialDurationAr = code.startsWith("2BAC")
-      ? "ساعتان (2h00) للفرض · ساعتان للوطني"
-      : "ساعتان (2h00)";
-    officialDurationFr = "2 heures (120 min)";
-    officialDurationMinutes = 120;
+      ? "ساعتان (2h00) للفرض · 4 ساعات للوطني"
+      : "ساعتان (2h00) للفرض";
+    officialDurationFr = code.startsWith("2BAC")
+      ? "2h (DS) · 4h (National)"
+      : "2 heures (120 min)";
+  } else if (code.includes("LETTRES") || code.includes("LSH") || code.includes("ASIL")) {
+    recommendedN1 = 60;
+    recommendedN2 = 40;
+    recommendedN3 = 0;
+    officialDurationAr = code.startsWith("1BAC")
+      ? "ساعة واحدة (1h00) للفرض · 1h30 للجهوي"
+      : code.startsWith("2BAC")
+      ? "ساعة واحدة (1h00) للفرض · 1h30 للوطني"
+      : "ساعة واحدة (1h00)";
+    officialDurationFr = code.startsWith("1BAC")
+      ? "1h (DS) · 1h30 (Régional)"
+      : code.startsWith("2BAC")
+      ? "1h (DS) · 1h30 (National)"
+      : "1 heure (60 min)";
+  } else if (code.includes("ARTS")) {
+    recommendedN1 = 50;
+    recommendedN2 = 40;
+    recommendedN3 = 10;
+  } else if (code.includes("ECO") || code.includes("TGC")) {
     recommendedN1 = 40;
     recommendedN2 = 45;
     recommendedN3 = 15;
-  } else if (code.includes("LSH") || code.includes("LET")) {
-    officialCoefficient = code === "TCLSH" ? 2 : 1;
-    weeklyHours = "ساعتان أسبوعياً";
-    dsCountPerSemester = 2;
-    officialDurationAr =
-      code === "1BAC_LETTRES"
-        ? "ساعة واحدة (1h00) للفرض · 1h30 للجهوي"
-        : code === "2BAC_LETTRES"
-        ? "ساعة واحدة (1h00) للفرض · 1h30 للوطني"
-        : "ساعة واحدة (1h00)";
-    officialDurationFr =
-      code === "1BAC_LETTRES"
-        ? "1h (DS) · 1h30 (Régional)"
-        : code === "2BAC_LETTRES"
-        ? "1h (DS) · 1h30 (National)"
-        : "1 heure (60 min)";
-    officialDurationMinutes = 60;
-    recommendedN1 = 50;
-    recommendedN2 = 35;
-    recommendedN3 = 15;
+    if (code.startsWith("2BAC")) {
+      officialDurationAr = "ساعتان (2h00) للفرض · ساعتان للوطني";
+      officialDurationFr = "2h (DS) · 2h (National)";
+    }
   } else if (code.startsWith("TERM_EXP")) {
     officialCoefficient = 16;
     weeklyHours = "6h + 3h (Maths Expertes)";
@@ -252,24 +548,36 @@ export function getOfficialNote14208TrackStandards(
     officialDurationAr = "ساعتان (2h00)";
     officialDurationFr = "2 heures (120 min)";
     officialDurationMinutes = 120;
-    recommendedN1 = 40;
-    recommendedN2 = 45;
+    recommendedN1 = 45;
+    recommendedN2 = 40;
     recommendedN3 = 15;
+  } else if (code === "2BAC_PC" || code.startsWith("2BAC_SVT") || code === "2BAC_STE_STM") {
+    officialDurationAr = "ساعتان (2h00) للفرض · 3 ساعات للوطني";
+    officialDurationFr = "2h (DS) · 3h (National)";
   }
 
+  const trackLabelAr = catalogMatch?.trackNameAr || track?.labelAr || code;
+  const trackLabelFr = track?.labelFr || catalogMatch?.trackNameAr || code;
+  const cycle = track?.cycle || (code.startsWith("2BAC") || code.startsWith("1BAC") || code.startsWith("TC") ? "QUALIFYING" : "QUALIFYING");
+
   return {
-    trackCode: track.code,
-    trackLabelAr: track.labelAr,
-    trackLabelFr: track.labelFr,
-    cycle: track.cycle,
+    trackCode: code,
+    trackLabelAr,
+    trackLabelFr,
+    cycle,
     officialCoefficient,
     weeklyHours,
     dsCountPerSemester,
+    dsCountSemester1: catalogMatch?.dsCountS1 ?? dsCountPerSemester,
+    dsCountSemester2: catalogMatch?.dsCountS2 ?? dsCountPerSemester,
+    annualDsCount: catalogMatch?.annualDsCount ?? (dsCountPerSemester * 2),
+    annualDsHours: catalogMatch?.annualDsHours ?? (dsCountPerSemester * 2 * (officialDurationMinutes / 60)),
+    evaluationNatureAr: catalogMatch?.evaluationNatureAr ?? "مراقبة مستمرة طيلة السنة ومطابقة للمذكرة 142-08",
     officialDurationAr,
     officialDurationFr,
     officialDurationMinutes,
     continuousAssessmentSplitAr:
-      "75% للفروض المحروسة المنجزة داخل القسم + 25% للفروض المنزلية والأنشطة المندمجة والمواظبة (المذكرة 142-08)",
+      "المعدل الحسابي للنقط المحصل عليها في الفروض المحروسة (المذكرة 142-08، المحور الثاني) · الفروض المنزلية للتتبع والتدريب ولا تدخل في المعدل",
     officialNoteCitationAr:
       "المذكرة الوزارية رقم 142-08 (16 نونبر 2007) والتوجيهات التربوية لمادة الرياضيات (نونبر 2007)",
     recommendedN1,
@@ -344,17 +652,18 @@ export function runDeepPedagogical14208Audit(params: {
   examModel: "A" | "B" | "BOTH";
   subQuestionDecompositionMode?: string;
 }): DeepPedagogical14208AuditReport {
+  const safeLessons = params.lessons || [];
   const trackStandard = getOfficialNote14208TrackStandards(params.trackCode);
   const specMatrix = buildAutomatedDynamicSpecMatrix({
-    lessons: params.lessons,
-    n1Target: trackStandard.recommendedN1,
-    n2Target: trackStandard.recommendedN2,
-    n3Target: trackStandard.recommendedN3,
-    dsStructureMode: params.dsStructureMode,
+    lessons: safeLessons,
+    n1Target: params.n1 ?? 30,
+    n2Target: params.n2 ?? 50,
+    n3Target: params.n3 ?? 20,
+    dsStructureMode: params.dsStructureMode || "INDEPENDENT_EXERCISES",
     examDurationMinutes: trackStandard.officialDurationMinutes,
   });
 
-  const weightsPct = computeExactExerciseEffectiveWeights(params.lessons, 20);
+  const weightsPct = computeExactExerciseEffectiveWeights(safeLessons, 20);
   const totalPts = specMatrix.totals.grandTotalPoints;
   const allQuarterStep = specMatrix.rows.every((row) =>
     row.questionsBreakdown.every(
@@ -458,11 +767,11 @@ export function runDeepPedagogical14208Audit(params: {
       titleAr: "تغطية القدرات المنتظرة المسطرة في التوجيهات التربوية 2007",
       referenceSourceAr: "التوجيهات التربوية 2007 — جداول القدرات المنتظرة",
       status:
-        totalCapacities >= params.lessons.length && weightsPct.length >= 2
+        totalCapacities >= safeLessons.length && weightsPct.length >= 2
           ? "COMPLIANT"
           : "NEEDS_TUNING",
       statusLabelAr:
-        totalCapacities >= params.lessons.length ? "تغطية شاملة" : "تغطية جزئية",
+        totalCapacities >= safeLessons.length ? "تغطية شاملة" : "تغطية جزئية",
       measuredValueAr: `${totalCapacities} قدرات منتظرة موزعة على ${specMatrix.domainSummary.length} مجالات`,
       officialStandardAr: "تغطية كافة الوحدات المدرسة في الفترة البينية",
       inspectorNoteAr:
@@ -768,18 +1077,18 @@ export function buildOfficialMoroccanProfessorPortfolio(params: {
       orderNumber: "06",
       titleAr: "الفرض المنزلي المعمم المضاد للغش (4 مجموعات A/B/C/D) وعقد الالتزام",
       titleFr: "Devoir Maison Paramétré Anti-Plagiat (Groupes A/B/C/D)",
-      officialReferenceAr: "المذكرة الوزارية 142-08 — حصة 25% للواجبات المنزلية",
+      officialReferenceAr: "المذكرة الوزارية 142-08 — الفروض المنزلية: 30–60% من الأسئلة من المستويين الثاني والثالث",
       purposeAr:
         "وظيفة منزلية تحضيرية للفرض المحروس بأربعة نماذج متكافئة وعقد ديداكتيكي للتقويم الذاتي.",
-      keyMetricsAr: `4 مجموعات مستقلة (A/B/C/D) · سلم 20/20 ن · وزن 25% من المراقبة المستمرة`,
+      keyMetricsAr: `4 مجموعات مستقلة (A/B/C/D) · سلم 20/20 ن · 30–60% من الأسئلة من المستويين N2/N3 (المذكرة 142-08)`,
       targetModule: "DM_SERIE",
       targetDmSubType: "DEVOIR_MAISON",
       enableDetailedSolutions: true,
       enable2DSpecMatrix: false,
       enablePostExamRemediation: false,
-      recommendedN1: 30,
-      recommendedN2: 45,
-      recommendedN3: 25,
+      recommendedN1: 45,
+      recommendedN2: 40,
+      recommendedN3: 15,
       rebalancedLessons: rebalanced.lessons,
       readyLatexSnippet: `% فرض منزلي محضر للفرض المحروس — ${trackStandard.trackLabelAr}`,
     },

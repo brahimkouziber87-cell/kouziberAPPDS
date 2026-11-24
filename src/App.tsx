@@ -92,6 +92,7 @@ import {
   ExportFormat,
   FRENCH_COMPETENCIES,
   GEOGEBRA_PRESET_LIBRARY,
+  generateMoroccanSynthesisProblem,
   GeoGebraResource,
   getAutoGeoGebraResourceForLesson,
   getLessonBadgeColor,
@@ -143,6 +144,7 @@ import {
   SubQuestionDecompositionMode,
 } from "./utils/dsSupervisedExamEnhancements";
 import { generateOfflineSourceCode } from "./utils/docGenerator";
+import { generateCustomCountSerieExercises } from "./utils/seriesGenerator";
 import {
   exportBookletImposedPDF,
   exportInstitutionalFoldedA5PDF,
@@ -517,7 +519,10 @@ const MoroccanPedagogicalPortfolio14208Modal = React.lazy(() =>
   }))
 );
 import { buildPrerequisiteDiagnosticBlueprint } from "./utils/diagnosticAndDynamicSpecMatrixEngine";
-import { getOfficialNote14208TrackStandards } from "./utils/moroccanPedagogicalPortfolio14208Engine";
+import {
+  getOfficialNote14208TrackStandards,
+  runDeepPedagogical14208Audit,
+} from "./utils/moroccanPedagogicalPortfolio14208Engine";
 import type { MoroccanDiagnosticPaper } from "./utils/diagnosticGenerator";
 const GoogleDriveSyncModal = React.lazy(() =>
   import("./components/GoogleDriveSyncModal").then((m) => ({
@@ -874,10 +879,10 @@ function AppWorkspace() {
   // 10. ب-2: إعدادات بنية الفرض المحروس وفق المنهاج المغربي (142-08) وخطوط الكتابة باليد
   const [dsStructureMode, setDsStructureMode] =
     useState<MoroccanDSStructureMode>(
-      initial.dsStructureMode || "EXERCICES_ET_PROBLEME"
+      initial.dsStructureMode || "STANDARD_142_08"
     );
   const [dsQuestionDensity, setDsQuestionDensity] =
-    useState<DSQuestionDensity>(initial.dsQuestionDensity || "INTENSIVE");
+    useState<DSQuestionDensity>(initial.dsQuestionDensity || "STANDARD");
   const [includeMoroccanExamDirectives, setIncludeMoroccanExamDirectives] =
     useState<boolean>(true);
   const [handwrittenSolutionsOnly, setHandwrittenSolutionsOnly] =
@@ -1958,7 +1963,7 @@ function AppWorkspace() {
 
   // نمط تجزئة الأسئلة إلى أسئلة فرعية (أ، ب، ج / a, b, c) في الفروض المحروسة
   const [subQuestionDecompositionMode, setSubQuestionDecompositionMode] =
-    useState<SubQuestionDecompositionMode>("STRUCTURED_ABC_ALL");
+    useState<SubQuestionDecompositionMode>("AUTO_DETECT_ONLY");
   const [didacticPackFilter, setDidacticPackFilter] = useState<
     "ALL" | "STUDENT_PAPER" | "INSPECTOR_DOSSIER" | "REMEDIATION"
   >("ALL");
@@ -2199,16 +2204,31 @@ function AppWorkspace() {
     return currentTrack.semesters[semester][dsKey] || [];
   }, [currentTrack, semester, dsKey]);
 
-  // عند تغيير المسلك يدوياً، نضبط الدروس المختارة في الوضع الحر على أول درسين ونعيد التصفية إلى الكل (مع عدم مسح الدروس عند الاستيراد البرمجي من JSON)
+  // عند تغيير المسلك يدوياً، نضبط الدروس المختارة والنسب المهارية الرسمية وبنية الفرض الملائمة للمسلك وفق المذكرة 142-08
   useEffect(() => {
+    const trackStd = getOfficialNote14208TrackStandards(currentTrack.code);
     if (skipTrackResetRef.current) {
       skipTrackResetRef.current = false;
+      setN1(trackStd.recommendedN1);
+      setN2(trackStd.recommendedN2);
+      setN3(trackStd.recommendedN3);
+      if (currentTrack.cycle !== "2BAC") {
+        setDsStructureMode("STANDARD_142_08");
+        setDsQuestionDensity("STANDARD");
+      }
       return;
     }
     setSelectedLessonIndices([0, Math.min(1, Math.max(0, allTrackLessons.length - 1))]);
     setCustomWeightsMap({});
     setSelectedTagFilter("ALL");
-  }, [currentTrack.code, allTrackLessons.length]);
+    setN1(trackStd.recommendedN1);
+    setN2(trackStd.recommendedN2);
+    setN3(trackStd.recommendedN3);
+    if (currentTrack.cycle !== "2BAC") {
+      setDsStructureMode("STANDARD_142_08");
+      setDsQuestionDensity("STANDARD");
+    }
+  }, [currentTrack.code, currentTrack.cycle, allTrackLessons.length]);
 
   // اعتماد جميع دروس التصنيف المختار مباشرة في الوثيقة مع موازنة الأوزان إلى 100%
   const handleSelectAllFilteredTagLessons = (tagId: string) => {
@@ -2395,7 +2415,13 @@ function AppWorkspace() {
     );
 
     let totalPts = qcmPts + probPts;
-    let totalQuestions = (hasQCM ? qcmQuestionCount : 0) + (hasProb ? 6 : 0);
+    const synthProbTotalQuestions = hasProb
+      ? generateMoroccanSynthesisProblem(activeCustomLessons, "A").parts.reduce(
+          (acc, p) => acc + Math.max(1, p.questionsFr.length),
+          0
+        )
+      : 0;
+    let totalQuestions = (hasQCM ? qcmQuestionCount : 0) + synthProbTotalQuestions;
     let n1Pts = hasQCM ? qcmPts * 0.5 : 0;
     let n2Pts = (hasQCM ? qcmPts * 0.5 : 0) + (hasProb ? 4.5 : 0);
     let n3Pts = hasProb ? 4.0 : 0;
@@ -2424,7 +2450,35 @@ function AppWorkspace() {
       });
     });
 
+    const totalExercises =
+      activeModule === "DM_SERIE" && dmSubType === "SERIE_TD"
+        ? serieExerciseCount
+        : activeCustomLessons.length + (hasQCM ? 1 : 0) + (hasProb ? 1 : 0);
+
+    if (activeModule === "DM_SERIE" && dmSubType === "SERIE_TD") {
+      const serieBlocks = generateCustomCountSerieExercises(
+        activeCustomLessons,
+        serieExerciseCount,
+        "A"
+      );
+      const tdQuestions = serieBlocks.reduce(
+        (acc, b) => acc + Math.max(1, b.questionsFr.length),
+        0
+      );
+      return {
+        totalExercises,
+        totalPoints: 20,
+        totalQuestions: tdQuestions,
+        n1Pts: Number(((n1 / 100) * 20).toFixed(2)),
+        n2Pts: Number(((n2 / 100) * 20).toFixed(2)),
+        n3Pts: Number(((n3 / 100) * 20).toFixed(2)),
+        hasQCM: false,
+        hasProb: false,
+      };
+    }
+
     return {
+      totalExercises,
       totalPoints: Number(totalPts.toFixed(2)),
       totalQuestions,
       n1Pts: Number(n1Pts.toFixed(2)),
@@ -2436,6 +2490,8 @@ function AppWorkspace() {
   }, [
     isMission,
     activeModule,
+    dmSubType,
+    serieExerciseCount,
     dsStructureMode,
     qcmQuestionCount,
     totalCustomWeight,
@@ -2640,6 +2696,13 @@ function AppWorkspace() {
         : `سلسلة تمارين ${dmNumber} / Série d'Exercices ${dmNumber}`;
     }
     if (activeModule === "FICHE_OP2007") {
+      if (ficheContentDetailLevel === "SYNTHETIC_OFFICIAL") {
+        return isMission
+          ? "Fiche Résumé de Cours & Méthodes (BOEN / AEFE)"
+          : isFrDoc
+          ? "Résumé de Cours & Méthodes Types (Programme Officiel)"
+          : "ملخص الدرس الرسمي وبطاقة الطرائق المنهجية";
+      }
       return isMission
         ? "Fiche de Séquence Pédagogique (Programme Officiel)"
         : isFrDoc
@@ -2658,7 +2721,7 @@ function AppWorkspace() {
       : isFrDoc
       ? "Répartition Annuelle & Programme"
       : "التوزيع السنوي للمقرر والأطر المرجعية";
-  }, [activeModule, docLang, isMission, dmSubType, dsKey, semester, dmNumber]);
+  }, [activeModule, docLang, isMission, dmSubType, dsKey, semester, dmNumber, ficheContentDetailLevel]);
 
   const defaultDocSubtitle = useMemo(() => {
     const isFrDoc = docLang === "FR" || isMission;
@@ -2676,10 +2739,20 @@ function AppWorkspace() {
         ? "Exercices progressifs (★ Application · ★★ Méthodes · ★★★ Approfondissement)"
         : "تمارين متدرجة الصعوبة (★ تطبيق · ★★ توليف · ★★★ تعمق وتحدي)";
     }
+    if (activeModule === "FICHE_OP2007") {
+      if (ficheContentDetailLevel === "SYNTHETIC_OFFICIAL") {
+        return isFrDoc
+          ? `Résumé de cours · ${currentTrack.labelFr}`
+          : `ملخص الدرس · ${currentTrack.labelAr}`;
+      }
+      return isFrDoc
+        ? `Fiche pédagogique · ${currentTrack.labelFr}`
+        : `جذاذة تربوية · ${currentTrack.labelAr}`;
+    }
     return isFrDoc
       ? `Durée de l'épreuve : ${currentTrack.durationFr}`
       : `المدة الزمنية: ${currentTrack.durationAr}`;
-  }, [activeModule, docLang, isMission, dmSubType, diagDuration, dmDueDate, currentTrack]);
+  }, [activeModule, docLang, isMission, dmSubType, diagDuration, dmDueDate, currentTrack, ficheContentDetailLevel]);
 
   const defaultExerciseTitles = useMemo<Record<number, string>>(() => {
     const map: Record<number, string> = {};
@@ -3282,24 +3355,28 @@ function AppWorkspace() {
       onFix: handleNormalizeWeightsTo100,
     });
 
-    // 3. التوازن الديداكتيكي للمستويات المهارية N1 / N2 / N3 وفق المذكرة 142-08
+    // 3. التوازن الديداكتيكي للمستويات المهارية N1 / N2 / N3 وفق المذكرة 142-08 الخاصة بالمسلك
+    const trackStdAudit = getOfficialNote14208TrackStandards(currentTrack.code);
     const isLevelsBalanced =
-      n1 >= 25 && n1 <= 40 && n2 >= 40 && n2 <= 55 && n3 >= 15 && n3 <= 25 && n1 + n2 + n3 === 100;
+      Math.abs(n1 - trackStdAudit.recommendedN1) <= 5 &&
+      Math.abs(n2 - trackStdAudit.recommendedN2) <= 5 &&
+      Math.abs(n3 - trackStdAudit.recommendedN3) <= 5 &&
+      n1 + n2 + n3 === 100;
     items.push({
       id: "SKILL_LEVELS",
-      title: "التوازن الديداكتيكي للمستويات المهارية (N1: 35% · N2: 45% · N3: 20%)",
+      title: `التوازن الديداكتيكي للمستويات المهارية (${trackStdAudit.recommendedN1}% N1 · ${trackStdAudit.recommendedN2}% N2 · ${trackStdAudit.recommendedN3}% N3)`,
       status: isLevelsBalanced ? "PASS" : "RECOMMEND",
       detail: isLevelsBalanced
-        ? `النسب الحالية (${n1}% N1 · ${n2}% N2 · ${n3}% N3) تطابق توصيات المفتشية العامة لمادة الرياضيات.`
-        : `التوزيع الحالي (${n1}% N1 · ${n2}% N2 · ${n3}% N3) يميل عن التوزيع المرجعي المتوازن (35% / 45% / 20%).`,
-      actionLabel: "تطبيق معيار المفتش (35/45/20)",
+        ? `النسب الحالية (${n1}% N1 · ${n2}% N2 · ${n3}% N3) تطابق معيار المذكرة 142-08 لمسلك ${currentTrack.labelAr}.`
+        : `التوزيع الحالي (${n1}% N1 · ${n2}% N2 · ${n3}% N3) يختلف عن التوزيع المرجعي للمسلك (${trackStdAudit.recommendedN1}% / ${trackStdAudit.recommendedN2}% / ${trackStdAudit.recommendedN3}%).`,
+      actionLabel: `تطبيق معيار 142-08 (${trackStdAudit.recommendedN1}/${trackStdAudit.recommendedN2}/${trackStdAudit.recommendedN3})`,
       onFix: () => {
-        setN1(35);
-        setN2(45);
-        setN3(20);
+        setN1(trackStdAudit.recommendedN1);
+        setN2(trackStdAudit.recommendedN2);
+        setN3(trackStdAudit.recommendedN3);
         setStatusMessage({
           type: "success",
-          text: "تم ضبط المستويات المهارية على التوزيع الرسمي للمذكرة 142-08 (35% N1 · 45% N2 · 20% N3).",
+          text: `تم ضبط المستويات المهارية على التوزيع الرسمي للمذكرة 142-08 (${trackStdAudit.recommendedN1}% N1 · ${trackStdAudit.recommendedN2}% N2 · ${trackStdAudit.recommendedN3}% N3).`,
         });
       },
     });
@@ -3538,6 +3615,7 @@ function AppWorkspace() {
     });
 
     // 13. التدرج الديداكتيكي وميزانية الزمن (قاعدة 1x3 للمفتش التربوي)
+    const isFicheModule = activeModule === "FICHE_OP2007";
     const examDurationMinutes = currentTrack.durationFr?.includes("3h")
       ? 180
       : currentTrack.durationFr?.includes("1h30")
@@ -3548,15 +3626,19 @@ function AppWorkspace() {
       (lesson) => getVariantQuestions(lesson, "A", false, 0, dsQuestionDensity),
       examDurationMinutes
     );
-    const isTimeFeasible = didacticProgression.timeBudgetStatus !== "OVERLOAD";
-    const hasNoInversion = didacticProgression.inversionCount === 0;
+    const isTimeFeasible = isFicheModule || didacticProgression.timeBudgetStatus !== "OVERLOAD";
+    const hasNoInversion = isFicheModule || didacticProgression.inversionCount === 0;
     const isProgressionOptimal = isTimeFeasible && hasNoInversion;
 
     items.push({
       id: "DIDACTIC_PROGRESSION_AND_BUDGET",
-      title: "التدرج الديداكتيكي المعرفي (N1→N2→N3) وميزانية الزمن التقديري (قاعدة 1×3)",
+      title: isFicheModule
+        ? "توازن الغلاف الزمني للجذاذة التربوية وتدرج مراحل البناء (التوجيهات 2007)"
+        : "التدرج الديداكتيكي المعرفي (N1→N2→N3) وميزانية الزمن التقديري (قاعدة 1×3)",
       status: isProgressionOptimal ? "PASS" : "RECOMMEND",
-      detail: isProgressionOptimal
+      detail: isFicheModule
+        ? `الغلاف الزمني للدرس (${activeCustomLessons[0]?.hours || "10h"}) موزع بدقة (100%) بين أنشطة البناء، المحتوى، التمارين، وإدماج TICE.`
+        : isProgressionOptimal
         ? `الميزانية الزمنية للتلميذ متوازنة (${didacticProgression.totalStudentMinutes} د لفرض مدته ${examDurationMinutes} د)، والتدرج الصعودي للأسئلة محترم.`
         : `تنبيه ديداكتيكي: زمن التلميذ المقدر (${didacticProgression.totalStudentMinutes} د) قد يفوق سعة الإنجاز، أو توجد أسئلة مركبة تسبق التطبيق المباشر (${didacticProgression.inversionCount} تنبيه).`,
       actionLabel: "ضبط التدرج وميزانية الزمن",
@@ -3643,6 +3725,42 @@ function AppWorkspace() {
     handleFixEmptyQuickTitles,
     examVariationSeed,
   ]);
+
+  const deepAudit14208Result = useMemo(
+    () =>
+      runDeepPedagogical14208Audit({
+        trackCode: currentTrack.code,
+        semester,
+        dsKey,
+        lessons: activeCustomLessons,
+        n1,
+        n2,
+        n3,
+        dsStructureMode,
+        includeDetailedSolutions,
+        include2DSpecMatrix,
+        includePostExamRemediationSheet,
+        showQuestionBareme,
+        examModel,
+        subQuestionDecompositionMode,
+      }),
+    [
+      currentTrack.code,
+      semester,
+      dsKey,
+      activeCustomLessons,
+      n1,
+      n2,
+      n3,
+      dsStructureMode,
+      includeDetailedSolutions,
+      include2DSpecMatrix,
+      includePostExamRemediationSheet,
+      showQuestionBareme,
+      examModel,
+      subQuestionDecompositionMode,
+    ]
+  );
 
   const [isExportingAuditPDF, setIsExportingAuditPDF] = useState<boolean>(false);
   const [autoExportAuditPdfOnFix, setAutoExportAuditPdfOnFix] = useState<boolean>(true);
@@ -4852,11 +4970,13 @@ function AppWorkspace() {
       lastScrollRatioRef.current = fallbackRatio;
 
       const previewEl = previewScrollRef.current;
-      if (previewEl) {
-        const targetNode = previewEl.querySelector(
-          `[data-sync-section="${sectionId}"]`
-        ) as HTMLElement | null;
-        if (targetNode) {
+      const rootScope: ParentNode = previewEl || document;
+      const targetNode = rootScope.querySelector(
+        `[data-sync-section="${sectionId}"], [data-sync-section="${sectionId}-CONTAINER"]`
+      ) as HTMLElement | null;
+
+      if (targetNode) {
+        if (previewEl && previewEl.scrollHeight > previewEl.clientHeight + 24) {
           const offsetTop =
             targetNode.getBoundingClientRect().top -
             previewEl.getBoundingClientRect().top +
@@ -4864,15 +4984,17 @@ function AppWorkspace() {
             16;
           previewEl.scrollTo({ top: Math.max(0, offsetTop), behavior: "smooth" });
         } else {
-          const previewMax = Math.max(
-            1,
-            previewEl.scrollHeight - previewEl.clientHeight
-          );
-          previewEl.scrollTo({
-            top: fallbackRatio * previewMax,
-            behavior: "smooth",
-          });
+          targetNode.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+      } else if (previewEl && previewEl.scrollHeight > previewEl.clientHeight + 24) {
+        const previewMax = Math.max(
+          1,
+          previewEl.scrollHeight - previewEl.clientHeight
+        );
+        previewEl.scrollTo({
+          top: fallbackRatio * previewMax,
+          behavior: "smooth",
+        });
       }
 
       const codeEl = codeScrollRef.current;
@@ -7757,7 +7879,7 @@ function AppWorkspace() {
         isInlineEditable={isInlineEditable}
         onToggleInlineEditable={() => setIsInlineEditable((v) => !v)}
         totalPoints={liveExamStats.totalPoints}
-        auditScorePercent={pedagogicalAuditReport.scorePercent}
+        auditScorePercent={deepAudit14208Result.overallScorePercent}
         auditIssueCount={pedagogicalAuditReport.issueCount}
         showAuditPanel={showAuditPanel}
         onToggleAuditPanel={() => setShowAuditPanel((v) => !v)}
@@ -8121,25 +8243,87 @@ function AppWorkspace() {
                     <>
                       <span aria-hidden="true" className="text-slate-300">·</span>
                       <span className="font-mono font-extrabold text-teal-800 tabular-nums">
-                        {activeCustomLessons.length} تمارين · {liveExamStats.totalQuestions} سؤالاً ·{" "}
-                        {liveExamStats.totalPoints.toFixed(2)}/20 ن
+                        {liveExamStats.totalExercises} تمارين · {liveExamStats.totalQuestions} سؤالاً
+                        {activeModule === "DM_SERIE" && dmSubType === "SERIE_TD"
+                          ? ""
+                          : ` · ${liveExamStats.totalPoints.toFixed(2)}/20 ن`}
                       </span>
                     </>
                   )}
                 </div>
 
-                {/* أزرار الأدوات البيداغوجية الموحدة (بدون تكرار أو تشتيت لوني) */}
+                {/* أزرار الأدوات البيداغوجية الموحدة ومبدل اللغة والنموذج السريع */}
                 <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  {/* مبدل اللغة السريع (AR / FR / ثنائي) */}
+                  <div
+                    className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/90"
+                    role="group"
+                    aria-label="لغة الوثيقة"
+                  >
+                    {(
+                      [
+                        { id: "AR", label: "AR" },
+                        { id: "FR", label: "FR" },
+                        { id: "BILINGUAL", label: "AR/FR" },
+                      ] as const
+                    ).map((langOpt) => (
+                      <button
+                        key={langOpt.id}
+                        type="button"
+                        onClick={() => setDocLang(langOpt.id)}
+                        className={`h-7 px-2 rounded-lg text-[10.5px] font-black transition cursor-pointer ${
+                          docLang === langOpt.id
+                            ? "bg-slate-900 text-white shadow-2xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                        title={`لغة الوثيقة: ${langOpt.label}`}
+                      >
+                        {langOpt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* مبدل النموذج السريع (A / B / A+B) في الفروض */}
+                  {(activeModule === "DS_142_08" || activeModule === "DM_SERIE") && (
+                    <div
+                      className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/90"
+                      role="group"
+                      aria-label="نموذج الفرض"
+                    >
+                      {(
+                        [
+                          { id: "A", label: "A" },
+                          { id: "B", label: "B" },
+                          { id: "BOTH", label: "A+B" },
+                        ] as const
+                      ).map((mOpt) => (
+                        <button
+                          key={mOpt.id}
+                          type="button"
+                          onClick={() => setExamModel(mOpt.id)}
+                          className={`h-7 px-2 rounded-lg text-[10.5px] font-mono font-black transition cursor-pointer ${
+                            examModel === mOpt.id
+                              ? "bg-teal-700 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                          title={`النموذج ${mOpt.label}`}
+                        >
+                          {mOpt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setShowMoroccanPortfolio14208Modal(true)}
                     className="h-8 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11.5px] font-black flex items-center gap-1.5 transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
-                    title="فتح مرصد المذكرة 142-08 والتوجيهات 2007 وحقيبة الأستاذ الرسمية (7 وثائق + حاسبة 75%/25%)"
+                    title="فتح مرصد المذكرة 142-08 والتوجيهات 2007 وحقيبة الأستاذ الرسمية (7 وثائق)"
                   >
                     <Scale className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                     <span>حقيبة وتدقيق 142-08</span>
                     <span className="font-mono tabular-nums text-emerald-300 font-black">
-                      {pedagogicalAuditReport.scorePercent}%
+                      {deepAudit14208Result.overallScorePercent}%
                     </span>
                   </button>
 
@@ -8215,8 +8399,8 @@ function AppWorkspace() {
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "DS_142_08" && !includeDetailedSolutions
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     1. الفرض المحروس
@@ -8229,8 +8413,8 @@ function AppWorkspace() {
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "DS_142_08" && includeDetailedSolutions
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     2. عناصر الإجابة
@@ -8240,12 +8424,14 @@ function AppWorkspace() {
                     onClick={() => {
                       setActiveModule("FICHE_OP2007");
                       setFicheContentDetailLevel("FULL_WITH_PROOFS");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "FICHE_OP2007" &&
                       ficheContentDetailLevel === "FULL_WITH_PROOFS"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     3. الجذاذة OP 2007
@@ -8255,12 +8441,14 @@ function AppWorkspace() {
                     onClick={() => {
                       setActiveModule("FICHE_OP2007");
                       setFicheContentDetailLevel("SYNTHETIC_OFFICIAL");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "FICHE_OP2007" &&
                       ficheContentDetailLevel === "SYNTHETIC_OFFICIAL"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     4. ملخص الدرس
@@ -8270,11 +8458,13 @@ function AppWorkspace() {
                     onClick={() => {
                       setActiveModule("DM_SERIE");
                       setDmSubType("SERIE_TD");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "DM_SERIE" && dmSubType === "SERIE_TD"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     5. سلسلة التمارين
@@ -8284,33 +8474,43 @@ function AppWorkspace() {
                     onClick={() => {
                       setActiveModule("DM_SERIE");
                       setDmSubType("DEVOIR_MAISON");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "DM_SERIE" && dmSubType === "DEVOIR_MAISON"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     6. الفرض المنزلي DM
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveModule("DIAGNOSTIC")}
+                    onClick={() => {
+                      setActiveModule("DIAGNOSTIC");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
+                    }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "DIAGNOSTIC"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     7. التشخيصي QR
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveModule("REPARTITION_CERTIF")}
+                    onClick={() => {
+                      setActiveModule("REPARTITION_CERTIF");
+                      setIncludeDetailedSolutions(false);
+                      routerNavigate("/exam");
+                    }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer whitespace-nowrap shrink-0 ${
                       activeModule === "REPARTITION_CERTIF"
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-700 hover:bg-slate-200/70"
+                        ? "!bg-slate-900 !text-white shadow-2xs"
+                        : "!bg-transparent !text-slate-700 hover:!bg-slate-200/70"
                     }`}
                   >
                     8. التوزيع السنوي
@@ -8859,8 +9059,8 @@ function AppWorkspace() {
                     onClick={() => setMobileActiveColumn(1)}
                     className={`min-h-[40px] py-1.5 px-2 rounded-lg text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer ${
                       mobileActiveColumn === 1
-                        ? "bg-slate-900 text-cyan-300 shadow-xs"
-                        : "text-slate-700 hover:text-slate-950"
+                        ? "bg-slate-900 !text-cyan-300 shadow-xs"
+                        : "bg-white/80 text-slate-900 hover:bg-white"
                     }`}
                   >
                     <span className="font-mono">01</span>
@@ -8871,8 +9071,8 @@ function AppWorkspace() {
                     onClick={() => setMobileActiveColumn(2)}
                     className={`min-h-[40px] py-1.5 px-2 rounded-lg text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer ${
                       mobileActiveColumn === 2
-                        ? "bg-slate-900 text-cyan-300 shadow-xs"
-                        : "text-slate-700 hover:text-slate-950"
+                        ? "bg-slate-900 !text-cyan-300 shadow-xs"
+                        : "bg-white/80 text-slate-900 hover:bg-white"
                     }`}
                   >
                     <span className="font-mono">02</span>
@@ -8883,8 +9083,8 @@ function AppWorkspace() {
                     onClick={() => setMobileActiveColumn(3)}
                     className={`min-h-[40px] py-1.5 px-2 rounded-lg text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer ${
                       mobileActiveColumn === 3
-                        ? "bg-slate-900 text-cyan-300 shadow-xs"
-                        : "text-slate-700 hover:text-slate-950"
+                        ? "bg-slate-900 !text-cyan-300 shadow-xs"
+                        : "bg-white/80 text-slate-900 hover:bg-white"
                     }`}
                   >
                     <span className="font-mono">03</span>
@@ -11558,24 +11758,26 @@ function AppWorkspace() {
                 <div className="space-y-3 border-b border-slate-200/80 pb-4">
                   <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg text-xs font-black">
                     <button
+                      type="button"
                       onClick={() => {
                         setIsCustomLessonMode(false);
                         setSelectedTagFilter("ALL");
                       }}
-                      className={`py-1.5 rounded-md transition ${
+                      className={`py-1.5 rounded-md transition cursor-pointer ${
                         !isCustomLessonMode
                           ? "bg-white text-indigo-950 shadow-2xs"
-                          : "text-slate-600 hover:text-slate-900"
+                          : "text-slate-700 hover:text-slate-950"
                       }`}
                     >
                       دروس {dsKey} الرسمية
                     </button>
                     <button
+                      type="button"
                       onClick={() => setIsCustomLessonMode(true)}
-                      className={`py-1.5 rounded-md transition ${
+                      className={`py-1.5 rounded-md transition cursor-pointer ${
                         isCustomLessonMode
                           ? "bg-white text-indigo-950 shadow-2xs"
-                          : "text-slate-600 hover:text-slate-900"
+                          : "text-slate-700 hover:text-slate-950"
                       }`}
                     >
                       اختيار حر من المقرر ({selectedLessonIndices.length})
@@ -16761,9 +16963,9 @@ function AppWorkspace() {
       {/* مؤشر وضع العمل دون إنترنت (Offline-First PWA Indicator) */}
       <OfflineStatusBanner />
 
-      {/* شريط التحكم السفلي العائم للجوال (Mobile Bottom Dock) للوصول السريع دون مزاحمة معاينة الورقة A4 */}
-      {!readingModeConfig.enabled && (
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 no-print shadow-2xl">
+      {/* شريط التحكم السفلي العائم للجوال (Mobile Bottom Dock) للوصول السريع دون مزاحمة معاينة الورقة A4 أو تغطية الأدراج */}
+      {!readingModeConfig.enabled && !mobileConfigSheetOpen && !showAuditPanel && (
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 no-print shadow-2xl">
         <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           <button
             type="button"

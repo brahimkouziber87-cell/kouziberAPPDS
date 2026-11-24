@@ -102,6 +102,17 @@ export const SevenStrategicProposalsModal: React.FC<
     }
   }, [initialTab]);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   // ============================================================================
   // Proposal 4 State: Interactive Drag-and-Drop Function Curve Designer
   // ============================================================================
@@ -390,12 +401,24 @@ export const SevenStrategicProposalsModal: React.FC<
         </div>
 
         {/* شريط التبويبات للابتكارات السبعة */}
-        <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center gap-1.5">
+        <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex items-center gap-1.5 overflow-x-auto flex-nowrap studio-scroll shrink-0">
           {[
+            {
+              id: "ARCHITECTURE_STORE" as StrategicProposalTabId,
+              label: "1 & 2. معمارية الحالة والعزل React.memo",
+              badge: "4 Domain Slices",
+              icon: Cpu,
+            },
+            {
+              id: "CAMERA_OMR" as StrategicProposalTabId,
+              label: "3. الماسح الضوئي الحي OMR & QR",
+              badge: "WebRTC OMR",
+              icon: Camera,
+            },
             {
               id: "CURVE_DESIGNER" as StrategicProposalTabId,
               label: "4. مصمم المنحنيات بالسحب والإفلات",
-              badge: "Interactive C_f",
+              badge: "Interactive Cf",
               icon: Compass,
             },
             {
@@ -416,18 +439,6 @@ export const SevenStrategicProposalsModal: React.FC<
               badge: "TBI Slides",
               icon: Presentation,
             },
-            {
-              id: "CAMERA_OMR" as StrategicProposalTabId,
-              label: "3. الماسح الضوئي الحي OMR & QR",
-              badge: "WebRTC OMR",
-              icon: Camera,
-            },
-            {
-              id: "ARCHITECTURE_STORE" as StrategicProposalTabId,
-              label: "1 & 2. معمارية الحالة والعزل React.memo",
-              badge: "4 Domain Slices",
-              icon: Cpu,
-            },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -436,9 +447,9 @@ export const SevenStrategicProposalsModal: React.FC<
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   active
-                    ? "bg-gradient-to-l from-amber-400 to-cyan-400 text-slate-950 shadow-sm"
+                    ? "bg-gradient-to-l from-amber-400 to-cyan-400 !text-slate-950 shadow-sm"
                     : "bg-slate-800/90 text-slate-200 hover:bg-slate-800 border border-slate-700"
                 }`}
               >

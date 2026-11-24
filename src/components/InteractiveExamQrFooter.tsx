@@ -90,9 +90,9 @@ export const InteractiveExamQrFooter: React.FC<InteractiveExamQrFooterProps> = (
       className="avoid-break mt-6 pt-3 border-t-2 border-dashed border-slate-300 text-slate-900 select-none"
     >
       <div className="border-2 border-slate-900 rounded-xl bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 p-3.5 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-4">
           {/* QR Code Vector Box */}
-          <div className="flex items-center gap-3.5 shrink-0">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
             <div
               className="relative bg-white p-2 rounded-lg border-2 border-slate-900 shadow-sm flex flex-col items-center justify-center"
               title={isAr ? "امسح رمز الاستجابة السريعة لفتح النسخة التفاعلية للفرض" : "Scannez le QR Code pour ouvrir la version interactive du devoir"}

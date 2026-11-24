@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Award,
   BookOpen,
-  Calculator,
   Check,
   CheckCircle2,
   Copy,
@@ -25,10 +24,11 @@ import {
 } from "../data/curriculum";
 import {
   buildOfficialMoroccanProfessorPortfolio,
-  computeNote14208SemesterAverage,
   getOfficialNote14208TrackStandards,
   MoroccanPortfolioDocItem,
   runDeepPedagogical14208Audit,
+  MOROCCAN_NOTE_14208_OFFICIAL_CATALOG,
+  NOTE_14208_MANDATORY_REGULATORY_RULES,
 } from "../utils/moroccanPedagogicalPortfolio14208Engine";
 import { autoRebalanceSpecMatrixTo14208 } from "../utils/diagnosticAndDynamicSpecMatrixEngine";
 
@@ -99,37 +99,28 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
   onOpenDynamicSpecMatrixModal,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "DEEP_AUDIT_142_08" | "PORTFOLIO_7_DOCS" | "CAHIER_TEXTES_PV"
+    "DEEP_AUDIT_142_08" | "PORTFOLIO_7_DOCS" | "CAHIER_TEXTES_PV" | "GUIDE_142_08_STANDARDS"
   >("DEEP_AUDIT_142_08");
+  const [catalogLevelFilter, setCatalogLevelFilter] = useState<
+    "ALL" | "الجذع المشترك" | "الأولى بكالوريا" | "الثانية بكالوريا"
+  >("ALL");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const trackStandard = useMemo(
     () => getOfficialNote14208TrackStandards(trackCode),
     [trackCode]
-  );
-
-  // حاسبة المراقبة المستمرة التفاعلية (75% فروض محروسة + 25% أنشطة مدمجة)
-  const [sampleDsGrades, setSampleDsGrades] = useState<number[]>(() =>
-    Array.from({ length: trackStandard.dsCountPerSemester }, (_, i) =>
-      i === 0 ? 13.5 : i === 1 ? 14.25 : 15
-    )
-  );
-  const [sampleActivitiesGrade, setSampleActivitiesGrade] =
-    useState<number>(16);
-
-  useEffect(() => {
-    setSampleDsGrades((prev) =>
-      Array.from({ length: trackStandard.dsCountPerSemester }, (_, i) =>
-        typeof prev[i] === "number" ? prev[i] : 14
-      )
-    );
-  }, [trackStandard.dsCountPerSemester]);
-
-  const continuousAssessmentCalc = useMemo(
-    () =>
-      computeNote14208SemesterAverage(sampleDsGrades, sampleActivitiesGrade),
-    [sampleDsGrades, sampleActivitiesGrade]
   );
 
   const auditReport = useMemo(
@@ -368,12 +359,25 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
               onClick={() => setActiveTab("CAHIER_TEXTES_PV")}
               className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === "CAHIER_TEXTES_PV"
-                  ? "bg-slate-900 text-white shadow-xs"
+                  ? "bg-slate-900 !text-white shadow-xs"
                   : "text-slate-700 hover:bg-slate-200/70"
               }`}
             >
               <BookOpen className="w-4 h-4 shrink-0" />
-              <span>دفتر النصوص · حاسبة 75%/25% · التوجيهات 2007</span>
+              <span>دفتر النصوص · المذكرة 142-08 · التوجيهات 2007</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("GUIDE_142_08_STANDARDS")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === "GUIDE_142_08_STANDARDS"
+                  ? "bg-teal-900 text-white shadow-xs"
+                  : "text-teal-900 bg-teal-50 hover:bg-teal-100/70 border border-teal-200"
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+              <span>دليل المعاملات والغلاف الزمني ومواقيت الفروض (142-08)</span>
             </button>
           </div>
 
@@ -685,101 +689,6 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
 
           {activeTab === "CAHIER_TEXTES_PV" && (
             <div className="space-y-4">
-              {/* Interactive Note 142-08 Continuous Assessment (75% DS + 25% Activities) Calculator */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-slate-800 shrink-0" />
-                    <h3 className="text-sm font-black text-slate-950">
-                      حاسبة معدل المراقبة المستمرة الرسمية (المذكرة 142-08: 75% فروض محروسة + 25% أنشطة مدمجة)
-                    </h3>
-                  </div>
-                  <span className="font-mono tabular-nums text-[11px] font-bold text-slate-600">
-                    مسلك {trackStandard.trackCode} · المعامل{" "}
-                    {trackStandard.officialCoefficient} ·{" "}
-                    {trackStandard.dsCountPerSemester} فروض/أسدس
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 items-end">
-                  {sampleDsGrades.map((grade, idx) => (
-                    <label key={idx} className="block space-y-1">
-                      <span className="text-[11px] font-bold text-slate-600 block">
-                        الفرض المحروس DS{idx + 1} (/20)
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        step={0.25}
-                        value={grade}
-                        onChange={(e) => {
-                          const val = Math.max(
-                            0,
-                            Math.min(20, Number(e.target.value) || 0)
-                          );
-                          setSampleDsGrades((prev) =>
-                            prev.map((g, i) => (i === idx ? val : g))
-                          );
-                        }}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-950 font-mono tabular-nums text-xs font-bold focus:outline-none focus:border-slate-900"
-                      />
-                    </label>
-                  ))}
-
-                  <label className="block space-y-1">
-                    <span className="text-[11px] font-bold text-slate-600 block">
-                      الأنشطة والمنزلي 25% (/20)
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={20}
-                      step={0.25}
-                      value={sampleActivitiesGrade}
-                      onChange={(e) =>
-                        setSampleActivitiesGrade(
-                          Math.max(0, Math.min(20, Number(e.target.value) || 0))
-                        )
-                      }
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-950 font-mono tabular-nums text-xs font-bold focus:outline-none focus:border-slate-900"
-                    />
-                  </label>
-
-                  <div className="p-2.5 rounded-lg bg-slate-900 text-white col-span-2 sm:col-span-1 md:col-span-1">
-                    <div className="text-[10px] text-slate-300 font-bold">
-                      المعدل الدوري (مسار)
-                    </div>
-                    <div className="text-lg font-black font-mono tabular-nums text-amber-300">
-                      {continuousAssessmentCalc.finalSemesterAverage.toFixed(2)}
-                      <span className="text-xs text-slate-400"> / 20</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-xs">
-                  <span className="font-mono tabular-nums text-slate-700">
-                    معدل الفروض المحروسة: <strong>{continuousAssessmentCalc.dsAverage.toFixed(2)}</strong> × 0.75 ={" "}
-                    <strong>{continuousAssessmentCalc.weightedDsPart.toFixed(2)}</strong> · الأنشطة:{" "}
-                    <strong>{continuousAssessmentCalc.activitiesAverage.toFixed(2)}</strong> × 0.25 ={" "}
-                    <strong>{continuousAssessmentCalc.weightedActivitiesPart.toFixed(2)}</strong>
-                  </span>
-                  <span
-                    className={`font-bold ${
-                      continuousAssessmentCalc.remediationTierCode ===
-                      "EXCELLENCE"
-                        ? "text-emerald-700"
-                        : continuousAssessmentCalc.remediationTierCode ===
-                          "CONSOLIDATION"
-                        ? "text-amber-700"
-                        : "text-rose-700"
-                    }`}
-                  >
-                    {continuousAssessmentCalc.remediationTierAr}
-                  </span>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left: Ready Cahier de Textes & PV Entry */}
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
@@ -871,6 +780,297 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
                         )
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "GUIDE_142_08_STANDARDS" && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              {/* Header Banner */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-teal-900 to-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-teal-800/80 text-teal-200 text-[11px] font-bold mb-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>المرجع التنظيمي الرسمي للمراقبة المستمرة</span>
+                  </div>
+                  <h3 className="text-base font-black tracking-tight">
+                    دليل معاملات وغلاف الزمني وفروض مادة الرياضيات بالسلك الثانوي التأهيلي
+                  </h3>
+                  <p className="text-xs text-teal-100/90 mt-1">
+                    تجميع شامل للمعاملات، الحصص الأسبوعية، عدد الفروض المحروسة ومدتها وطبيعة التقويم الإشهادي (المذكرة الوزارية رقم 142-08)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const csvHeader = "المستوى الدراسي,الشعبة / المسلك,المعامل,الغلاف الزمني الأسبوعي (س),فروض الأسدوس 1,فروض الأسدوس 2,مجموع الفروض السنوية,مدة إنجاز الفرض (س),إجمالي ساعات الفروض سنوياً,طبيعة التقويم الإشهادي وملاحظات تنظيمية\n";
+                      const csvRows = MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.map(r => 
+                        `"${r.levelAr}","${r.trackNameAr}",${r.coefficient},${r.weeklyHours},${r.dsCountS1},${r.dsCountS2},${r.annualDsCount},${r.examDurationHours},${r.annualDsHours},"${r.evaluationNatureAr}"`
+                      ).join("\n");
+                      navigator.clipboard.writeText(csvHeader + csvRows);
+                      setStatusMessage("تم نسخ بيانات الدليل الرسمي للمذكرة 142-08 بتنسيق CSV بنجاح!");
+                      setTimeout(() => setStatusMessage(null), 3000);
+                    }}
+                    className="px-3 py-2 rounded-lg bg-teal-800 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>نسخ كـ CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Core Regulatory Rules */}
+              <div className="space-y-2">
+                <div className="text-xs font-black text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-teal-700" />
+                  <span>ضوابط تقويمية أساسية ملزمة (المذكرة الوزارية رقم 142-08)</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {NOTE_14208_MANDATORY_REGULATORY_RULES.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-teal-300 transition flex flex-col justify-between"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="w-6 h-6 rounded-lg bg-teal-100 text-teal-950 font-mono text-xs font-black flex items-center justify-center">
+                            {rule.id}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {rule.articleRefAr}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-black text-slate-900">
+                          {rule.titleAr}
+                        </h4>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          {rule.ruleAr}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Level Filter Buttons */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-slate-200">
+                <div className="flex items-center gap-1.5">
+                  {(
+                    [
+                      { id: "ALL", label: "جميع المستويات (22 مسلكاً)" },
+                      { id: "الجذع المشترك", label: "الجذوع المشتركة (4)" },
+                      { id: "الأولى بكالوريا", label: "الأولى بكالوريا (7)" },
+                      { id: "الثانية بكالوريا", label: "الثانية بكالوريا (11)" },
+                    ] as const
+                  ).map((btn) => (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => setCatalogLevelFilter(btn.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        catalogLevelFilter === btn.id
+                          ? "bg-slate-900 text-white shadow-2xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium">
+                  المسلك النشط حالياً:{" "}
+                  <strong className="text-teal-900 font-bold">
+                    {trackStandard.trackLabelAr}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Interactive Standards Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-black">
+                        <th className="py-2.5 px-3">المستوى الدراسي</th>
+                        <th className="py-2.5 px-3">الشعبة / المسلك</th>
+                        <th className="py-2.5 px-2 text-center">المعامل</th>
+                        <th className="py-2.5 px-2 text-center">الغلاف الأسبوعي</th>
+                        <th className="py-2.5 px-2 text-center">فروض د1</th>
+                        <th className="py-2.5 px-2 text-center">فروض د2</th>
+                        <th className="py-2.5 px-2 text-center">المجموع السنوي</th>
+                        <th className="py-2.5 px-2 text-center">مدة الفرض</th>
+                        <th className="py-2.5 px-2 text-center">إجمالي الساعات</th>
+                        <th className="py-2.5 px-3">طبيعة التقويم والملاحظات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.filter(
+                        (r) =>
+                          catalogLevelFilter === "ALL" ||
+                          r.levelAr === catalogLevelFilter
+                      ).map((row, idx) => {
+                        const isCurrentTrack =
+                          row.trackCode === trackCode ||
+                          trackCode.startsWith(row.trackCode) ||
+                          row.trackCode.startsWith(trackCode);
+
+                        return (
+                          <tr
+                            key={idx}
+                            className={`transition hover:bg-teal-50/40 ${
+                              isCurrentTrack
+                                ? "bg-teal-50/70 font-semibold"
+                                : idx % 2 === 0
+                                ? "bg-white"
+                                : "bg-slate-50/40"
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+                              {row.levelAr}
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900">
+                                  {row.trackNameAr}
+                                </span>
+                                {isCurrentTrack && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-teal-800 text-white shrink-0">
+                                    المسلك النشط
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-black text-slate-900">
+                              {row.coefficient}
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-700">
+                              {row.weeklyHours} س
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-teal-800">
+                              {row.dsCountS1}
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-teal-800">
+                              {row.dsCountS2}
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-black text-slate-900 bg-slate-100/50">
+                              {row.annualDsCount}
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono text-slate-700">
+                              {row.examDurationHours} س
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-800">
+                              {row.annualDsHours} س
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 text-[11px] leading-relaxed">
+                              {row.evaluationNatureAr}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-900 text-white font-black text-xs">
+                        <td className="py-2.5 px-3">المعدل العام / المجموع</td>
+                        <td className="py-2.5 px-3 font-mono">22 مسلكاً / شعبة</td>
+                        <td className="py-2.5 px-2 text-center font-mono">4.68</td>
+                        <td className="py-2.5 px-2 text-center font-mono">4.05 س</td>
+                        <td className="py-2.5 px-2 text-center font-mono">2.82</td>
+                        <td className="py-2.5 px-2 text-center font-mono">2.82</td>
+                        <td className="py-2.5 px-2 text-center font-mono text-teal-300">5.64</td>
+                        <td className="py-2.5 px-2 text-center font-mono">1.64 س</td>
+                        <td className="py-2.5 px-2 text-center font-mono text-amber-300">9.73 س</td>
+                        <td className="py-2.5 px-3 text-[11px] font-normal text-slate-300">متوسط المؤشرات عبر جميع المسالك</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Statistical Summary Comparison Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                <div className="bg-slate-100/90 px-3.5 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900">
+                    ملخص إحصائي ومقارنة بيانية لمعاملات والغلاف الزمني لمادة الرياضيات
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-mono">المستويات التأهيلية الثلاثة</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                        <th className="py-2 px-3.5">المستوى الدراسي</th>
+                        <th className="py-2 px-3 text-center">عدد المسالك</th>
+                        <th className="py-2 px-3 text-center">أعلى معامل</th>
+                        <th className="py-2 px-3 text-center">أدنى معامل</th>
+                        <th className="py-2 px-3 text-center">أعلى غلاف زمني (س)</th>
+                        <th className="py-2 px-3 text-center">أدنى غلاف زمني (س)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono text-center">
+                      <tr className="hover:bg-slate-50/60 transition">
+                        <td className="py-2.5 px-3.5 text-right font-bold text-slate-900">الجذع المشترك</td>
+                        <td className="py-2.5 px-3 font-black text-slate-800">4</td>
+                        <td className="py-2.5 px-3 font-bold text-teal-700">4</td>
+                        <td className="py-2.5 px-3 text-slate-600">2</td>
+                        <td className="py-2.5 px-3 font-bold text-teal-700">5 س</td>
+                        <td className="py-2.5 px-3 text-slate-600">2 س</td>
+                      </tr>
+                      <tr className="bg-slate-50/50 hover:bg-slate-100/60 transition">
+                        <td className="py-2.5 px-3.5 text-right font-bold text-slate-900">الأولى بكالوريا</td>
+                        <td className="py-2.5 px-3 font-black text-slate-800">7</td>
+                        <td className="py-2.5 px-3 font-black text-blue-700">9</td>
+                        <td className="py-2.5 px-3 text-slate-600">1</td>
+                        <td className="py-2.5 px-3 font-black text-blue-700">7 س</td>
+                        <td className="py-2.5 px-3 text-slate-600">2 س</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50/60 transition">
+                        <td className="py-2.5 px-3.5 text-right font-bold text-slate-900">الثانية بكالوريا</td>
+                        <td className="py-2.5 px-3 font-black text-slate-800">11</td>
+                        <td className="py-2.5 px-3 font-black text-blue-700">9</td>
+                        <td className="py-2.5 px-3 text-slate-600">1</td>
+                        <td className="py-2.5 px-3 font-black text-blue-700">7 س</td>
+                        <td className="py-2.5 px-3 text-slate-600">2 س</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Statistical Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60">
+                  <div className="text-[11px] font-bold text-slate-500 mb-1">
+                    مستوى الجذوع المشتركة (4 مسالك)
+                  </div>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <div>المعامل: <strong>4</strong> (علمي/تقني) و <strong>2</strong> (أدبي/أصيل)</div>
+                    <div>الحصص: <strong>5س</strong> (علمي/تقني) و <strong>2س</strong> (أدبي/أصيل)</div>
+                    <div>فروض المراقبة: <strong>3 فروض</strong> في كل أسدوس (ساعتان لكل فرض علمي)</div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60">
+                  <div className="text-[11px] font-bold text-slate-500 mb-1">
+                    مستوى الأولى بكالوريا (7 مسالك)
+                  </div>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <div>المعامل: <strong>9</strong> (علوم رياضية) إلى <strong>1</strong> (آداب)</div>
+                    <div>الحصص: <strong>7س</strong> (رياضية) · <strong>5س</strong> (تجريبية) · <strong>2س</strong> (آداب)</div>
+                    <div>فروض المراقبة: <strong>4 فروض</strong> للرياضية و <strong>3 فروض</strong> للتجريبية في كل أسدوس</div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60">
+                  <div className="text-[11px] font-bold text-slate-500 mb-1">
+                    مستوى الثانية بكالوريا (11 مسلكاً)
+                  </div>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <div>العلوم الرياضية: <strong>4 فروض في د1 و 3 فروض في د2</strong> (المجموع: 7 فروض)</div>
+                    <div>المسالك التجريبية والتقنية: <strong>3 فروض في د1 و 3 في د2</strong> (المجموع: 6 فروض)</div>
+                    <div>إجمالي ساعات الفروض: تتراوح بين <strong>14س</strong> (رياضية) و <strong>12س</strong> (تجريبية)</div>
                   </div>
                 </div>
               </div>

@@ -129,8 +129,8 @@ export const DEFAULT_PREFS: SavedPreferences = {
   selectedLessonIndices: [0, 1],
   customWeightsMap: {},
   customLessonIconsMap: {},
-  dsStructureMode: "EXERCICES_ET_PROBLEME",
-  dsQuestionDensity: "INTENSIVE",
+  dsStructureMode: "STANDARD_142_08",
+  dsQuestionDensity: "STANDARD",
   latexPackageTheme: "TCOLORBOX",
   paperSurface: "PLAIN_WHITE",
   enableBranchColorGradient: true,
@@ -153,7 +153,18 @@ export function loadInitialPrefs(): SavedPreferences {
     const raw = localStorage.getItem(DOCUMENT_PREFS_STORAGE_KEY);
     if (!raw) return DEFAULT_PREFS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_PREFS, ...parsed };
+    const merged: SavedPreferences = { ...DEFAULT_PREFS, ...parsed };
+    // بالنسبة للجذوع المشتركة والأولى بكالوريا، تعتمد المذكرة 142-08 بنية التمارين المستقلة بأوزانها الرسمية (100% = 20/20 ن)
+    if (
+      merged.selectedTrackCode &&
+      !merged.selectedTrackCode.startsWith("2BAC") &&
+      !merged.selectedTrackCode.startsWith("TERM") &&
+      merged.dsStructureMode === "EXERCICES_ET_PROBLEME"
+    ) {
+      merged.dsStructureMode = "STANDARD_142_08";
+      merged.dsQuestionDensity = "STANDARD";
+    }
+    return merged;
   } catch {
     return DEFAULT_PREFS;
   }

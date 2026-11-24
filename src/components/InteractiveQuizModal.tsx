@@ -43,6 +43,7 @@ import {
   QuizQuestionItem,
   StudentQuizSubmission,
 } from "../utils/quizGenerator";
+import { CURRICULUM_DB } from "../data/curriculum";
 import { formatMathTypography } from "../utils/latexPackagesAndMath";
 import { MathText } from "./MathRenderer";
 
@@ -69,9 +70,14 @@ export const InteractiveQuizModal: React.FC<InteractiveQuizModalProps> = ({
   onSelectAiModel,
   googleUserEmail,
 }) => {
+  const resolvedTrackLabel =
+    CURRICULUM_DB[quizData.trackCode]?.labelAr || quizData.trackCode || "TCS";
   const [step, setStep] = useState<QuizViewStep>("SETUP");
   const [candidateName, setCandidateName] = useState<string>("");
-  const [candidateClass, setCandidateClass] = useState<string>("2BAC PC / SM");
+  const [candidateClass, setCandidateClass] = useState<string>(resolvedTrackLabel);
+  useEffect(() => {
+    setCandidateClass(resolvedTrackLabel);
+  }, [resolvedTrackLabel]);
   const [candidateNumber, setCandidateNumber] = useState<string>("1");
   const [chosenDurationMinutes, setChosenDurationMinutes] = useState<number>(
     quizData.durationMinutes || 45
@@ -307,17 +313,17 @@ export const InteractiveQuizModal: React.FC<InteractiveQuizModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="quiz-modal-root fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white">
+    <div className="quiz-modal-root fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-hidden print:p-0 print:bg-white">
       <div
         ref={containerRef}
-        className={`quiz-modal-card bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 flex flex-col w-full transition-all duration-300 print:border-none print:shadow-none print:w-full print:rounded-none ${
+        className={`quiz-modal-card bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 flex flex-col w-full overflow-hidden transition-all duration-300 print:border-none print:shadow-none print:w-full print:rounded-none print:overflow-visible ${
           isFullscreen
             ? "fixed inset-0 z-50 rounded-none h-screen"
-            : "max-w-5xl max-h-[92vh] h-full"
+            : "max-w-5xl max-h-[92vh]"
         }`}
       >
         {/* شريط الرأس التفاعلي */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-t-2xl border-b border-indigo-800 print:hidden">
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-t-2xl border-b border-indigo-800 print:hidden">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-400 shadow-inner">
               <Zap className="w-5 h-5" />
@@ -440,7 +446,7 @@ export const InteractiveQuizModal: React.FC<InteractiveQuizModalProps> = ({
         </div>
 
         {/* محتوى الشاشة حسب المرحلة */}
-        <div className="quiz-modal-body flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
+        <div className="quiz-modal-body flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-slate-50">
           {/* 1. مرحلة الإعداد وتحديد هوية المترشح (SETUP STEP) */}
           {step === "SETUP" && (
             <div className="max-w-2xl mx-auto space-y-6 py-4">
@@ -768,7 +774,7 @@ export const InteractiveQuizModal: React.FC<InteractiveQuizModalProps> = ({
 
           {/* 2. مرحلة إجراء الاختبار (TAKING STEP) */}
           {step === "TAKING" && currentQuestion && (
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="max-w-4xl mx-auto space-y-4 pb-8">
               {/* شريط التقدم السريع والمعلومات */}
               <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -902,7 +908,10 @@ export const InteractiveQuizModal: React.FC<InteractiveQuizModalProps> = ({
                                 <MathText text={choice.labelAr} />
                               </div>
                             )}
-                            {quizDisplayLang !== "AR" && (
+                            {quizDisplayLang !== "AR" &&
+                              (quizDisplayLang === "FR" ||
+                                (Boolean(choice.labelFr) &&
+                                  choice.labelFr.trim() !== choice.labelAr.trim())) && (
                               <div
                                 className={`${
                                   quizDisplayLang === "FR"

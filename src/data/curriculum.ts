@@ -641,7 +641,7 @@ export function evaluateTitleCalligraphyHarmony(
       notesAr.push(
         "يحتوي العنوان على كلمات فرنسية/لاتينية؛ خط الديواني يتألق أكثر مع العناوين العربية الخالصة."
       );
-    } else {
+  } else {
       notesAr.push("نسبة الحروف العربية مثالية لانسيابية وتقوسات خط الديواني.");
     }
 
@@ -650,7 +650,7 @@ export function evaluateTitleCalligraphyHarmony(
       notesAr.push(
         "العنوان طويل نسبياً لخط الديواني؛ يُستحسن اختيار الحجم «المتوازن» لتجنب ازدحام الكؤوس والمدود."
       );
-    } else {
+  } else {
       notesAr.push("طول العنوان متزن ويسمح بظهور رشاقتَي الألف واللام الديوانية.");
     }
   } else if (fontId === "THULUTH_ROYAL") {
@@ -659,7 +659,7 @@ export function evaluateTitleCalligraphyHarmony(
       notesAr.push(
         "خط الثلث السلطاني يحتاج إلى مساحة رأسية لإبراز الترويسات؛ الحجم «المتوازن» أو «الجلي» أفضل."
       );
-    } else {
+  } else {
       notesAr.push("المساحة الرأسية والحجم المختار يبرزان هيبة الألفات في خط الثلث الجليل.");
     }
     if (latinChars > 8) {
@@ -1284,13 +1284,13 @@ export const BRANCH_COLOR_THEMES: Record<
   },
   ALGEBRA_AMBER: {
     id: "ALGEBRA_AMBER",
-    labelAr: "العنبري والنيلي الجبري (الجبر، العقدية والحسابيات — Algèbre)",
-    labelFr: "Ambre & Indigo Algébrique (Algèbre, Complexes & Arithmétique)",
-    shortLabelAr: "🟠 الجبر والعقدية",
-    shortLabelFr: "🟠 Algèbre & Complexes",
+    labelAr: "العنبري والنيلي الجبري (الجبر، الحسابيات والعقدية — Algèbre)",
+    labelFr: "Ambre & Indigo Algébrique (Algèbre, Arithmétique & Complexes)",
+    shortLabelAr: "🟠 الجبر والحسابيات",
+    shortLabelFr: "🟠 Algèbre & Arithmétique",
     iconSymbol: "∑",
-    branchBadgeAr: "تخصص الجبر والأعداد العقدية (Algèbre)",
-    branchBadgeFr: "Spécialité Algèbre & Nombres Complexes",
+    branchBadgeAr: "تخصص الجبر والحسابيات (Algèbre)",
+    branchBadgeFr: "Spécialité Algèbre & Arithmétique",
     headerGradientCss: "linear-gradient(135deg, #fef3c7 0%, #fffbeb 48%, #e0e7ff 100%)",
     vividBannerGradientCss: "linear-gradient(135deg, #78350f 0%, #b45309 50%, #3730a3 100%)",
     ribbonBarGradientCss: "linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #4f46e5 100%)",
@@ -1751,6 +1751,29 @@ export function getAutoGeoGebraResourceForLesson(
       titleFr: `${lesson.lessonFr} — Cercle trigonométrique`,
     };
   }
+  if (
+    lowerFr.includes("vector") ||
+    lowerFr.includes("projection") ||
+    lowerFr.includes("barycentre") ||
+    lowerFr.includes("homothétie") ||
+    lowerFr.includes("transformation") ||
+    lesson.lessonAr.includes("المتجهي") ||
+    lesson.lessonAr.includes("الإسقاط") ||
+    lesson.lessonAr.includes("المرجح") ||
+    lesson.lessonAr.includes("التحاكي")
+  ) {
+    return {
+      ...GEOGEBRA_PRESET_LIBRARY[2],
+      id: "preset_plane_vectors_projection",
+      lessonKey: lesson.lessonFr,
+      titleAr: `${lesson.lessonAr} — الإنشاء المتجهي وعلاقة شال والإسقاط (GeoGebra)`,
+      titleFr: `${lesson.lessonFr} — Construction vectorielle, Chasles & Projection (GeoGebra)`,
+      instructionsAr:
+        "حرّك رؤوس المثلث ABC في الشكل التفاعلي للتحقق من علاقة شال، استقامية النقط، والحفاظ على معامل الاستقامية بالإسقاط.",
+      instructionsFr:
+        "Déplacez les sommets du triangle ABC pour vérifier la relation de Chasles, l'alignement des points et la conservation du coefficient de colinéarité par projection.",
+    };
+  }
   return {
     ...GEOGEBRA_PRESET_LIBRARY[2],
     titleAr: `${lesson.lessonAr} — شكل هندسي تفاعلي (GeoGebra)`,
@@ -1807,7 +1830,7 @@ export function getVariantQuestions(
       if (lesson.sampleExerciseModelB_Ar && lesson.sampleExerciseModelB_Fr) {
         questionsAr = [...lesson.sampleExerciseModelB_Ar];
         questionsFr = [...lesson.sampleExerciseModelB_Fr];
-      } else {
+  } else {
         questionsAr = lesson.sampleExerciseAr.map((q) =>
           q
             .replace("n² + 3n + 4", "n² + 5n + 6")
@@ -1870,7 +1893,7 @@ export function getVariantQuestions(
           .replace("3AC - AB", "4AC - 2AB")
           .replace("-(5/2)AB + 3AC", "-(7/2)AB + 4AC")
       );
-    } else {
+  } else {
       // Model D
       questionsAr = lesson.sampleExerciseAr.map((q) =>
         q
@@ -1904,36 +1927,48 @@ export function getVariantQuestions(
       );
     }
 
-    // إغناء التمارين المقتضبة (أقل من 4 أسئلة) بأسئلة استدلال وتوليف وفق المذكرة المغربية 142-08
-    if (!lesson.isImportedSimulation && !lesson.hasCustomQuestions && questionsAr.length <= 3) {
+    // إغناء التمارين المقتضبة (أقل من 3 أسئلة) بأسئلة استدلال وتوليف وفق المذكرة المغربية 142-08
+    if (!lesson.isImportedSimulation && !lesson.hasCustomQuestions && questionsAr.length < 3) {
       const capLastAr = lesson.capacitiesAr[lesson.capacitiesAr.length - 1] || lesson.lessonAr;
       const capLastFr = lesson.capacitiesFr[lesson.capacitiesFr.length - 1] || lesson.lessonFr;
+      const isVectorOrProjection =
+        titleFr.includes("vector") ||
+        titleFr.includes("projection") ||
+        titleAr.includes("المتجهي") ||
+        titleAr.includes("الإسقاط");
       if (subCat === "تحليل" || lesson.category === "Calculus") {
         questionsAr.push(
-          `${questionsAr.length + 1}. أ) باستعمال النتائج السابقة، أدرس الوضع النسبي للمنحنى (C_f) والمستقيم المقارب (أو المماس Δ) وحدد نقط التقاطع.`,
-          `${questionsAr.length + 2}. ب) سؤال توليفي (المستوى N3): ناقش مبيانياً وحسابياً حسب قيم الوسيط الحقيقي m عدد وإشارة حلول المعادلة f(x) = m في المجال المدروس.`
+          `${questionsAr.length + 1}. باستعمال النتائج السابقة، أدرس الوضع النسبي للمنحنى (C_f) والمستقيم المقارب (أو المماس Δ) وحدد نقط التقاطع.`,
+          `${questionsAr.length + 2}. سؤال توليفي (المستوى N3): ناقش مبيانياً وحسابياً حسب قيم الوسيط الحقيقي m عدد وإشارة حلول المعادلة f(x) = m في المجال المدروس.`
         );
         questionsFr.push(
-          `${questionsFr.length + 1}. a) En exploitant les questions précédentes, étudier la position relative de la courbe (C_f) par rapport à la droite (Δ) et préciser les points d'intersection.`,
-          `${questionsFr.length + 2}. b) Synthèse (Niveau N3) : Discuter graphiquement et algébriquement, suivant les valeurs du paramètre réel m, le nombre de solutions de l'équation f(x) = m.`
+          `${questionsFr.length + 1}. En exploitant les questions précédentes, étudier la position relative de la courbe (C_f) par rapport à la droite (Δ) et préciser les points d'intersection.`,
+          `${questionsFr.length + 2}. Synthèse (Niveau N3) : Discuter graphiquement et algébriquement, suivant les valeurs du paramètre réel m, le nombre de solutions de l'équation f(x) = m.`
+        );
+      } else if (isVectorOrProjection) {
+        questionsAr.push(
+          `${questionsAr.length + 1}. لتكن I منتصف القطعة [BC]. عبر عن المتجهة AI⃗ بدلالة AB⃗ و AC⃗، ثم استنتج استقامية النقط المدروسة.`
+        );
+        questionsFr.push(
+          `${questionsFr.length + 1}. Soit I le milieu du segment [BC]. Exprimer le vecteur AI⃗ en fonction de AB⃗ et AC⃗, puis en déduire l'alignement des points étudiés.`
         );
       } else if (subCat === "هندسة فضائية" || subCat === "هندسة مستوية" || lesson.category === "Geometry") {
         questionsAr.push(
-          `${questionsAr.length + 1}. أ) حدد تمثيلاً بارامترياً للمستقيم (Δ) المار من مركز الثقل والعمودي على المستوى (أو المستقيم الحامل للقاعدة)، ثم استنتج إحداثيات المسقط العمودي H.`,
-          `${questionsAr.length + 2}. ب) مسألة هندسية (N3): حدد مجموعة النقط M من المستوى (أو الفضاء) التي تحقق العلاقة المترية المدروسة، مع التعليل الهندسي الدقيق.`
+          `${questionsAr.length + 1}. حدد معادلة المستقيم العمودي (Δ) المار من النقطة المميزة، ثم استنتج إحداثيات المسقط العمودي H.`,
+          `${questionsAr.length + 2}. مسألة هندسية (N3): حدد مجموعة النقط M التي تحقق العلاقة المترية المدروسة، مع التعليل الهندسي الدقيق.`
         );
         questionsFr.push(
-          `${questionsFr.length + 1}. a) Déterminer une représentation paramétrique de la droite orthogonale (Δ), puis en déduire les coordonnées du projeté orthogonal H.`,
-          `${questionsFr.length + 2}. b) Lieu géométrique (Niveau N3) : Déterminer et caractériser l'ensemble (Γ) des points M vérifiant la relation métrique liée à « ${capLastFr} ».`
+          `${questionsFr.length + 1}. Déterminer une équation de la droite orthogonale (Δ), puis en déduire les coordonnées du projeté orthogonal H.`,
+          `${questionsFr.length + 2}. Lieu géométrique (Niveau N3) : Déterminer et caractériser l'ensemble (Γ) des points M vérifiant la relation métrique liée à « ${capLastFr} ».`
         );
-      } else {
+  } else {
         questionsAr.push(
-          `${questionsAr.length + 1}. استثمار وتعبئة (المستوى N2): استنتج من النتائج السابقة حل المتراجحة (أو النظمة) المرتبطة بقدرة « ${capLastAr} ».`,
+          `${questionsAr.length + 1}. استثمار وتعبئة (المستوى N2): استنتج من النتائج السابقة حل المتراجحة (أو المعادلة) المرتبطة بقدرة « ${capLastAr} ».`,
           `${questionsAr.length + 2}. سؤال التعمق والمبادرة (المستوى N3): برهن على الخاصية التعميمية من أجل كل عنصر من المجموعة المدروسة واستنتج القيمة المضبوطة للمقدار المطلوب.`
         );
         questionsFr.push(
-          `${questionsFr.length + 1}. Mobilisation (Niveau N2) : En déduire la résolution de l'inéquation ou du système associé à la capacité « ${capLastFr} ».`,
-          `${questionsFr.length + 2}. Approfondissement (Niveau N3) : Démontrer la propriété généralisée et en déduire la valeur exacte de l'expression étudiée.`
+          `${questionsFr.length + 1}. Mobilisation (Niveau N2) : En déduire la résolution de l'équation ou de l'inéquation associée à la capacité « ${capLastFr} ».`,
+          `${questionsFr.length + 2}. Approfondissement (Niveau N3) : Démontrer la propriété généralisée pour tout élément de l'ensemble étudié.`
         );
       }
     }
@@ -2037,13 +2072,16 @@ export function getVariantQuestions(
   ) {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
     const k = String((model === "A" ? 1 : 2) + seedMod);
+    const hasIntegralInExpo = titleAr.includes("تكامل") || titleFr.includes("intégral");
     questionsAr = [
       `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على R بـ: g(x) = e^x - x - 1.`,
       `1. أ) أحسب g'(x) لكل x من R، ثم ضع جدول تغيرات الدالة g على R.`,
       `1. ب) أحسب g(0)، ثم استنتج أنه لكل x من R لدينا: g(x) ≥ 0.`,
       `الجزء الثاني: نعتبر الدالة العددية f المعرفة على R بـ: f(x) = x + ${k} - x e^{-x}، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
       `2. أ) أحسب lim_{x→-∞} f(x) و lim_{x→+∞} f(x)، وبين أن المستقيم (Δ) ذا المعادلة y = x + ${k} مقارب مائل للمنحنى (C_f) بجوار +∞ وأدرس وضعه النسبي مع (C_f).`,
-      `2. ب) بين أن f'(x) = e^{-x}(e^x + x - 1) لكل x من R، ضع جدول تغيرات الدالة f، ثم أنشئ (Δ) و (C_f) وأحسب باستعمال المكاملة بالأجزاء مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 0 و x = 1.`,
+      hasIntegralInExpo
+        ? `2. ب) بين أن f'(x) = e^{-x}(e^x + x - 1) لكل x من R، ضع جدول تغيرات الدالة f، ثم أنشئ (Δ) و (C_f) وأحسب باستعمال المكاملة بالأجزاء مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 0 و x = 1.`
+        : `2. ب) بين أن f'(x) = e^{-x}(e^x + x - 1) لكل x من R، ضع جدول تغيرات الدالة f، ثم حدد معادلة المماس عند x = 0 وأنشئ (Δ) و (C_f).`,
     ];
     questionsFr = [
       `Partie I : Soit g la fonction auxiliaire définie sur ℝ par : g(x) = e^x - x - 1.`,
@@ -2051,7 +2089,9 @@ export function getVariantQuestions(
       `1. b) Calculer g(0) et en déduire que pour tout x ∈ ℝ, g(x) ≥ 0.`,
       `Partie II : On considère la fonction f définie sur ℝ par : f(x) = x + ${k} - x e^{-x} et (C_f) sa courbe représentative dans un repère orthonormé (O, i, j).`,
       `2. a) Calculer les limites de f en -∞ et en +∞, montrer que la droite (Δ) : y = x + ${k} est asymptote oblique à (C_f) en +∞ et étudier leur position relative.`,
-      `2. b) Montrer que f'(x) = e^{-x}(e^x + x - 1) pour tout x ∈ ℝ, dresser le tableau de variations de f, puis calculer par intégration par parties l'aire du domaine compris entre (C_f), (Δ), x = 0 et x = 1.`,
+      hasIntegralInExpo
+        ? `2. b) Montrer que f'(x) = e^{-x}(e^x + x - 1) pour tout x ∈ ℝ, dresser le tableau de variations de f, puis calculer par intégration par parties l'aire du domaine compris entre (C_f), (Δ), x = 0 et x = 1.`
+        : `2. b) Montrer que f'(x) = e^{-x}(e^x + x - 1) pour tout x ∈ ℝ, dresser le tableau de variations de f, puis déterminer la tangente en x = 0 et tracer (Δ) et (C_f).`,
     ];
   } else if (titleFr.includes("logarithm") || titleAr.includes("اللوغاريتمية")) {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
@@ -2172,9 +2212,34 @@ export function getVariantQuestions(
       `2. a) Montrer que u est continue et strictement croissante sur I et déterminer J = u(I).`,
       `2. b) Montrer que u admet une fonction réciproque u^{-1} définie sur J et déterminer u^{-1}(x) pour tout x ∈ J.`,
     ];
+  } else if (
+    titleAr.includes("عموميات") ||
+    titleAr.includes("مرجعية") ||
+    titleAr.includes("اعتيادية") ||
+    titleFr.includes("généralités sur les fonctions") ||
+    titleFr.includes("fonctions de référence") ||
+    titleFr.includes("fonctions usuelles")
+  ) {
+    const aCoeff = model === "A" ? "2" : "3";
+    questionsAr = [
+      `نعتبر الدالة العددية $f$ المعرفة على $\\mathbb{R}$ بما يلي: $f(x) = \\frac{${aCoeff}x}{x^2 + 1}$.`,
+      `1. أ) حدد مجموعة تعريف الدالة $f$، ثم أدرس زوجية الدالة $f$ وفسر النتيجة هندسياً.`,
+      `1. ب) بين أن معدل التغير $T(x, y) = \\frac{f(x) - f(y)}{x - y} = \\frac{${aCoeff}(1 - xy)}{(x^2 + 1)(y^2 + 1)}$ لكل عددين مختلفين $x$ و $y$.`,
+      `2. أ) أدرس رتابة الدالة $f$ على المجال $[0, 1]$ وعلى المجال $[1, +\\infty[$، ثم ضع جدول تغيرات $f$ على $\\mathbb{R}$.`,
+      `2. ب) استنتج القيمة القصوى والقيمة الدنيا للدالة $f$ على $\\mathbb{R}$.`,
+      `3. نعتبر الدالة $g(x) = x^2 - ${aCoeff}x + 2$. حدد طبيعة المنحنى $(C_g)$ ورأسه ثم أنشئه في معلم متعامد ممنظم.`,
+    ];
+    questionsFr = [
+      `Soit $f$ la fonction numérique définie par : $f(x) = \\frac{${aCoeff}x}{x^2 + 1}$.`,
+      `1. a) Déterminer l'ensemble de définition $D_f$, étudier la parité de $f$ et interpréter graphiquement.`,
+      `1. b) Montrer que le taux de variation vaut $T(x, y) = \\frac{${aCoeff}(1 - xy)}{(x^2 + 1)(y^2 + 1)}$ pour tous $x \\neq y$.`,
+      `2. a) Étudier la monotonie de $f$ sur $[0, 1]$ et sur $[1, +\\infty[$, puis dresser le tableau de variations de $f$ sur $\\mathbb{R}$.`,
+      `2. b) En déduire les extremums (maximum et minimum) de $f$ sur $\\mathbb{R}$.`,
+      `3. Soit $g(x) = x^2 - ${aCoeff}x + 2$. Préciser la nature et le sommet de $(C_g)$ puis tracer sa courbe.`,
+    ];
   } else {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
-    const k = String((model === "A" ? 2 : 3) + seedMod);
+    const k = String((model === "A" ? 3 : 4) + seedMod);
     questionsAr = [
       `نعتبر الدالة العددية f المعرفة بـ: f(x) = (x² - ${k}x + 1)/(x - 1) لكل x ≠ 1، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
       `1. أ) حدد مجموعة تعريف الدالة f، ثم أحسب النهايات عند محدات D_f واستنتج معادلة المستقيم المقارب العمودي.`,
@@ -2207,41 +2272,46 @@ export function getVariantQuestions(
       lesson.capacitiesFr[0] ||
       lesson.lessonFr;
     const nextNum = questionsAr.length + 1;
-    if (subCat === "هندسة فضائية" || subCat === "هندسة مستوية" || lesson.category === "Geometry") {
+    if (subCat === "هندسة فضائية") {
       questionsAr.push(
-        `${nextNum}. أ) استثمار هندسي (المستوى N2): حدد إحداثيات النقطة M' مماثلة النقطة المدروسة بالنسبة للمستقيم (أو المستوى)، ثم أحسب مساحة الحيز الهندسي أو حجم رباعي الأوجه.`,
-        `${nextNum}. ب) سؤال التميز والمبادرة (المستوى N3 - المنهاج المغربي): ناقش حسب قيم الوسيط الحقيقي m الوضع النسبي وحدد المحل الهندسي لمراكز التقاطع.`
+        `${nextNum}. استثمار هندسي فضائي (المستوى N2): حدد إحداثيات النقطة M' مماثلة النقطة المدروسة بالنسبة للمستوى، ثم أحسب حجم رباعي الأوجه.`,
+        `${nextNum + 1}. سؤال التميز والمبادرة (المستوى N3): ناقش حسب قيم الوسيط الحقيقي m الوضع النسبي للفلكة والمستوى.`
       );
       questionsFr.push(
-        `${nextNum}. a) Exploitation géométrique (Niveau N2) : Déterminer les coordonnées du symétrique orthogonal M', puis calculer l'aire ou le volume du solide associé.`,
-        `${nextNum}. b) Approfondissement & Initiative (Niveau N3 - OP Maroc) : Discuter suivant les valeurs du paramètre réel m la position relative et déterminer le lieu géométrique.`
+        `${nextNum}. Exploitation géométrique 3D (Niveau N2) : Déterminer les coordonnées du symétrique orthogonal M', puis calculer le volume du tétraèdre associé.`,
+        `${nextNum + 1}. Approfondissement & Initiative (Niveau N3) : Discuter suivant les valeurs du paramètre réel m la position relative de la sphère et du plan.`
+      );
+    } else if (subCat === "هندسة مستوية" || lesson.category === "Geometry") {
+      questionsAr.push(
+        `${nextNum}. سؤال التعمق الهندسي (المستوى N3): لتكن G النقطة المعرفة بالعلاقة المتجهية المدروسة؛ بين استقامية النقط وحدد نسبة التحاكي أو الإسقاط المرافق.`
+      );
+      questionsFr.push(
+        `${nextNum}. Approfondissement géométrique (Niveau N3) : Étudier la relation vectorielle associée à « ${capExtraFr} » et caractériser l'alignement des points.`
       );
     } else if (subCat === "احتمالات وإحصاء" || titleFr.includes("probabilit")) {
       questionsAr.push(
-        `${nextNum}. أ) استثمار قانون الاحتمال (المستوى N2): أحسب الاحتمال الشرطي علماً أن الكرات المسحوبة تحمل أرقاماً زوجية، وقارن النتيجة مع حالة السحب بالتتابع وبدون إحلال.`,
-        `${nextNum}. ب) سؤال التعمق (المستوى N3): نكرر التجربة n مرة (n ≥ 2). حدد بدلالة n احتمال الحصول على الحدث المدروس مرة واحدة على الأقل، ثم أحسب نهايته عندما يؤول n إلى +∞.`
+        `${nextNum}. استثمار قانون الاحتمال (المستوى N2): أحسب الاحتمال الشرطي علماً أن الكرات المسحوبة تحمل أرقاماً زوجية، وقارن النتيجة مع حالة السحب بالتتابع وبدون إحلال.`,
+        `${nextNum + 1}. سؤال التعمق (المستوى N3): نكرر التجربة n مرة (n ≥ 2). حدد بدلالة n احتمال الحصول على الحدث المدروس مرة واحدة على الأقل.`
       );
       questionsFr.push(
-        `${nextNum}. a) Exploitation probabiliste (Niveau N2) : Calculer la probabilité conditionnelle sachant la parité et comparer avec le tirage successif sans remise.`,
-        `${nextNum}. b) Synthèse (Niveau N3) : On répète l'épreuve n fois (n ≥ 2). Exprimer en fonction de n la probabilité d'obtenir au moins un succès et calculer sa limite en +∞.`
+        `${nextNum}. Exploitation probabiliste (Niveau N2) : Calculer la probabilité conditionnelle sachant la parité et comparer avec le tirage successif sans remise.`,
+        `${nextNum + 1}. Synthèse (Niveau N3) : On répète l'épreuve n fois (n ≥ 2). Exprimer en fonction de n la probabilité d'obtenir au moins un succès.`
       );
     } else if (subCat === "جبر" || subCat === "حسابيات" || subCat === "منطق ومجموعات" || lesson.category === "Algebra") {
       questionsAr.push(
-        `${nextNum}. أ) تعبئة الموارد (المستوى N2): استثمر النتائج السابقة لحل النظمة أو المتراجحة البارامترية المرتبطة بـ « ${capExtraAr} ».`,
-        `${nextNum}. ب) سؤال التعمق والاستدلال (المستوى N3 - المنهاج المغربي): برهن بالاستدلال بالخلف أو بفصل الحالات على الخاصية التعميمية من أجل كل عدد صحيح طبيعي n.`
+        `${nextNum}. سؤال التعمق والاستدلال (المستوى N3): برهن بفصل الحالات أو بالتعميل الجبري على الخاصية التعميمية المرتبطة بـ « ${capExtraAr} ».`
       );
       questionsFr.push(
-        `${nextNum}. a) Mobilisation (Niveau N2) : Exploiter les résultats précédents pour résoudre le système ou l'inéquation associé(e) à « ${capExtraFr} ».`,
-        `${nextNum}. b) Raisonnement & Synthèse (Niveau N3) : Démontrer par l'absurde ou par disjonction des cas la propriété généralisée pour tout entier naturel n.`
+        `${nextNum}. Raisonnement & Synthèse (Niveau N3) : Démontrer par disjonction des cas ou factorisation la propriété associée à « ${capExtraFr} ».`
       );
-    } else {
+  } else {
       questionsAr.push(
-        `${nextNum}. أ) تأويل مبياني وتكامل (المستوى N2): بين أن الدالة تقبل دالة عكسية f⁻¹ على مجال يطلب تحديده، ثم أنشئ منحناها (C_{f⁻¹}) في نفس المعلم المتعامد الممنظم.`,
-        `${nextNum}. ب) سؤال التوليف والمبادرة (المستوى N3 - الإطار المرجعي المغربي): باعتبار المتتالية المعرفة بـ u_{n+1} = f(u_n)، أدرس رتابتها وتقاربها وحدد نهايتها بدقة.`
+        `${nextNum}. تأويل مبياني (المستوى N2): بين أن الدالة تقبل دالة عكسية f⁻¹ على مجال يطلب تحديده، ثم أنشئ منحناها (C_{f⁻¹}) في نفس المعلم المتعامد الممنظم.`,
+        `${nextNum + 1}. سؤال التوليف والمبادرة (المستوى N3): باعتبار المتتالية المعرفة بـ u_{n+1} = f(u_n)، أدرس رتابتها وتقاربها.`
       );
       questionsFr.push(
-        `${nextNum}. a) Bijection & Courbe réciproque (Niveau N2) : Montrer que f réalise une bijection sur un intervalle J à préciser et construire (C_{f⁻¹}) dans le même repère.`,
-        `${nextNum}. b) Problème de synthèse (Niveau N3 - Cadre Référentiel Maroc) : Étudier la monotonie et la convergence de la suite récurrente définie par u_{n+1} = f(u_n).`
+        `${nextNum}. Bijection & Courbe réciproque (Niveau N2) : Montrer que f réalise une bijection sur un intervalle J à préciser et construire (C_{f⁻¹}) dans le même repère.`,
+        `${nextNum + 1}. Problème de synthèse (Niveau N3) : Étudier la monotonie et la convergence de la suite récurrente définie par u_{n+1} = f(u_n).`
       );
     }
   }
@@ -3354,7 +3424,7 @@ export function computeExactExerciseEffectiveWeights(
     let exPts: number;
     if (idx === lessons.length - 1) {
       exPts = Math.max(0.5, Math.round((targetBudget - allocatedPts) * 4) / 4);
-    } else {
+  } else {
       const proportionalPts = ((Number(lesson.weight) || 0) / rawSum) * targetBudget;
       exPts = Math.max(0.5, Math.round(proportionalPts * 4) / 4);
       const minRemainingForOthers = (lessons.length - 1 - idx) * 0.5;
@@ -3385,20 +3455,35 @@ export function getQuestionBaremesAndLevels(
   const rawRatios: number[] = [];
   const levels: Array<"N1" | "N2" | "N3"> = [];
 
+  const totalN = Math.max(1, n1 + n2 + n3);
+  const normN1 = (n1 / totalN) * 100;
+  const normN3 = n3 <= 0 ? 0 : (n3 / totalN) * 100;
+
+  const targetN3Count =
+    normN3 <= 0 || questionCount < 2
+      ? 0
+      : Math.min(questionCount - 1, Math.max(1, Math.round((questionCount * normN3) / 100)));
+  const remainingForN1N2 = questionCount - targetN3Count;
+  const targetN1Count = Math.min(
+    remainingForN1N2,
+    Math.max(1, Math.round((questionCount * normN1) / 100))
+  );
+
   for (let i = 0; i < questionCount; i++) {
     const customLvl = customLevels?.[i];
     if (customLvl) {
       levels.push(customLvl);
-      rawRatios.push(customLvl === "N1" ? Math.max(20, n1) : customLvl === "N3" ? Math.max(15, n3) : Math.max(20, n2));
-    } else if (i === 0) {
-      rawRatios.push(Math.max(20, n1));
+      rawRatios.push(customLvl === "N1" ? Math.max(15, normN1 / targetN1Count) : customLvl === "N3" ? Math.max(10, normN3) : Math.max(15, n2));
+    } else if (i < targetN1Count) {
       levels.push("N1");
-    } else if (i === questionCount - 1 && questionCount >= 3) {
-      rawRatios.push(Math.max(15, n3));
+      rawRatios.push(Math.max(10, normN1 / Math.max(1, targetN1Count)));
+    } else if (i >= questionCount - targetN3Count) {
       levels.push("N3");
-    } else {
-      rawRatios.push(Math.max(20, n2));
+      rawRatios.push(Math.max(10, normN3 / Math.max(1, targetN3Count)));
+  } else {
       levels.push("N2");
+      const n2Count = Math.max(1, questionCount - targetN1Count - targetN3Count);
+      rawRatios.push(Math.max(10, (100 - normN1 - normN3) / n2Count));
     }
   }
 
@@ -3422,7 +3507,11 @@ export function getQuestionBaremesAndLevels(
   }
 
   const ratioSum = rawRatios.reduce((a, b) => a + b, 0) || 1;
-  const minStep = totalExPoints >= questionCount * 0.25 ? 0.25 : Number((totalExPoints / questionCount).toFixed(2));
+  const roundedTotalExPoints = Math.max(
+    questionCount * 0.25,
+    Math.round(totalExPoints * 4) / 4
+  );
+  const minStep = 0.25;
   let allocated = 0;
 
   return rawRatios.map((r, idx) => {
@@ -3431,21 +3520,16 @@ export function getQuestionBaremesAndLevels(
     if (remainingAfterCurrent === 0) {
       pt = Math.max(
         minStep,
-        minStep === 0.25
-          ? Math.round((totalExPoints - allocated) * 4) / 4
-          : Number((totalExPoints - allocated).toFixed(2))
+        Math.round((roundedTotalExPoints - allocated) * 4) / 4
       );
-    } else {
-      const rawPt = (totalExPoints * r) / ratioSum;
-      pt =
-        minStep === 0.25
-          ? Math.max(0.25, Math.round(rawPt * 4) / 4)
-          : Number(rawPt.toFixed(2));
+  } else {
+      const rawPt = (roundedTotalExPoints * r) / ratioSum;
+      pt = Math.max(0.25, Math.round(rawPt * 4) / 4);
       const maxAllowedForCurrent = Math.max(
         minStep,
-        minStep === 0.25
-          ? Math.round((totalExPoints - allocated - remainingAfterCurrent * minStep) * 4) / 4
-          : Number((totalExPoints - allocated - remainingAfterCurrent * minStep).toFixed(2))
+        Math.round(
+          (roundedTotalExPoints - allocated - remainingAfterCurrent * minStep) * 4
+        ) / 4
       );
       if (pt > maxAllowedForCurrent) {
         pt = maxAllowedForCurrent;
@@ -3554,7 +3638,51 @@ export function getSerieAndDMExercises(
     ];
     synthesisHintAr = "إرشاد للبحث: مر إلى الحدث المضاد P(Y_n ≥ 1) = 1 - P(Y_n = 0) ثم استعمل دالة اللوغاريتم النبيري ln لحل المتراجحة.";
     synthesisHintFr = "Piste de recherche : Passer par l'événement contraire P(Y_n ≥ 1) = 1 - P(Y_n = 0) puis appliquer la fonction ln.";
-  } else if (subCat === "جبر" || subCat === "حسابيات" || subCat === "منطق ومجموعات" || lesson.category === "Algebra") {
+  } else if (subCat === "منطق ومجموعات" || titleFr.includes("logique") || lesson.lessonAr.includes("منطق")) {
+    synthesisQuestionsAr = [
+      `1. برهن باستعمال الاستدلال بالخلف أن العدد $\\sqrt{2}$ عدد لا جذري ($\\sqrt{2} \\notin \\mathbb{Q}$).`,
+      `2. بين باستعمال الاستدلال بالترجع أنه لكل $n \\in \\mathbb{N}$ : العدد $7^n - 1$ مضاعف للعدد $6$.`,
+      `3. حل في $\\mathbb{R}$ المعادلة $|x - 2| + |x + 1| = 5$ باستعمال الاستدلال بفصل الحالات.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. Démontrer par l'absurde que $\\sqrt{2} \\notin \\mathbb{Q}$.`,
+      `2. Montrer par récurrence que pour tout $n \\in \\mathbb{N}$, $7^n - 1$ est divisible par $6$.`,
+      `3. Résoudre dans $\\mathbb{R}$ l'équation $|x - 2| + |x + 1| = 5$ par disjonction des cas.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: في فصل الحالات، قسم $\\mathbb{R}$ إلى المجالات $]-\\infty, -1]$ و $[-1, 2]$ و $[2, +\\infty[$.";
+    synthesisHintFr = "Piste méthodologique : Découper $\\mathbb{R}$ en $]-\\infty, -1]$, $[-1, 2]$ et $[2, +\\infty[$.";
+  } else if (titleFr.includes("généralité") || lesson.lessonAr.includes("عموميات")) {
+    synthesisQuestionsAr = [
+      `1. نعتبر الدالة $f(x) = \\frac{x^2 + 1}{x^2 - 1}$ والدالة $g(x) = \\sqrt{x}$. حدد مجموعة تعريف الدالة المركبة $g \\circ f$.`,
+      `2. أدرس تغيرات الدالة $f$ على المجال $[0, 1[$ والمجال $]1, +\\infty[$ ثم استنتج رتابة الدالة المركبة $g \\circ f$ على $]1, +\\infty[$.`,
+      `3. بين أن الدالة $h(x) = \\frac{2x}{x^2 + 1}$ مكبورة بـ $1$ ومصغورة بـ $-1$ على $\\mathbb{R}$، وحدد قيمتيها القصوى والدنيا.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. Soient $f(x) = \\frac{x^2 + 1}{x^2 - 1}$ et $g(x) = \\sqrt{x}$. Déterminer le domaine de définition de $g \\circ f$.`,
+      `2. Étudier les variations de $f$ sur $[0, 1[$ et $]1, +\\infty[$, puis en déduire la monotonie de $g \\circ f$ sur $]1, +\\infty[$.`,
+      `3. Montrer que $h(x) = \\frac{2x}{x^2 + 1}$ est bornée par $-1$ et $1$ sur $\\mathbb{R}$ et préciser ses extremums.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: استعمل قاعدة رتابة مركب دالتين وتأطير $1 - h(x)$ و $1 + h(x)$.";
+    synthesisHintFr = "Piste méthodologique : Utiliser la monotonie de $g \\circ f$ et le signe de $1 - h(x)$ et $1 + h(x)$.";
+  } else if (
+    lesson.lessonAr.includes("النسب") ||
+    lesson.lessonAr.includes("البرمجة الخطية") ||
+    titleFr.includes("pourcentage") ||
+    titleFr.includes("programmation linéaire")
+  ) {
+    synthesisQuestionsAr = [
+      `1. تنتج مقاولة نوعين من المنتوجات A و B. يتطلب كل منتوج شروطاً تقنية تترجم بنظمة المتراجحات: $x \\ge 0$, $y \\ge 0$, $x + 2y \\le 10$, $2x + y \\le 11$.`,
+      `2. مثل مبيانياً حيز الحلول الممكنة (مضلع الإكراهات) وحدد إحداثيات رؤوسه.`,
+      `3. إذا كان الربح الصافي هو $B(x, y) = 300x + 200y$، حدد الزوج $(x, y)$ الذي يحقق أكبر ربح ممكن.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. Une entreprise fabrique deux produits A et B soumis aux contraintes : $x \\ge 0$, $y \\ge 0$, $x + 2y \\le 10$, $2x + y \\le 11$.`,
+      `2. Représenter graphiquement le polygone des contraintes et déterminer ses sommets.`,
+      `3. Maximiser le bénéfice $B(x, y) = 300x + 200y$ sur ce domaine.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: يتحقق المردود الأقصى أو الأدنى دائماً عند أحد رؤوس مضلع الإكراهات.";
+    synthesisHintFr = "Piste méthodologique : L'optimum d'une fonction linéaire est atteint en un sommet du polygone des contraintes.";
+  } else if (subCat === "جبر" || subCat === "حسابيات" || lesson.category === "Algebra") {
     const pVal = model === "A" ? "5" : "7";
     synthesisQuestionsAr = [
       `1. نعتبر في المجموعة N×N المعادلة الديوفانتية أو الجبرية (E) : x² - y² = 4n + ${pVal} حيث n عدد صحيح طبيعي معلوم.`,
@@ -3568,6 +3696,51 @@ export function getSerieAndDMExercises(
     ];
     synthesisHintAr = "إرشاد للبحث: لاحظ أن جداء عددين لهما نفس الزوجية إما أن يكون فردياً أو مضاعفاً للعدد 4.";
     synthesisHintFr = "Piste de recherche : Remarquer que le produit de deux entiers de même parité est soit impair, soit multiple de 4.";
+  } else if (subCat === "هندسة مستوية" || titleFr.includes("vector") || titleFr.includes("projection") || lesson.lessonAr.includes("المتجهي") || lesson.lessonAr.includes("الإسقاط")) {
+    synthesisQuestionsAr = [
+      `1. ليكن ABC مثلثاً، و I و J و K منتصفات الأضلاع [BC] و [AC] و [AB] على التوالي، ولتكن G النقطة المعرفة بالعلاقة: $\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$.`,
+      `2. بين باستعمال علاقة شال أن $\\vec{AG} = \\frac{2}{3}\\vec{AI}$، ثم استنتج أن المتوسطات الثلاثة للمثلث تتلاقى في النقطة G.`,
+      `3. ليكن G' مسقط النقطة G على المستقيم (AC) بتوازٍ مع المستقيم (BC). عبر عن المتجهة $\\vec{AG'}$ بدلالة $\\vec{AC}$ ثم استنتج النسبة $\\frac{AG'}{AJ}$.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. Soit ABC un triangle, I, J, K les milieux respectifs de [BC], [AC], [AB], et G le point défini par : $\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$.`,
+      `2. Montrer à l'aide de la relation de Chasles que $\\vec{AG} = \\frac{2}{3}\\vec{AI}$, puis en déduire que les trois médianes du triangle sont concourantes en G.`,
+      `3. Soit G' le projeté de G sur (AC) parallèlement à (BC). Exprimer $\\vec{AG'}$ en fonction de $\\vec{AC}$ et déduire le rapport $\\frac{AG'}{AJ}$.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: اكتب $\\vec{GB} + \\vec{GC} = 2\\vec{GI}$ واستعمل خاصية الحفاظ على معامل الاستقامية بالإسقاط.";
+    synthesisHintFr = "Piste méthodologique : Utiliser $\\vec{GB} + \\vec{GC} = 2\\vec{GI}$ et la conservation du coefficient de colinéarité par projection.";
+  } else if (lesson.lessonAr.includes("مثلث") || titleFr.includes("trigonom")) {
+    synthesisQuestionsAr = [
+      `1. نعتبر التعبير المثلثي: $A(x) = \\sin(x) + \\cos(x)$ لكل $x \\in \\mathbb{R}$. بين أن $(A(x))^2 = 1 + 2\\sin(x)\\cos(x)$.`,
+      `2. علماً أن $\\cos(x) = \\frac{\\sqrt{3}}{2}$ و $x \\in \\left[-\\frac{\\pi}{2}, 0\\right]$، احسب القيمتين المضبوطتين لـ $\\sin(x)$ و $\\tan(x)$.`,
+      `3. حل في المجال $[-\\pi, \\pi]$ المتراجحة المثلثية $2\\sin(x) - 1 \\le 0$ باستعمال الدائرة المثلثية.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. On pose $A(x) = \\sin(x) + \\cos(x)$ pour tout $x \\in \\mathbb{R}$. Montrer que $(A(x))^2 = 1 + 2\\sin(x)\\cos(x)$.`,
+      `2. Sachant que $\\cos(x) = \\frac{\\sqrt{3}}{2}$ et $x \\in \\left[-\\frac{\\pi}{2}, 0\\right]$, calculer $\\sin(x)$ et $\\tan(x)$.`,
+      `3. Résoudre dans $[-\\pi, \\pi]$ l'inéquation $2\\sin(x) - 1 \\le 0$ à l'aide du cercle trigonométrique.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: استعمل العلاقة $\\cos^2(x) + \\sin^2(x) = 1$ وحدد إشارة $\\sin(x)$ على الربع الرابع.";
+    synthesisHintFr = "Piste méthodologique : Utiliser $\\cos^2(x) + \\sin^2(x) = 1$ et le signe du sinus sur $[-\\frac{\\pi}{2}, 0]$.";
+  } else if (
+    lesson.lessonAr.includes("عموميات") ||
+    lesson.lessonAr.includes("مرجعية") ||
+    lesson.lessonAr.includes("اعتيادية") ||
+    titleFr.includes("généralités") ||
+    titleFr.includes("référence")
+  ) {
+    synthesisQuestionsAr = [
+      `1. نعتبر الدالة المرجعية $u(x) = \\frac{2x - 1}{x - 1}$ المعرفة على $D_u = \\mathbb{R} \\setminus \\{1\\}$. اكتب $u(x)$ على الشكل المختزل $a + \\frac{b}{x - 1}$.`,
+      `2. حدد مركز تماثل الهذلول $(C_u)$ ومقاربيه (المحاور الموازية)، ثم ضع جدول تغيرات الدالة $u$.`,
+      `3. قارن مبيانياً وجبرياً بين $u(x)$ و $v(x) = x - 1$ على المجال $]1, +\\infty[$.`,
+    ];
+    synthesisQuestionsFr = [
+      `1. Soit la fonction homographique $u(x) = \\frac{2x - 1}{x - 1}$ définie sur $\\mathbb{R} \\setminus \\{1\\}$. Écrire $u(x)$ sous forme réduite $a + \\frac{b}{x - 1}$.`,
+      `2. Préciser le centre de symétrie et les axes asymptotiques de l'hyperbole $(C_u)$, puis dresser son tableau de variations.`,
+      `3. Résoudre graphiquement et algébriquement l'inéquation $u(x) \\le x - 1$ sur $]1, +\\infty[$.`,
+    ];
+    synthesisHintAr = "إرشاد منهجي: لاحظ أن $2x - 1 = 2(x - 1) + 1$ لتحديد الشكل المختزل بسهولة.";
+    synthesisHintFr = "Piste méthodologique : Écrire $2x - 1 = 2(x - 1) + 1$ pour obtenir la forme canonique de l'hyperbole.";
   } else {
     synthesisQuestionsAr = [
       `1. المسألة التوليفية (الربط بين الدالة والمتتالية): نعتبر المتتالية العددية (u_n) المعرفة بـ u_0 = ${model === "A" ? "1" : "2"} والعلاقة الترجعية u_{n+1} = f(u_n) لكل n من N حيث f هي الدالة المدروسة في الجزء الأول.`,
@@ -3614,19 +3787,167 @@ export function getSerieAndDMExercises(
     ];
     olympiadHintAr = "تحدي أولمبياد: فكك الحدودية X^n - 1 في C واستعمل اشتقاق الصيغة عند 1.";
     olympiadHintFr = "Piste Olympiades : Factoriser le polynôme X^n - 1 dans ℂ[X] et évaluer sa dérivée en X = 1.";
-  } else {
+  } else if (subCat === "هندسة مستوية" || titleFr.includes("vector") || titleFr.includes("projection") || lesson.lessonAr.includes("المتجهي") || lesson.lessonAr.includes("الإسقاط")) {
     olympiadQuestionsAr = [
-      `مسألة التحدي والبحث المفتوح: نعتبر الدالة f المتصلة على [0, 1] والتي تحقق ∫_0^1 f(t) dt = 1/2.`,
-      `1. برهن باستعمال مبرهنة القيم الوسيطية وجود عدد c من ]0, 1[ بحيث f(c) = c.`,
-      `2. سؤال المبادرة: نفترض علاوة على ذلك أن f قابلة للاشتقاق وأن |f'(x)| ≤ 1 لكل x. حدد حصراً دقيقاً للقيمة القصوى لـ ∫_0^1 (f(t))² dt.`,
+      `مسألة التحدي الهندسي: ليكن ABC مثلثاً، ونعتبر النقط D و E و F المعرفة على أضلاعه بـ: $\\vec{AD} = \\frac{1}{3}\\vec{AB}$ و $\\vec{BE} = \\frac{1}{3}\\vec{BC}$ و $\\vec{CF} = \\frac{1}{3}\\vec{CA}$.`,
+      `1. بين أن المتجهات $\\vec{AD} + \\vec{BE} + \\vec{CF} = \\vec{0}$، ثم عبر عن كل من $\\vec{AE}$ و $\\vec{BF}$ و $\\vec{CD}$ بدلالة $\\vec{AB}$ و $\\vec{AC}$.`,
+      `2. سؤال المبادرة: بين أن مركز ثقل المثلث DEF هو نفسه مركز ثقل المثلث ABC (أي $G_{DEF} = G_{ABC}$).`,
     ];
     olympiadQuestionsFr = [
-      `Problème de Recherche & Olympiades : Soit f une fonction continue sur [0, 1] vérifiant ∫_0^1 f(t) dt = 1/2.`,
-      `1. Démontrer par le théorème des valeurs intermédiaires qu'il existe c ∈ ]0, 1[ tel que f(c) = c.`,
-      `2. Prise d'initiative : En supposant f dérivable avec |f'(x)| ≤ 1, déterminer un encadrement optimal de l'intégrale ∫_0^1 (f(t))² dt.`,
+      `Défi géométrique : Soit ABC un triangle et D, E, F les points définis par : $\\vec{AD} = \\frac{1}{3}\\vec{AB}$, $\\vec{BE} = \\frac{1}{3}\\vec{BC}$ et $\\vec{CF} = \\frac{1}{3}\\vec{CA}$.`,
+      `1. Montrer que $\\vec{AD} + \\vec{BE} + \\vec{CF} = \\vec{0}$, puis exprimer $\\vec{AE}$, $\\vec{BF}$ et $\\vec{CD}$ en fonction de $\\vec{AB}$ et $\\vec{AC}$.`,
+      `2. Prise d'initiative : Démontrer que les triangles DEF et ABC ont le même centre de gravité G.`,
     ];
-    olympiadHintAr = "تحدي أولمبياد: ادرس الدالة المساعدة g(x) = ∫_0^x f(t) dt - x²/2 وطبق مبرهنة رول.";
-    olympiadHintFr = "Piste Olympiades : Introduire la fonction auxiliaire g(x) = ∫_0^x f(t) dt - x²/2 et appliquer le théorème de Rolle.";
+    olympiadHintAr = "تحدي هندسي: استعمل علاقة شال لحساب $\\vec{GD} + \\vec{GE} + \\vec{GF}$ انطلاقاً من $\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$.";
+    olympiadHintFr = "Piste géométrique : Décomposer $\\vec{GD} + \\vec{GE} + \\vec{GF}$ par la relation de Chasles à partir de $\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$.";
+  } else if (subCat === "منطق ومجموعات" || titleFr.includes("logique") || lesson.lessonAr.includes("منطق")) {
+    olympiadQuestionsAr = [
+      `مسألة التحدي في المنطق: لتكن $a$ و $b$ عددين حقيقيين موجبين قطعا.`,
+      `1. بين أن: $\\sqrt{a} + \\sqrt{b} \\in \\mathbb{Q} \\implies \\sqrt{a} - \\sqrt{b} \\in \\mathbb{Q}$ (في حالة $a \\neq b$ و $a - b \\in \\mathbb{Q}$).`,
+      `2. سؤال المبادرة: بين بالاستدلال بالخلف أنه إذا كان $n^2 + 1$ زوجياً فإن $n$ فردي، ثم عمم على $(a^2 + b^2)$ بترديد $4$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Défi de Logique : Soient $a, b > 0$ tels que $a \\neq b$ et $a - b \\in \\mathbb{Q}$.`,
+      `1. Montrer que si $\\sqrt{a} + \\sqrt{b} \\in \\mathbb{Q}$, alors $\\sqrt{a} - \\sqrt{b} \\in \\mathbb{Q}$ puis $\\sqrt{a}, \\sqrt{b} \\in \\mathbb{Q}$.`,
+      `2. Prise d'initiative : Démontrer par contraposée ou absurde que si $n^2 + 1$ est pair alors $n$ est impair.`,
+    ];
+    olympiadHintAr = "تحدي منطقي: اضرب في المرافق $(\\sqrt{a} + \\sqrt{b})(\\sqrt{a} - \\sqrt{b}) = a - b$.";
+    olympiadHintFr = "Piste logique : Utiliser l'identité $(\\sqrt{a} + \\sqrt{b})(\\sqrt{a} - \\sqrt{b}) = a - b$.";
+  } else if (titleFr.includes("généralité") || lesson.lessonAr.includes("عموميات")) {
+    olympiadQuestionsAr = [
+      `مسألة التحدي في الدوال العددية: لتكن $f$ دالة عددية معرفة على $\\mathbb{R}$ تحقق: $\\forall x \\in \\mathbb{R},\\; f(x + 2) = f(x)$ و $f(-x) = f(x)$.`,
+      `1. بين أن $f$ دورية دورها $2$ وزوجية، ثم استنتج أن المستقيم $x = 1$ محور تماثل لمنحناها $(C_f)$.`,
+      `2. سؤال المبادرة: إذا كانت $f$ تزايدية على $[0, 1]$، فحدد تغيراتها على $[1, 2]$ ثم على $[-2, 2]$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Défi sur les fonctions : Soit $f$ définie sur $\\mathbb{R}$ vérifiant $\\forall x \\in \\mathbb{R},\\; f(x + 2) = f(x)$ et $f(-x) = f(x)$.`,
+      `1. Montrer que la droite d'équation $x = 1$ est un axe de symétrie de $(C_f)$.`,
+      `2. Prise d'initiative : Sachant $f$ croissante sur $[0, 1]$, déterminer ses variations sur $[1, 2]$ et $[-2, 2]$.`,
+    ];
+    olympiadHintAr = "تحدي الدوال: احسب $f(2 - x)$ باستعمال الدورية والزوجية لإثبات $f(1 + t) = f(1 - t)$.";
+    olympiadHintFr = "Piste fonctions : Calculer $f(2 - x)$ à l'aide de la périodicité et de la parité.";
+  } else if (
+    lesson.lessonAr.includes("النسب") ||
+    lesson.lessonAr.includes("البرمجة الخطية") ||
+    titleFr.includes("pourcentage") ||
+    titleFr.includes("programmation linéaire")
+  ) {
+    olympiadQuestionsAr = [
+      `مسألة تطبيقية مركبة: ارتفع رقم معاملات شركة بنسبة $t\\%$ في السنة الأولى ثم ارتفع بنسبة $(t + 5)\\%$ في السنة الثانية، ليصل الارتفاع الإجمالي إلى $26,5\\%$.`,
+      `1. بين أن النسبة $t$ تحقق المعادلة من الدرجة الثانية: $t^2 + 205t - 2150 = 0$.`,
+      `2. حل المعادلة وحدد القيمة الدقيقة للنسبة $t$ ثم تحقق من النتيجة.`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème appliqué : Un chiffre d'affaires augmente de $t\\%$ puis de $(t+5)\\%$, pour une hausse globale de $26,5\\%$.`,
+      `1. Montrer que $t$ vérifie l'équation $t^2 + 205t - 2150 = 0$.`,
+      `2. Résoudre l'équation et déterminer la valeur exacte de $t$.`,
+    ];
+    olympiadHintAr = "إرشاد: المعامل الضربي الإجمالي يساوي $(1 + \\frac{t}{100})(1 + \\frac{t+5}{100}) = 1,265$.";
+    olympiadHintFr = "Piste : Le coefficient multiplicateur global vaut $(1 + \\frac{t}{100})(1 + \\frac{t+5}{100}) = 1,265$.";
+  } else if (subCat === "جبر" || subCat === "حسابيات" || lesson.category === "Algebra") {
+    olympiadQuestionsAr = [
+      `مسألة التحدي في الحسابيات: ليكن n عدداً صحيحاً طبيعياً غير منعدم.`,
+      `1. بين أن العدد N = n(n + 1)(2n + 1) مضاعف للعدد 6 مهما يكن n ∈ ℕ.`,
+      `2. سؤال المبادرة: حدد جميع الأزواج (x, y) من ℕ² التي تحقق المعادلة: xy = 2x + 3y + 1.`,
+    ];
+    olympiadQuestionsFr = [
+      `Défi d'arithmétique : Soit n un entier naturel non nul.`,
+      `1. Démontrer que l'entier N = n(n + 1)(2n + 1) est un multiple de 6 pour tout n ∈ ℕ.`,
+      `2. Prise d'initiative : Déterminer tous les couples (x, y) ∈ ℕ² vérifiant l'équation : xy = 2x + 3y + 1.`,
+    ];
+    olympiadHintAr = "تحدي حسابي: لاحظ أن xy - 2x - 3y - 1 = 0 تكافئ (x - 3)(y - 2) = 7 ثم ادرس قواسم العدد 7.";
+    olympiadHintFr = "Piste arithmétique : Factoriser xy - 2x - 3y - 1 = 0 sous la forme (x - 3)(y - 2) = 7.";
+  } else if (lesson.lessonAr.includes("مثلث") || titleFr.includes("trigonom")) {
+    olympiadQuestionsAr = [
+      `مسألة التحدي في الحساب المثلثي: نضع لكل $x \\in \\mathbb{R}$ التعبير $A(x) = \\cos^4(x) - \\sin^4(x) + 2\\sin^2(x)$.`,
+      `1. بين أن $A(x) = 1$ مهما يكن $x \\in \\mathbb{R}$، ثم احسب $\\cos\\left(\\frac{\\pi}{8}\\right)$ انطلاقاً من $\\cos\\left(\\frac{\\pi}{4}\\right)$.`,
+      `2. سؤال المبادرة: حل في المجال $[0, 2\\pi[$ المعادلة $\\cos(2x) = \\sin(x)$ ومثل الحلول على الدائرة المثلثية.`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème de trigonométrie : Pour tout $x \\in \\mathbb{R}$, on pose $A(x) = \\cos^4(x) - \\sin^4(x) + 2\\sin^2(x)$.`,
+      `1. Montrer que $A(x) = 1$ pour tout $x \\in \\mathbb{R}$, puis calculer $\\cos\\left(\\frac{\\pi}{8}\\right)$.`,
+      `2. Prise d'initiative : Résoudre dans $[0, 2\\pi[$ l'équation $\\cos(2x) = \\sin(x)$ et placer les points images sur le cercle trigonométrique.`,
+    ];
+    olympiadHintAr = "إرشاد مثلثي: استعمل المتطابقة $a^2 - b^2 = (a-b)(a+b)$ والعلاقة $\\cos^2(x) + \\sin^2(x) = 1$.";
+    olympiadHintFr = "Piste trigonométrique : Factoriser $\\cos^4(x) - \\sin^4(x)$ puis utiliser $\\cos(2x) = \\cos(\\frac{\\pi}{2} - x)$.";
+  } else if (lesson.lessonAr.includes("إحصاء") || titleFr.includes("statistiq")) {
+    olympiadQuestionsAr = [
+      `مسألة إحصائية تطبيقية: يعطي الجدول التالي توزيع نقط فرض محروس لقسم يتكون من $30$ تلميذاً: القيم $x_i \\in \\{8, 10, 12, 14, 16\\}$ بالحصيصات الموافقة $n_i \\in \\{3, 6, 10, a, 4\\}$.`,
+      `1. حدد الحصيص المجهول $a$ ثم احسب المعدل الحسابي $\\bar{x}$ والانحراف الطرازي $\\sigma$ لهذه السلسلة.`,
+      `2. سؤال المبادرة: إذا أضفنا $1.5$ نقطة لكل تلميذ، كيف يتغير كل من المعدل الحسابي $\\bar{x}$ والانحراف الطرازي $\\sigma$؟ علل جوابك.`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème de statistique : Une classe de $30$ élèves obtient les notes $x_i \\in \\{8, 10, 12, 14, 16\\}$ d'effectifs respectifs $n_i \\in \\{3, 6, 10, a, 4\\}$.`,
+      `1. Déterminer l'effectif manquant $a$, puis calculer la moyenne $\\bar{x}$ et l'écart-type $\\sigma$.`,
+      `2. Prise d'initiative : Si on ajoute $1,5$ point à chaque note, comment varient $\\bar{x}$ et $\\sigma$ ? Justifier.`,
+    ];
+    olympiadHintAr = "إرشاد إحصائي: تذكر خاصية الخطانية للمعدل $\\overline{x+b} = \\bar{x} + b$ وثبات التشتت عند الإزاحة.";
+    olympiadHintFr = "Piste statistique : Utiliser la linéarité de la moyenne et l'invariance de l'écart-type par translation.";
+  } else if (lesson.lessonAr.includes("احتمال") || lesson.lessonAr.includes("تعداد") || titleFr.includes("probabilit") || titleFr.includes("dénombrement")) {
+    olympiadQuestionsAr = [
+      `مسألة الاحتمالات والتعداد: يحتوي صندوق على $4$ كرات حمراء و$3$ كرات خضراء و$2$ زرقاء لا يمكن التمييز بينها باللمس. نسحب عشوائياً وفي آن واحد $3$ كرات.`,
+      `1. احسب احتمال الحدثين: $A$ « الحصول على $3$ كرات من نفس اللون » و$B$ « الحصول على كرة واحدة من كل لون ».`,
+      `2. سؤال المبادرة: ليكن $X$ المتغير العشوائي الذي يربط كل سحبة بعدد الكرات الحمراء المسحوبة. حدد قانون احتمال $X$ واحسب أمله الرياضي $E(X)$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème de probabilités : Une urne contient $4$ boules rouges, $3$ vertes et $2$ bleues indiscernables au toucher. On tire simultanément $3$ boules.`,
+      `1. Calculer $P(A)$ « $3$ boules de même couleur » et $P(B)$ « une boule de chaque couleur ».`,
+      `2. Prise d'initiative : Soit $X$ la variable aléatoire égale au nombre de boules rouges tirées. Déterminer la loi de $X$ et son espérance $E(X)$.`,
+    ];
+    olympiadHintAr = "إرشاد احتمالي: عدد السحبات الممكنة هو $C_9^3 = 84$، وتحقق من أن $\\sum P(X=k) = 1$.";
+    olympiadHintFr = "Piste probabiliste : Dénombrer l'univers par $C_9^3 = 84$ et vérifier $\\sum P(X=k) = 1$.";
+  } else if (lesson.lessonAr.includes("عقدي") || titleFr.includes("complexe")) {
+    olympiadQuestionsAr = [
+      `مسألة التوليف الهندسي العقدي: نعتبر في المستوى العقدي النقط $A(1+i)$ و$B(3-i)$ و$C(2+2i)$.`,
+      `1. اكتب العدد العقدي $Z = \\frac{z_C - z_A}{z_B - z_A}$ على الشكل الجبري ثم الشكل المثلثي، واستنتج طبيعة المثلث $ABC$.`,
+      `2. سؤال المبادرة: حدد لحق النقطة $D$ صورة $B$ بالدوران $R$ الذي مركزه $A$ وزاويته $\\frac{\\pi}{2}$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Synthèse complexe et géométrique : Dans le plan complexe, on considère $A(1+i)$, $B(3-i)$ et $C(2+2i)$.`,
+      `1. Écrire $Z = \\frac{z_C - z_A}{z_B - z_A}$ sous forme algébrique puis trigonométrique et en déduire la nature du triangle $ABC$.`,
+      `2. Prise d'initiative : Déterminer l'affixe de $D$, image de $B$ par la rotation $R(A, \\frac{\\pi}{2})$.`,
+    ];
+    olympiadHintAr = "إرشاد عقدي: إذا كان $\\arg(Z) \\equiv \\pm\\frac{\\pi}{2} [2\\pi]$ و$|Z|=1$ فإن المثلث قائم ومتساوي الساقين.";
+    olympiadHintFr = "Piste complexe : Utiliser le module et l'argument du quotient $\\frac{z_C - z_A}{z_B - z_A}$.";
+  } else if (lesson.lessonAr.includes("تكامل") || titleFr.includes("intégral")) {
+    olympiadQuestionsAr = [
+      `مسألة التحدي والبحث المفتوح: نعتبر الدالة $f$ المتصلة على $[0, 1]$ والتي تحقق $\\int_0^1 f(t)\\,dt = \\frac{1}{2}$.`,
+      `1. برهن باستعمال مبرهنة القيم الوسيطية وجود عدد $c \\in ]0, 1[$ بحيث $f(c) = c$.`,
+      `2. سؤال المبادرة: نفترض علاوة على ذلك أن $f$ قابلة للاشتقاق وأن $|f'(x)| \\le 1$ لكل $x$. حدد حصراً دقيقاً للقيمة القصوى لـ $\\int_0^1 (f(t))^2\\,dt$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème de Recherche & Olympiades : Soit $f$ une fonction continue sur $[0, 1]$ vérifiant $\\int_0^1 f(t)\\,dt = \\frac{1}{2}$.`,
+      `1. Démontrer par le théorème des valeurs intermédiaires qu'il existe $c \\in ]0, 1[$ tel que $f(c) = c$.`,
+      `2. Prise d'initiative : En supposant $f$ dérivable avec $|f'(x)| \\le 1$, déterminer un encadrement optimal de $\\int_0^1 (f(t))^2\\,dt$.`,
+    ];
+    olympiadHintAr = "تحدي أولمبياد: ادرس الدالة المساعدة $g(x) = \\int_0^x f(t)\\,dt - \\frac{x^2}{2}$ وطبق مبرهنة رول.";
+    olympiadHintFr = "Piste Olympiades : Introduire la fonction auxiliaire $g(x) = \\int_0^x f(t)\\,dt - \\frac{x^2}{2}$ et appliquer le théorème de Rolle.";
+  } else if (lesson.lessonAr.includes("اتصال") || lesson.lessonAr.includes("اشتقاق") || titleFr.includes("continuit") || titleFr.includes("dériv")) {
+    olympiadQuestionsAr = [
+      `مسألة التحدي في التحليل: نعتبر الدالة $f$ المتصلة على $[0, 1]$ والتي تحقق $f(0) = f(1)$.`,
+      `1. بين باستعمال مبرهنة القيم الوسيطية وجود عدد $c \\in [0, \\frac{1}{2}]$ بحيث $f(c + \\frac{1}{2}) = f(c)$.`,
+      `2. سؤال المبادرة: إذا كانت $f$ قابلة للاشتقاق على $[0, 1]$، بين أنه يوجد $d \\in ]0, 1[$ بحيث $f'(d) = 0$.`,
+    ];
+    olympiadQuestionsFr = [
+      `Défi d'analyse : Soit $f$ une fonction continue sur $[0, 1]$ telle que $f(0) = f(1)$.`,
+      `1. Montrer par le TVI qu'il existe $c \\in [0, \\frac{1}{2}]$ tel que $f(c + \\frac{1}{2}) = f(c)$.`,
+      `2. Prise d'initiative : Si $f$ est dérivable sur $[0, 1]$, justifier l'existence d'un point à tangente horizontale.`,
+    ];
+    olympiadHintAr = "تحدي تحليلي: نضع الدالة المساعدة $g(x) = f(x + \\frac{1}{2}) - f(x)$ على $[0, \\frac{1}{2}]$ واحسب $g(0) + g(\\frac{1}{2})$.";
+    olympiadHintFr = "Piste analytique : Poser $g(x) = f(x + \\frac{1}{2}) - f(x)$ sur $[0, \\frac{1}{2}]$.";
+  } else {
+    olympiadQuestionsAr = [
+      `مسألة التحدي والبحث في « ${lesson.lessonAr} »:`,
+      `1. تطبيق تركيبي: ${lesson.sampleExerciseAr?.[0] || `برهن على الخاصية المرتبطة بـ « ${cap0Ar} ».`}`,
+      `2. سؤال المبادرة المفتوح: ${lesson.sampleExerciseAr?.[1] || `استثمر « ${cap1Ar} » لحل الوضعية واستنتاج التأويل المناسب.`}`,
+    ];
+    olympiadQuestionsFr = [
+      `Problème de synthèse sur « ${lesson.lessonFr} » :`,
+      `1. Application structurée : ${lesson.sampleExerciseFr?.[0] || `Démontrer la propriété liée à « ${cap0Fr} ».`}`,
+      `2. Prise d'initiative : ${lesson.sampleExerciseFr?.[1] || `Mobiliser « ${cap1Fr} » pour conclure.`}`,
+    ];
+    olympiadHintAr = `إرشاد منهجي: اربط بين معطيات المسألة وخاصيات « ${cap0Ar} ».`;
+    olympiadHintFr = `Piste méthodologique : Articuler les données avec les propriétés de « ${cap0Fr} ».`;
   }
 
   if (subType === "DEVOIR_MAISON") {
@@ -3771,7 +4092,7 @@ export function generateConfiguredSerieExercises(
       blockIdx = 1; // تعبئة المكتسبات وحساب المهارات النموذجية (★★)
     } else if (ratio < 0.85) {
       blockIdx = 2; // تعمق واستدلال ومسألة توليفية (★★★)
-    } else {
+  } else {
       blockIdx = 3; // مسألة التميز والأولمبياد والبحث المفتوح (★★★)
     }
 
@@ -3848,7 +4169,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "مبادئ في الحسابيات في المجموعة N",
             lessonFr: "Ensemble N et notions d'arithmétique",
-            weight: 35,
+            weight: 60,
             hours: "7h",
             category: "Algebra",
             subCategory: "حسابيات",
@@ -3863,20 +4184,22 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
               "Déterminer le PPCM et le PGCD de deux entiers naturels",
             ],
             sampleExerciseAr: [
-              "ليكن n عدداً صحيحاً طبيعياً. أدرس زوجية العدد A = n² + 3n + 4.",
-              "فكك العددين a = 540 و b = 378 إلى جداء عوامل أولية، ثم استنتج PGCD(a,b) و PPCM(a,b).",
-              "حدد جميع القيم الممكنة للعدد الصحيح الطبيعي n بحيث يكون (n + 11) قاسماً للعدد (2n + 30).",
+              "ليكن n عدداً صحيحاً طبيعياً. أدرس زوجية العدد A = n² + 3n + 4، ثم بين أن العدد B = n(n + 1)(n + 2) مضاعف للعدد 6.",
+              "فكك العددين a = 540 و b = 378 إلى جداء عوامل أولية، ثم استنتج PGCD(a,b) و PPCM(a,b) وبسط الكسر 540/378 والعدد √(540 × 378).",
+              "حدد جميع الأعداد الصحيحة الطبيعية n بحيث يكون (n + 11) قاسماً للعدد (2n + 30).",
+              "حدد جميع الأزواج (x, y) من ℕ² التي تحقق المعادلة : x² - y² = 28.",
             ],
             sampleExerciseFr: [
-              "Soit n ∈ ℕ. Étudier la parité de l'entier A = n² + 3n + 4.",
-              "Décomposer a = 540 et b = 378 en produit de facteurs premiers, puis déduire PGCD(a,b) et PPCM(a,b).",
+              "Soit n ∈ ℕ. Étudier la parité de l'entier A = n² + 3n + 4, puis montrer que B = n(n + 1)(n + 2) est un multiple de 6.",
+              "Décomposer a = 540 et b = 378 en produit de facteurs premiers, puis en déduire PGCD(a,b), PPCM(a,b) et simplifier la fraction 540/378 ainsi que √(540 × 378).",
               "Déterminer tous les entiers naturels n tels que (n + 11) divise (2n + 30).",
+              "Déterminer tous les couples (x, y) ∈ ℕ² vérifiant l'équation : x² - y² = 28.",
             ],
           },
           {
             lessonAr: "الحساب المتجهي في المستوى",
             lessonFr: "Calcul vectoriel dans le plan",
-            weight: 30,
+            weight: 25,
             hours: "5h",
             category: "Geometry",
             subCategory: "هندسة مستوية",
@@ -3891,18 +4214,20 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
               "Exprimer vectoriellement la colinéarité, l'alignement et le milieu d'un segment",
             ],
             sampleExerciseAr: [
-              "ليكن ABC مثلثاً. أنشئ النقطتين M و N بحيث: AM = (3/2)AB و AN = 3AC - AB.",
-              "بين باستعمال علاقة شال أن: MN = -(5/2)AB + 3AC، ثم استنتج استقامية النقط أو توازي المستقيمات.",
+              "ليكن ABC مثلثاً. أنشئ النقطتين M و N بحيث: AM⃗ = (3/2)AB⃗ و AN⃗ = 3AC⃗ - AB⃗.",
+              "بين باستعمال علاقة شال أن: MN⃗ = -(5/2)AB⃗ + 3AC⃗، ثم عبر عن المتجهة MP⃗ بدلالة AB⃗ و AC⃗ حيث P النقطة المعرفة بـ BP⃗ = (6/5)BC⃗.",
+              "بين أن المتجهتين MN⃗ و MP⃗ مستقيميتان، ثم استنتج أن النقط M و N و P مستقيمية.",
             ],
             sampleExerciseFr: [
-              "Soit ABC un triangle. Construire les points M et N tels que : AM = (3/2)AB et AN = 3AC - AB.",
-              "Montrer à l'aide de la relation de Chasles que MN = -(5/2)AB + 3AC et étudier la colinéarité.",
+              "Soit ABC un triangle. Construire les points M et N tels que : AM⃗ = (3/2)AB⃗ et AN⃗ = 3AC⃗ - AB⃗.",
+              "Montrer à l'aide de la relation de Chasles que : MN⃗ = -(5/2)AB⃗ + 3AC⃗, puis exprimer le vecteur MP⃗ en fonction de AB⃗ et AC⃗ où P est le point défini par BP⃗ = (6/5)BC⃗.",
+              "Montrer que les vecteurs MN⃗ et MP⃗ sont colinéaires, puis en déduire que les points M, N et P sont alignés.",
             ],
           },
           {
             lessonAr: "الإسقاط في المستوى",
             lessonFr: "La projection dans le plan",
-            weight: 35,
+            weight: 15,
             hours: "5h",
             category: "Geometry",
             subCategory: "هندسة مستوية",
@@ -3915,6 +4240,16 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             capacitiesFr: [
               "Traduire vectoriellement la conservation du coefficient de colinéarité",
               "Appliquer le théorème de Thalès direct et réciproque avec la projection",
+            ],
+            sampleExerciseAr: [
+              "ليكن ABC مثلثاً، و D النقطة من المستقيم (AB) بحيث AD⃗ = (1/3)AB⃗، و D' مسقط D على (AC) بتوازٍ مع (BC). أنشئ الشكل وعبر عن المتجهة AD'⃗ بدلالة AC⃗.",
+              "لتكن I منتصف القطعة [BC] و J مسقط I على (AC) بتوازٍ مع (AB). بين أن J منتصف القطعة [AC].",
+              "بين أن D'J⃗ = (1/6)AC⃗، ثم استنتج أن D' هي مسقط النقطة K (حيث BK⃗ = (1/3)BC⃗) على (AC) بتوازٍ مع (AB).",
+            ],
+            sampleExerciseFr: [
+              "Soit ABC un triangle, D le point de la droite (AB) tel que AD⃗ = (1/3)AB⃗, et D' le projeté de D sur (AC) parallèlement à (BC). Construire la figure et exprimer AD'⃗ en fonction de AC⃗.",
+              "Soit I le milieu du segment [BC] et J le projeté de I sur (AC) parallèlement à (AB). Montrer que J est le milieu du segment [AC].",
+              "Montrer que D'J⃗ = (1/6)AC⃗, puis en déduire que D' est le projeté du point K (où BK⃗ = (1/3)BC⃗) sur (AC) parallèlement à (AB).",
             ],
           },
         ],
@@ -4157,6 +4492,16 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             tags: ["Geometry","هندسة مستوية","Algebra","جبر","حسابيات"],
             capacitiesAr: ["توظيف PGCD و PPCM وعلاقة شال ومبرهنة طاليس بالإسقاط"],
             capacitiesFr: ["Utiliser PGCD/PPCM, la relation de Chasles et le théorème de Thalès par projection"],
+            sampleExerciseAr: [
+              "ليكن n ∈ ℕ. أدرس زوجية العدد $A = n^2 + 5n + 6$، ثم فكك $a = 360$ و $b = 252$ لاستنتاج $\\mathrm{PGCD}(a,b)$ و $\\mathrm{PPCM}(a,b)$.",
+              "ليكن ABC مثلثاً، و M و N نقطتين بحيث $\\vec{AM} = \\frac{3}{2}\\vec{AB}$ و $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$. عبر عن $\\vec{MN}$ بدلالة $\\vec{AB}$ و $\\vec{AC}$.",
+              "ليكن D من (AB) بحيث $\\vec{AD} = \\frac{1}{3}\\vec{AB}$ و D' مسقط D على (AC) بتوازٍ مع (BC). بين أن $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$.",
+            ],
+            sampleExerciseFr: [
+              "Soit n ∈ ℕ. Étudier la parité de $A = n^2 + 5n + 6$, puis décomposer $360$ et $252$ pour en déduire PGCD et PPCM.",
+              "Soit ABC un triangle, $\\vec{AM} = \\frac{3}{2}\\vec{AB}$ et $\\vec{AN} = 3\\vec{AC} - \\vec{AB}$. Exprimer $\\vec{MN}$ en fonction de $\\vec{AB}$ et $\\vec{AC}$.",
+              "Soit D ∈ (AB) tel que $\\vec{AD} = \\frac{1}{3}\\vec{AB}$ et D' son projeté sur (AC) parallèlement à (BC). Montrer que $\\vec{AD'} = \\frac{1}{3}\\vec{AC}$.",
+            ],
           },
         ],
         DS2: [
@@ -4260,6 +4605,16 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             tags: ["Algebra","جبر"],
             capacitiesAr: ["توظيف النسب المئوية وحل معادلات ومتراجحات من الدرجة 1 و 2 ونظمات"],
             capacitiesFr: ["Appliquer les pourcentages et résoudre des équations/inéquations du 1er et 2nd degré"],
+            sampleExerciseAr: [
+              "بلغ ثمن كتاب $120\\text{ DH}$ قبل التخفيض. احسب ثمنه الجديد بعد تخفيض بنسبة $15\\%$، ثم احسب النسبة المئوية للزيادة اللازمة للعودة إلى الثمن الأصلي.",
+              "حل في $\\mathbb{R}$ المعادلة $2x - 5 = 3(x - 1)$ ثم المتراجحة $4x + 3 \\le 2x - 7$.",
+              "حل في $\\mathbb{R}$ المعادلة $x^2 - 5x + 6 = 0$ باستعمال المميز $\\Delta$، ثم ضع جدول إشارة $x^2 - 5x + 6$ واستنتج حلول المتراجحة $x^2 - 5x + 6 \\le 0$.",
+            ],
+            sampleExerciseFr: [
+              "Un livre coûte $120\\text{ DH}$. Calculer son nouveau prix après une réduction de $15\\%$, puis le pourcentage de hausse nécessaire pour revenir au prix initial.",
+              "Résoudre dans $\\mathbb{R}$ l'équation $2x - 5 = 3(x - 1)$ et l'inéquation $4x + 3 \\le 2x - 7$.",
+              "Résoudre dans $\\mathbb{R}$ l'équation $x^2 - 5x + 6 = 0$ via le discriminant $\\Delta$, puis dresser le tableau de signes et résoudre $x^2 - 5x + 6 \\le 0$.",
+            ],
           },
         ],
         DS2: [
@@ -4551,6 +4906,16 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             tags: ["Algebra","جبر","منطق ومجموعات"],
             capacitiesAr: ["المكممات ونفيها، الاستدلال بالمضاد للعكس، الخلف، فصل الحالات، والترجع"],
             capacitiesFr: ["Quantificateurs, négation, contraposée, absurde, disjonction des cas et récurrence"],
+            sampleExerciseAr: [
+              "أعط نفي العبارة التالية ثم حدد قيمة حقيقتها: (∀x ∈ ℝ), x² - 4x + 5 > 0.",
+              "بين باستعمال الاستدلال بالمضاد للعكس أنه لكل عددين حقيقيين x و y : إذا كان x ≠ y و x + y ≠ 2 فإن x² - 2x ≠ y² - 2y.",
+              "بين باستعمال الاستدلال بالترجع أنه لكل n ∈ ℕ* : 1 + 3 + 5 + ... + (2n - 1) = n².",
+            ],
+            sampleExerciseFr: [
+              "Donner la négation de la proposition suivante puis préciser sa valeur de vérité : (∀x ∈ ℝ), x² - 4x + 5 > 0.",
+              "Montrer par contraposée que pour tous réels x et y : si x ≠ y et x + y ≠ 2 alors x² - 2x ≠ y² - 2y.",
+              "Montrer par récurrence que pour tout n ∈ ℕ* : 1 + 3 + 5 + ... + (2n - 1) = n².",
+            ],
           },
           {
             lessonAr: "عموميات حول الدوال العددية",
@@ -4563,13 +4928,23 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             tags: ["Calculus","تحليل"],
             capacitiesAr: ["الدوال المكبورة والمصغورة، المطاريف، ومقارنة دالتين، ورتابة مركب دالتين"],
             capacitiesFr: ["Fonctions bornées, extremums, comparaison graphique et monotonie de gof"],
+            sampleExerciseAr: [
+              "نعتبر الدالة العددية f المعرفة على ℝ بـ: f(x) = 2x / (x² + 1). حدد مجموعة تعريف الدالة f وأدرس زوجيتها.",
+              "تحقق أن لكل x ∈ ℝ لدينا: 1 - f(x) = (x - 1)² / (x² + 1) و 1 + f(x) = (x + 1)² / (x² + 1)، ثم استنتج أن f محدودة على ℝ وحدد مطاريفها.",
+              "نعتبر الدالتين u(x) = x² + 1 و v(x) = √x. أدرس رتابة الدالة المركبة v ∘ u على المجال [0, +∞[.",
+            ],
+            sampleExerciseFr: [
+              "Soit f la fonction définie sur ℝ par : f(x) = 2x / (x² + 1). Déterminer D_f et étudier la parité de f.",
+              "Vérifier que pour tout x ∈ ℝ : 1 - f(x) = (x - 1)² / (x² + 1) et 1 + f(x) = (x + 1)² / (x² + 1), puis en déduire que f est bornée et préciser ses extremums.",
+              "Soient u(x) = x² + 1 et v(x) = √x. Étudier la monotonie de la fonction composée v ∘ u sur [0, +∞[.",
+            ],
           },
         ],
         DS2: [
           {
             lessonAr: "المرجح في المستوى",
             lessonFr: "Le barycentre dans le plan",
-            weight: 35,
+            weight: 40,
             hours: "6h",
             category: "Geometry",
             subCategory: "هندسة مستوية",
@@ -4581,7 +4956,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الجداء السلمي وتطبيقاته التحليلية",
             lessonFr: "Étude analytique du produit scalaire",
-            weight: 65,
+            weight: 60,
             hours: "10h",
             category: "Geometry",
             subCategory: "هندسة مستوية",
@@ -4809,7 +5184,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "مبادئ في المنطق",
             lessonFr: "Notions de logique",
-            weight: 45,
+            weight: 40,
             hours: "8h",
             category: "Algebra",
             subCategory: "منطق ومجموعات",
@@ -4821,7 +5196,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "المعادلات والمتراجحات والنظمات والبرمجة الخطية",
             lessonFr: "Équations, inéquations, systèmes et programmation linéaire",
-            weight: 55,
+            weight: 60,
             hours: "10h",
             category: "Algebra",
             subCategory: "جبر",
@@ -4829,6 +5204,16 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             tags: ["Algebra","جبر"],
             capacitiesAr: ["حل النظمات مبيانياً وجبرياً وحل مسائل الاستمثال الاقتصادي"],
             capacitiesFr: ["Systèmes d'inéquations et optimisation par programmation linéaire"],
+            sampleExerciseAr: [
+              "حل في $\\mathbb{R}$ المعادلة $2x^2 - 7x + 3 = 0$ ثم المتراجحة $2x^2 - 7x + 3 \\le 0$.",
+              "حل في $\\mathbb{R}^2$ النظمة التالية بطريقة كرامر (المحددة): $\\begin{cases} 2x + y = 7 \\\\ x + 3y = 11 \\end{cases}$.",
+              "مثل مبيانياً مجموعة حلول نظمة المتراجحات: $x \\ge 0$، $y \\ge 0$، $x + y \\le 5$ و $2x + y \\le 8$، ثم حدد أقصى قيمة للمقدار $Z = 40x + 30y$.",
+            ],
+            sampleExerciseFr: [
+              "Résoudre dans $\\mathbb{R}$ l'équation $2x^2 - 7x + 3 = 0$ puis l'inéquation $2x^2 - 7x + 3 \\le 0$.",
+              "Résoudre dans $\\mathbb{R}^2$ par la méthode de Cramer : $\\begin{cases} 2x + y = 7 \\\\ x + 3y = 11 \\end{cases}$.",
+              "Représenter graphiquement l'ensemble des solutions du système $x \\ge 0$, $y \\ge 0$, $x + y \\le 5$, $2x + y \\le 8$, et maximiser $Z = 40x + 30y$.",
+            ],
           },
         ],
         DS2: [
@@ -5167,7 +5552,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الاتصال",
             lessonFr: "Continuité d'une fonction numérique",
-            weight: 45,
+            weight: 50,
             hours: "12h",
             category: "Calculus",
             subCategory: "تحليل",
@@ -5191,7 +5576,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الاشتقاق ودراسة الدوال",
             lessonFr: "Dérivation et étude des fonctions",
-            weight: 55,
+            weight: 50,
             hours: "14h",
             category: "Calculus",
             subCategory: "تحليل",
@@ -5243,7 +5628,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الدوال اللوغاريتمية",
             lessonFr: "Fonctions logarithmiques",
-            weight: 65,
+            weight: 40,
             hours: "14h",
             category: "Calculus",
             subCategory: "تحليل",
@@ -5255,7 +5640,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الأعداد العقدية (الشطر 1)",
             lessonFr: "Nombres complexes (Partie 1)",
-            weight: 35,
+            weight: 60,
             hours: "10h",
             category: "Algebra",
             subCategory: "أعداد عقدية",
@@ -5323,7 +5708,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "الهندسة الفضائية (الجداء السلمي والمتجهي)",
             lessonFr: "Géométrie dans l'espace (Produit scalaire et vectoriel)",
-            weight: 40,
+            weight: 20,
             hours: "10h",
             category: "Geometry",
             subCategory: "هندسة فضائية",
@@ -5335,7 +5720,7 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
           {
             lessonAr: "حساب الاحتمالات",
             lessonFr: "Calcul des probabilités",
-            weight: 60,
+            weight: 80,
             hours: "12h",
             category: "Probabilities",
             subCategory: "احتمالات وإحصاء",
@@ -5895,15 +6280,130 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
       },
       S2: {
         DS1: [
-          { lessonAr: "الهندسة الإقليدية والتحويلات", lessonFr: "Géométrie et configurations du plan", weight: 50, hours: "12h", category: "Geometry", subCategory: "هندسة مستوية", subCategoryFr: "Géométrie plane", tags: ["Geometry","هندسة مستوية"], capacitiesAr: ["المثلثات، مبرهنة فيتاغورس، والدوائر"], capacitiesFr: ["Configurations géométriques usuelles et trigonométrie"] },
-          { lessonAr: "دراسة الدوال وتطبيقاتها", lessonFr: "Fonctions et résolutions d'équations", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل"], capacitiesAr: ["حل المعادلات والمتراجحات باستعمال جدول الإشارة"], capacitiesFr: ["Résoudre des équations et inéquations par tableaux de signes"] }
+          {
+            lessonAr: "الهندسة الإقليدية والتحويلات",
+            lessonFr: "Géométrie et configurations du plan",
+            weight: 50,
+            hours: "12h",
+            category: "Geometry",
+            subCategory: "هندسة مستوية",
+            subCategoryFr: "Géométrie plane",
+            tags: ["Geometry","هندسة مستوية"],
+            capacitiesAr: ["المثلثات، مبرهنة فيتاغورس، والدوائر"],
+            capacitiesFr: ["Configurations géométriques usuelles et trigonométrie"],
+            sampleExerciseFr: [
+              "Soit ABC un triangle rectangle en A tel que AB = 6 cm et AC = 8 cm.",
+              "1. Calculer la longueur BC et le rayon R du cercle circonscrit au triangle ABC.",
+              "2. Soit H le projeté orthogonal de A sur (BC). Calculer l'aire du triangle ABC et en déduire la longueur AH.",
+              "3. Démontrer que le point H appartient au cercle de diamètre [AB]."
+            ],
+            sampleExerciseAr: [
+              "ليكن ABC مثلثاً قائماً في A حيث AB = 6 cm و AC = 8 cm.",
+              "1. أحسب طول الوتر BC وشعاع الدائرة المحيطة بالمثلث ABC.",
+              "2. ليكن H المسقط العمودي للنقطة A على (BC). أحسب مساحة المثلث ABC واستنتج المسافة AH.",
+              "3. بين أن النقطة H تنتمي إلى الدائرة التي قطرها [AB]."
+            ]
+          },
+          {
+            lessonAr: "دراسة الدوال وتطبيقاتها",
+            lessonFr: "Fonctions et résolutions d'équations",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل"],
+            capacitiesAr: ["حل المعادلات والمتراجحات باستعمال جدول الإشارة"],
+            capacitiesFr: ["Résoudre des équations et inéquations par tableaux de signes"],
+            sampleExerciseFr: [
+              "Soit f la fonction définie sur ℝ par f(x) = (2x - 3)(x + 1) - (x + 1)².",
+              "1. Développer et réduire f(x).",
+              "2. Factoriser f(x) sous forme d'un produit de deux facteurs du premier degré.",
+              "3. Dresser le tableau de signes de f(x) sur ℝ et résoudre l'inéquation f(x) ≤ 0."
+            ],
+            sampleExerciseAr: [
+              "نعتبر الدالة f المعرفة على R بـ f(x) = (2x - 3)(x + 1) - (x + 1)².",
+              "1. انشر وبسط التعبير f(x).",
+              "2. عمل f(x) إلى جداء عاملين من الدرجة الأولى.",
+              "3. ضع جدول إشارة f(x) على R وحل المتراجحة f(x) ≤ 0."
+            ]
+          }
         ],
         DS2: [
-          { lessonAr: "الحساب المثلثي", lessonFr: "Trigonométrie et enroulement de la droite", weight: 50, hours: "12h", category: "Geometry", subCategory: "حساب مثلثي", subCategoryFr: "Trigonométrie", tags: ["Geometry","حساب مثلثي"], capacitiesAr: ["الدائرة المثلثية، الراديان، القيم الاعتيادية لجيب التمام والجيب"], capacitiesFr: ["Cercle trigonométrique, radian et valeurs remarquables de cos et sin"] },
-          { lessonAr: "المتجهات والارتباط الخطي في الهندسة", lessonFr: "Vecteurs et alignement dans le plan", weight: 50, hours: "12h", category: "Geometry", subCategory: "هندسة مستوية", subCategoryFr: "Géométrie plane", tags: ["Geometry","هندسة مستوية"], capacitiesAr: ["استقامية النقط وتوازي المستقيمات بواسطة المتجهات"], capacitiesFr: ["Démontrer l'alignement et le parallélisme par le calcul vectoriel"] }
+          {
+            lessonAr: "الحساب المثلثي",
+            lessonFr: "Trigonométrie et enroulement de la droite",
+            weight: 50,
+            hours: "12h",
+            category: "Geometry",
+            subCategory: "حساب مثلثي",
+            subCategoryFr: "Trigonométrie",
+            tags: ["Geometry","حساب مثلثي"],
+            capacitiesAr: ["الدائرة المثلثية، الراديان، القيم الاعتيادية لجيب التمام والجيب"],
+            capacitiesFr: ["Cercle trigonométrique, radian et valeurs remarquables de cos et sin"],
+            sampleExerciseFr: [
+              "Sur le cercle trigonométrique muni d'un repère orthonormé direct :",
+              "1. Placer les points images des réels : x_1 = π/3, x_2 = 5π/6, et x_3 = -3π/4.",
+              "2. Donner les valeurs exactes de cos(5π/6) et sin(5π/6).",
+              "3. Résoudre dans ]-π; π] l'équation : 2 cos(x) + 1 = 0."
+            ],
+            sampleExerciseAr: [
+              "على الدائرة المثلثية المزودة بمعلم متعامد ممنظم مباشر:",
+              "1. مثل النقط صور الأعداد الحقيقية: x_1 = π/3 و x_2 = 5π/6 و x_3 = -3π/4.",
+              "2. أعط القيمة المضبوطة لكل من cos(5π/6) و sin(5π/6).",
+              "3. حل في ]-π; π] المعادلة: 2 cos(x) + 1 = 0."
+            ]
+          },
+          {
+            lessonAr: "المتجهات والارتباط الخطي في الهندسة",
+            lessonFr: "Vecteurs et alignement dans le plan",
+            weight: 50,
+            hours: "12h",
+            category: "Geometry",
+            subCategory: "هندسة مستوية",
+            subCategoryFr: "Géométrie plane",
+            tags: ["Geometry","هندسة مستوية"],
+            capacitiesAr: ["استقامية النقط وتوازي المستقيمات بواسطة المتجهات"],
+            capacitiesFr: ["Démontrer l'alignement et le parallélisme par le calcul vectoriel"],
+            sampleExerciseFr: [
+              "Dans un repère (O; i, j), on donne les points A(-2; 1), B(4; 3) et C(1; 2).",
+              "1. Calculer les coordonnées des vecteurs AB et AC.",
+              "2. Les points A, B et C sont-ils alignés ? Justifier par un calcul de colinéarité.",
+              "3. Déterminer les coordonnées du point D tel que ABCD soit un parallélogramme."
+            ],
+            sampleExerciseAr: [
+              "في معلم (O; i, j)، نعتبر النقط A(-2; 1) و B(4; 3) و C(1; 2).",
+              "1. أحسب إحداثيات المتجهتين AB و AC.",
+              "2. هل النقط A و B و C مستقيمية؟ علل جوابك باختبار الاستقامية والارتباط الخطي.",
+              "3. حدد إحداثيات النقطة D بحيث يكون ABCD متوازي أضلاع."
+            ]
+          }
         ],
         DS3: [
-          { lessonAr: "الاحتمالات المشروطة وأخذ العينات", lessonFr: "Échantillonnage et simulation probabiliste", weight: 100, hours: "18h", category: "Probabilities", subCategory: "احتمالات وإحصاء", subCategoryFr: "Probabilités & Statistiques", tags: ["Probabilities","احتمالات وإحصاء"], capacitiesAr: ["محاكاة تجربة عشوائية بلغة بايثون وفترات التقلب"], capacitiesFr: ["Simulations de fluctuations d'échantillonnage et intervalles de confiance"] }
+          {
+            lessonAr: "الاحتمالات المشروطة وأخذ العينات",
+            lessonFr: "Échantillonnage et simulation probabiliste",
+            weight: 100,
+            hours: "18h",
+            category: "Probabilities",
+            subCategory: "احتمالات وإحصاء",
+            subCategoryFr: "Probabilités & Statistiques",
+            tags: ["Probabilities","احتمالات وإحصاء"],
+            capacitiesAr: ["محاكاة تجربة عشوائية بلغة بايثون وفترات التقلب"],
+            capacitiesFr: ["Simulations de fluctuations d'échantillonnage et intervalles de confiance"],
+            sampleExerciseFr: [
+              "Une entreprise fabrique des composants électroniques dont 5% sont défectueux. On prélève un échantillon de taille n = 100 avec remise.",
+              "1. Déterminer l'intervalle de fluctuation asymptotique au seuil de 95% de la fréquence de composants défectueux.",
+              "2. Dans un lot prélevé, on compte 9 composants défectueux. Faut-il remettre en cause le réglage de la machine au seuil de 95% ?",
+              "3. Écrire un script Python simulant 1000 tirages et calculant la proportion de succès."
+            ],
+            sampleExerciseAr: [
+              "تنتج مقاولة مكونات إلكترونية تحتوي على 5% من القطع المعيبة. نأخذ عينة عشوائية حجمها n = 100 بالتكرار.",
+              "1. حدد مجال التقلب عند مستوى الثقة 95% لتواتر القطع المعيبة.",
+              "2. في عينة مراقبة، وجدنا 9 قطع معيبة. هل يستوجب إعادة ضبط آلة الإنتاج عند عتبة 95%؟",
+              "3. أنجز برنامجاً بلغة بايثون يحاكي 1000 سحبة ويحسب نسبة النجاح."
+            ]
+          }
         ]
       }
     }
@@ -6074,15 +6574,128 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
       },
       S2: {
         DS1: [
-          { lessonAr: "الهندسة التحليلية وتطبيقات الجداء السلمي", lessonFr: "Géométrie repérée : cercles et équations de droites", weight: 50, hours: "12h", category: "Geometry", subCategory: "هندسة مستوية", subCategoryFr: "Géométrie plane", tags: ["Geometry","هندسة مستوية"], capacitiesAr: ["المعادلات الديكارتية للدوائر ومسافة نقطة عن مستقيم"], capacitiesFr: ["Équations de cercles, orthogonalité et distance d'un point à une droite"] },
-          { lessonAr: "المتتاليات العددية وخوارزميات العتبة في بايثون", lessonFr: "Suites et algorithmes de seuil en Python", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل","متتاليات عددية"], capacitiesAr: ["البرمجة بلغة بايثون لتحديد رتبة تجاوز عتبة عددية"], capacitiesFr: ["Programmer un algorithme de recherche de seuil en Python pour une suite"] }
+          {
+            lessonAr: "الهندسة التحليلية وتطبيقات الجداء السلمي",
+            lessonFr: "Géométrie repérée : cercles et équations de droites",
+            weight: 50,
+            hours: "12h",
+            category: "Geometry",
+            subCategory: "هندسة مستوية",
+            subCategoryFr: "Géométrie plane",
+            tags: ["Geometry","هندسة مستوية"],
+            capacitiesAr: ["المعادلات الديكارتية للدوائر ومسافة نقطة عن مستقيم"],
+            capacitiesFr: ["Équations de cercles, orthogonalité et distance d'un point à une droite"],
+            sampleExerciseFr: [
+              "Dans un repère orthonormé (O; i, j) :",
+              "1. Déterminer une équation cartésienne du cercle (C) de centre Ω(2; -1) et de rayon R = 5.",
+              "2. Démontrer que le point A(5; 3) appartient à (C) et déterminer une équation de la tangente (T) à (C) en A.",
+              "3. Étudier la position relative de la droite (D) d'équation 3x + 4y - 17 = 0 et du cercle (C)."
+            ],
+            sampleExerciseAr: [
+              "في معلم متعامد ممنظم (O; i, j):",
+              "1. حدد معادلة ديكارتية للدائرة (C) ذات المركز Ω(2; -1) والشعاع R = 5.",
+              "2. بين أن النقطة A(5; 3) تنتمي إلى (C) وحدد معادلة المماس (T) للدائرة (C) في A.",
+              "3. أدرس الوضع النسبي للمستقيم (D) ذي المعادلة 3x + 4y - 17 = 0 والدائرة (C)."
+            ]
+          },
+          {
+            lessonAr: "المتتاليات العددية وخوارزميات العتبة في بايثون",
+            lessonFr: "Suites et algorithmes de seuil en Python",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل","متتاليات عددية"],
+            capacitiesAr: ["البرمجة بلغة بايثون لتحديد رتبة تجاوز عتبة عددية"],
+            capacitiesFr: ["Programmer un algorithme de recherche de seuil en Python pour une suite"],
+            sampleExerciseFr: [
+              "Soit (u_n) la suite définie par u_0 = 1000 et pour tout n ∈ ℕ, u_{n+1} = 0.8 u_n + 300.",
+              "1. Calculer u_1 et u_2. La suite (u_n) est-elle arithmétique ? géométrique ?",
+              "2. Soit v_n = u_n - 1500. Démontrer que (v_n) est géométrique de raison 0.8 et exprimer u_n en fonction de n.",
+              "3. Écrire une fonction Python 'seuil(S)' qui renvoie le plus petit entier n tel que |u_n - 1500| < S."
+            ],
+            sampleExerciseAr: [
+              "نعتبر المتتالية (u_n) المعرفة بـ u_0 = 1000 ولكل n من N، u_{n+1} = 0.8 u_n + 300.",
+              "1. أحسب u_1 و u_2. هل المتتالية حسابية؟ هندسية؟",
+              "2. نضع v_n = u_n - 1500. بين أن (v_n) هندسية أساسها 0.8 وعبر عن u_n بدلالة n.",
+              "3. اكتب دالة بلغة بايثون 'seuil(S)' تعيد أصغر عدد صحيح n يحقق |u_n - 1500| < S."
+            ]
+          }
         ],
         DS2: [
-          { lessonAr: "الحساب المثلثي والمعادلات المثلثية", lessonFr: "Trigonométrie : formules d'addition et de duplication", weight: 50, hours: "12h", category: "Geometry", subCategory: "حساب مثلثي", subCategoryFr: "Trigonométrie", tags: ["Geometry","حساب مثلثي"], capacitiesAr: ["صيغ التحويل وحل المعادلات cos(x)=cos(a) و sin(x)=sin(a)"], capacitiesFr: ["Formules d'addition et duplication, résolution d'équations trigonométriques"] },
-          { lessonAr: "الدوال الأسية والنمذجة الرياضية", lessonFr: "Modélisation par la fonction exponentielle", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل"], capacitiesAr: ["تطبيقات النمو الأسي والاضمحلال الإشعاعي وتبريد نيوتن"], capacitiesFr: ["Modélisation de phénomènes discrets et continus (désintégration, refroidissement)"] }
+          {
+            lessonAr: "الحساب المثلثي والمعادلات المثلثية",
+            lessonFr: "Trigonométrie : formules d'addition et de duplication",
+            weight: 50,
+            hours: "12h",
+            category: "Geometry",
+            subCategory: "حساب مثلثي",
+            subCategoryFr: "Trigonométrie",
+            tags: ["Geometry","حساب مثلثي"],
+            capacitiesAr: ["صيغ التحويل وحل المعادلات cos(x)=cos(a) و sin(x)=sin(a)"],
+            capacitiesFr: ["Formules d'addition et duplication, résolution d'équations trigonométriques"],
+            sampleExerciseFr: [
+              "1. En écrivant 5π/12 = π/4 + π/6, calculer la valeur exacte de cos(5π/12) et de sin(5π/12).",
+              "2. Démontrer que pour tout réel x, cos(2x) = 2 cos²(x) - 1.",
+              "3. Résoudre dans [0; 2π[ l'équation : cos(2x) = sin(x)."
+            ],
+            sampleExerciseAr: [
+              "1. بكتابة 5π/12 = π/4 + π/6، احسب القيمة المضبوطة لكل من cos(5π/12) و sin(5π/12).",
+              "2. برهن أنه لكل x حقيقي: cos(2x) = 2 cos²(x) - 1.",
+              "3. حل في [0; 2π[ المعادلة: cos(2x) = sin(x)."
+            ]
+          },
+          {
+            lessonAr: "الدوال الأسية والنمذجة الرياضية",
+            lessonFr: "Modélisation par la fonction exponentielle",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل"],
+            capacitiesAr: ["تطبيقات النمو الأسي والاضمحلال الإشعاعي وتبريد نيوتن"],
+            capacitiesFr: ["Modélisation de phénomènes discrets et continus (désintégration, refroidissement)"],
+            sampleExerciseFr: [
+              "La température T(t) en °C d'un café après t minutes est modélisée par T(t) = 20 + 70 e^(-0.04 t).",
+              "1. Quelle est la température initiale à t = 0 ? Déterminer la limite de T(t) en +∞.",
+              "2. Étudier le sens de variation de la fonction T sur [0; +∞[.",
+              "3. Déterminer au bout de combien de minutes la température descend en dessous de 40°C."
+            ],
+            sampleExerciseAr: [
+              "درجة حرارة سائل T(t) بالدرجة المئوية بعد t دقيقة تنمذج بالدالة T(t) = 20 + 70 e^(-0.04 t).",
+              "1. ما هي درجة الحرارة البدئية عند t = 0؟ حدد نهاية T(t) عند +∞.",
+              "2. أدرس رتابة الدالة T على [0; +∞[.",
+              "3. حدد بعد كم دقيقة تنزل درجة الحرارة تحت عتبة 40°C."
+            ]
+          }
         ],
         DS3: [
-          { lessonAr: "امتحان تركيبي شامل لنهاية السنة (Épreuve Commune)", lessonFr: "Épreuve de synthèse type Première Spécialité", weight: 100, hours: "16h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["توليف الجبر والتحليل والهندسة والاحتمالات"], capacitiesFr: ["Synthèse complète conforme aux épreuves communes du Baccalauréat"] }
+          {
+            lessonAr: "امتحان تركيبي شامل لنهاية السنة (Épreuve Commune)",
+            lessonFr: "Épreuve de synthèse type Première Spécialité",
+            weight: 100,
+            hours: "16h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"],
+            capacitiesAr: ["توليف الجبر والتحليل والهندسة والاحتمالات"],
+            capacitiesFr: ["Synthèse complète conforme aux épreuves communes du Baccalauréat"],
+            sampleExerciseFr: [
+              "Soit f la fonction définie sur ℝ par f(x) = (x² - 2x) e^x.",
+              "1. Calculer la dérivée f'(x) et dresser le tableau de variations complet de f sur ℝ.",
+              "2. Démontrer que la tangente au point d'abscisse 0 passe par le point P(1; -2).",
+              "3. Soit (u_n) la suite définie par u_0 = 1 et u_{n+1} = f(u_n). Étudier le comportement de la suite (u_n)."
+            ],
+            sampleExerciseAr: [
+              "نعتبر الدالة f المعرفة على R بـ f(x) = (x² - 2x) e^x.",
+              "1. أحسب المشتقة f'(x) وضع جدول التغيرات الكامل للدالة f على R.",
+              "2. بين أن المماس عند النقطة ذات الفاصلة 0 يمر من النقطة P(1; -2).",
+              "3. لتكن (u_n) المتتالية المعرفة بـ u_0 = 1 و u_{n+1} = f(u_n). ادرس سلوك المتتالية (u_n)."
+            ]
+          }
         ]
       }
     }
@@ -6253,14 +6866,106 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
       },
       S2: {
         DS1: [
-          { lessonAr: "حساب الاحتمالات وقانون الحدانية وقانون الأعداد الكبيرة", lessonFr: "Loi binomiale, schéma de Bernoulli et loi des grands nombres", weight: 50, hours: "16h", category: "Probabilities", subCategory: "احتمالات وإحصاء", subCategoryFr: "Probabilités & Statistiques", tags: ["Probabilities","احتمالات وإحصاء"], capacitiesAr: ["B(n, p)، الأمل n p، التباين n p (1-p)، ومتباينة تشيبيشيف"], capacitiesFr: ["Schéma de Bernoulli, loi binomiale B(n, p), espérance, variance et inégalité de Bienaymé-Tchebychev"] },
-          { lessonAr: "الحساب التكاملي المتقدم والقيمة المتوسطة", lessonFr: "Calcul intégral avancé et valeur moyenne", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"], capacitiesAr: ["حساب الحجوم والمساحات المعقدة والقيمة المتوسطة لدالة"], capacitiesFr: ["Applications du calcul intégral, encadrements et valeur moyenne"] }
+          {
+            lessonAr: "حساب الاحتمالات وقانون الحدانية وقانون الأعداد الكبيرة",
+            lessonFr: "Loi binomiale, schéma de Bernoulli et loi des grands nombres",
+            weight: 50,
+            hours: "16h",
+            category: "Probabilities",
+            subCategory: "احتمالات وإحصاء",
+            subCategoryFr: "Probabilités & Statistiques",
+            tags: ["Probabilities","احتمالات وإحصاء"],
+            capacitiesAr: ["B(n, p)، الأمل n p، التباين n p (1-p)، ومتباينة تشيبيشيف"],
+            capacitiesFr: ["Schéma de Bernoulli, loi binomiale B(n, p), espérance, variance et inégalité de Bienaymé-Tchebychev"],
+            sampleExerciseFr: [
+              "Un questionnaire comporte 10 questions indépendantes avec 4 réponses possibles dont une seule exacte. Un candidat répond au hasard. Soit X le nombre de bonnes réponses.",
+              "1. Justifier que X suit une loi binomiale et préciser ses paramètres n et p.",
+              "2. Calculer P(X = 3) et P(X ≥ 2) arrondies à 10⁻⁴ près.",
+              "3. Calculer l'espérance mathématique E(X) et l'écart-type σ(X)."
+            ],
+            sampleExerciseAr: [
+              "يتضمن اختبار 10 أسئلة مستقلة ذات 4 اختيارات أحدها فقط صحيح. يجيب مترشح عشوائياً. ليكن X المتغير العشوائي لعدد الأجوبة الصحيحة.",
+              "1. علل أن X يتبع قانوناً حدانياً وحدد وسيطيه n و p.",
+              "2. أحسب P(X = 3) و P(X ≥ 2) مقربة إلى 10⁻⁴.",
+              "3. أحسب الأمل الرياضي E(X) والانحراف المعياري σ(X)."
+            ]
+          },
+          {
+            lessonAr: "الحساب التكاملي المتقدم والقيمة المتوسطة",
+            lessonFr: "Calcul intégral avancé et valeur moyenne",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"],
+            capacitiesAr: ["حساب الحجوم والمساحات المعقدة والقيمة المتوسطة لدالة"],
+            capacitiesFr: ["Applications du calcul intégral, encadrements et valeur moyenne"],
+            sampleExerciseFr: [
+              "Soit f la fonction définie sur [0; 2] par f(x) = x e^(-x).",
+              "1. À l'aide d'une intégration par parties, calculer I = ∫₀² x e^(-x) dx.",
+              "2. En déduire la valeur moyenne μ de la fonction f sur l'intervalle [0; 2].",
+              "3. Interpréter géométriquement la valeur I en termes d'aire sous la courbe (C_f)."
+            ],
+            sampleExerciseAr: [
+              "نعتبر الدالة f المعرفة على [0; 2] بـ f(x) = x e^(-x).",
+              "1. باستعمال مكاملة بالأجزاء، أحسب التكامل I = ∫₀² x e^(-x) dx.",
+              "2. استنتج القيمة المتوسطة μ للدالة f على المجال [0; 2].",
+              "3. أول هندسياً القيمة I بدلالة مساحة الحيز تحت المنحنى (C_f)."
+            ]
+          }
         ],
         DS2: [
-          { lessonAr: "امتحان البكالوريا التجريبي الأول (Bac Blanc N°1)", lessonFr: "Baccalauréat Blanc N°1 (Sujet complet 4 exercices)", weight: 100, hours: "18h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["موضوع متكامل مطابق لمواصفات البكالوريا الفرنسية (تمرين هندسة، متتاليات، دوال، احتمالات)"], capacitiesFr: ["Sujet complet officiel conforme au Baccalauréat Général (Analyse, Suites, Géométrie espace, Probabilités)"] }
+          {
+            lessonAr: "امتحان البكالوريا التجريبي الأول (Bac Blanc N°1)",
+            lessonFr: "Baccalauréat Blanc N°1 (Sujet complet 4 exercices)",
+            weight: 100,
+            hours: "18h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"],
+            capacitiesAr: ["موضوع متكامل مطابق لمواصفات البكالوريا الفرنسية (تمرين هندسة، متتاليات، دوال، احتمالات)"],
+            capacitiesFr: ["Sujet complet officiel conforme au Baccalauréat Général (Analyse, Suites, Géométrie espace, Probabilités)"],
+            sampleExerciseFr: [
+              "Exercice 1 (Probabilités) : Tirage avec arbre pondéré et loi binomiale.",
+              "Exercice 2 (Géométrie spatiale) : Équations de plans, produit scalaire et distance d'un point à une droite.",
+              "Exercice 3 (Suites et récurrence) : Suite récurrente u_{n+1} = ln(1 + u_n) et convergence monotone.",
+              "Exercice 4 (Analyse) : Étude de f(x) = (ln x) / x, convexité, TVI et calcul d'aire par intégration."
+            ],
+            sampleExerciseAr: [
+              "التمرين 1 (احتمالات): سحب بشجرة مرجحة وقانون الحدانية.",
+              "التمرين 2 (هندسة فضائية): معادلات المستويات، الجداء السلمي، ومسافة نقطة عن مستقيم.",
+              "التمرين 3 (متتاليات وترجع): متتالية ترجعية u_{n+1} = ln(1 + u_n) والتقارب الرتيب.",
+              "التمرين 4 (تحليل): دراسة f(x) = (ln x) / x، التقعر، مبرهنة القيم الوسيطية، وحساب المساحة بالتكامل."
+            ]
+          }
         ],
         DS3: [
-          { lessonAr: "امتحان البكالوريا التجريبي الثاني (Bac Blanc N°2)", lessonFr: "Baccalauréat Blanc N°2 (Sujet complet 4 exercices)", weight: 100, hours: "18h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["موضوع امتحاني تركيبي نهائي وفق الإطار المرجعي لوزارة التربية الفرنسية"], capacitiesFr: ["Épreuve finale type Baccalauréat avec grille nationale d'évaluation"] }
+          {
+            lessonAr: "امتحان البكالوريا التجريبي الثاني (Bac Blanc N°2)",
+            lessonFr: "Baccalauréat Blanc N°2 (Sujet complet 4 exercices)",
+            weight: 100,
+            hours: "18h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"],
+            capacitiesAr: ["موضوع امتحاني تركيبي نهائي وفق الإطار المرجعي لوزارة التربية الفرنسية"],
+            capacitiesFr: ["Épreuve finale type Baccalauréat avec grille nationale d'évaluation"],
+            sampleExerciseFr: [
+              "Exercice 1 (QCM Noté sur 5 pts) : 5 questions indépendantes couvrant l'analyse, la géométrie spatiale et les suites.",
+              "Exercice 2 (Suites et algorithmique Python) : Suite auxiliaire, limite et recherche de seuil.",
+              "Exercice 3 (Géométrie dans l'espace) : Tétraèdre régulier, orthogonalité et calcul de volume.",
+              "Exercice 4 (Fonctions exponentielles et intégrales) : Famille de fonctions f_k(x) = x e^(-kx), points fixes et asymptotes."
+            ],
+            sampleExerciseAr: [
+              "التمرين 1 (سؤال متعدد الاختيارات QCM على 5 ن): 5 أسئلة مستقلة تغطي التحليل والهندسة الفضائية والمتتاليات.",
+              "التمرين 2 (متتاليات وخوارزميات بايثون): متتالية مساعدة، النهاية، والبحث عن العتبة.",
+              "التمرين 3 (هندسة في الفضاء): رباعي أوجه منتظم، التعامد، وحساب الحجم.",
+              "التمرين 4 (دوال أسية وتكامل): عائلة الدوال f_k(x) = x e^(-kx)، النقط الثابتة، والمقاربات."
+            ]
+          }
         ]
       }
     }
@@ -6403,14 +7108,104 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
       },
       S2: {
         DS1: [
-          { lessonAr: "الأعداد العقدية والتحويلات الهندسية في المستوى", lessonFr: "Nombres complexes et transformations géométriques", weight: 50, hours: "16h", category: "Algebra", subCategory: "أعداد عقدية", subCategoryFr: "Nombres complexes", tags: ["Geometry","هندسة مستوية","Algebra","جبر","أعداد عقدية"], capacitiesAr: ["الكتابة العقدية للإزاحة والتحاكي والدوران والانعكاس"], capacitiesFr: ["Écritures complexes des similitudes directes, rotations et homothéties"] },
-          { lessonAr: "الحسابيات ونظرية الأعداد والتشفير", lessonFr: "Cryptographie et arithmétique avancée", weight: 50, hours: "16h", category: "Algebra", subCategory: "حسابيات", subCategoryFr: "Arithmétique", tags: ["Algebra","جبر","حسابيات"], capacitiesAr: ["بروتوكول ديفي-هيلمان، خوارزمية RSA، والمربعات الصغرى"], capacitiesFr: ["Cryptosystèmes à clé publique (RSA, Diffie-Hellman) et résidus quadratiques"] }
+          {
+            lessonAr: "الأعداد العقدية والتحويلات الهندسية في المستوى",
+            lessonFr: "Nombres complexes et transformations géométriques",
+            weight: 50,
+            hours: "16h",
+            category: "Algebra",
+            subCategory: "أعداد عقدية",
+            subCategoryFr: "Nombres complexes",
+            tags: ["Geometry","هندسة مستوية","Algebra","جبر","أعداد عقدية"],
+            capacitiesAr: ["الكتابة العقدية للإزاحة والتحاكي والدوران والانعكاس"],
+            capacitiesFr: ["Écritures complexes des similitudes directes, rotations et homothéties"],
+            sampleExerciseFr: [
+              "Dans le plan complexe rapporté à un repère orthonormé direct (O; u, v), soit f la transformation d'écriture complexe z' = (1 + i√3) z + 2 - 2i.",
+              "1. Démontrer que f est une similitude directe dont on précisera le rapport k, l'angle θ et le centre Ω.",
+              "2. Déterminer l'image par f de la droite d'équation y = x.",
+              "3. Déterminer l'ensemble des points M d'affixe z tels que |z' - z| = 4."
+            ],
+            sampleExerciseAr: [
+              "في المستوى العقدي المنسوب لمعلم متعامد ممنظم مباشر (O; u, v)، نعتبر التحويل f ذي الكتابة العقدية z' = (1 + i√3) z + 2 - 2i.",
+              "1. برهن أن f تشابه مباشر محدداً نسبته k وزاويته θ ومركزه Ω.",
+              "2. حدد صورة المستقيم ذي المعادلة y = x بواسطة التحويل f.",
+              "3. حدد مجموعة النقط M ذات اللحق z بحيث |z' - z| = 4."
+            ]
+          },
+          {
+            lessonAr: "الحسابيات ونظرية الأعداد والتشفير",
+            lessonFr: "Cryptographie et arithmétique avancée",
+            weight: 50,
+            hours: "16h",
+            category: "Algebra",
+            subCategory: "حسابيات",
+            subCategoryFr: "Arithmétique",
+            tags: ["Algebra","جبر","حسابيات"],
+            capacitiesAr: ["بروتوكول ديفي-هيلمان، خوارزمية RSA، والمربعات الصغرى"],
+            capacitiesFr: ["Cryptosystèmes à clé publique (RSA, Diffie-Hellman) et résidus quadratiques"],
+            sampleExerciseFr: [
+              "On considère le cryptosystème RSA avec les nombres premiers p = 7 et q = 11.",
+              "1. Calculer n = p × q et l'indicatrice d'Euler φ(n) = (p - 1)(q - 1).",
+              "2. On choisit la clé publique e = 7. Vérifier que pgcd(e, φ(n)) = 1 et déterminer la clé privée d (inverse de e modulo φ(n)).",
+              "3. Chiffrer le message clair M = 9 puis vérifier le déchiffrement de C."
+            ],
+            sampleExerciseAr: [
+              "نعتبر نظام التشفير RSA بالأعداد الأولية p = 7 و q = 11.",
+              "1. احسب n = p × q ومؤشر أولر φ(n) = (p - 1)(q - 1).",
+              "2. نختار المفتاح العام e = 7. تحقق أن pgcd(e, φ(n)) = 1 وحدد المفتاح الخاص d (مقلوب e بترديد φ(n)).",
+              "3. شفر الرسالة M = 9 ثم تحقق من فك تشفير الرسالة المشفرة C."
+            ]
+          }
         ],
         DS2: [
-          { lessonAr: "سلاسل ماركوف وتطبيقات الاستمثال", lessonFr: "Modèles stochastiques et marches aléatoires", weight: 100, hours: "18h", category: "Algebra", subCategory: "مصفوفات ورسوم بيانية", subCategoryFr: "Matrices & Graphes", tags: ["Algebra","جبر","مصفوفات ورسوم بيانية"], capacitiesAr: ["سلاسل ماركوف مع حالات ماصة، زمن العودة، والمصفوفات العشوائية"], capacitiesFr: ["Chaînes de Markov avec états absorbants et marches aléatoires"] }
+          {
+            lessonAr: "سلاسل ماركوف وتطبيقات الاستمثال",
+            lessonFr: "Modèles stochastiques et marches aléatoires",
+            weight: 100,
+            hours: "18h",
+            category: "Algebra",
+            subCategory: "مصفوفات ورسوم بيانية",
+            subCategoryFr: "Matrices & Graphes",
+            tags: ["Algebra","جبر","مصفوفات ورسوم بيانية"],
+            capacitiesAr: ["سلاسل ماركوف مع حالات ماصة، زمن العودة، والمصفوفات العشوائية"],
+            capacitiesFr: ["Chaînes de Markov avec états absorbants et marches aléatoires"],
+            sampleExerciseFr: [
+              "Une particule se déplace sur un axe discret entre les positions 0, 1, 2, 3. Les états 0 et 3 sont absorbants. Depuis 1 ou 2, elle avance à droite avec probabilité p = 0.6 et à gauche avec probabilité q = 0.4.",
+              "1. Écrire la matrice de transition sous forme canonique P = [[I, 0], [R, Q]].",
+              "2. Calculer la matrice fondamentale N = (I - Q)⁻¹.",
+              "3. En déduire la probabilité d'absorption en 3 sachant qu'elle démarre en 1, ainsi que le temps moyen d'absorption."
+            ],
+            sampleExerciseAr: [
+              "تتحرك دقيقة على محور بين المواضع 0 و 1 و 2 و 3. الحالتان 0 و 3 ماصتان. انطلاقاً من 1 أو 2، تنتقل يميناً باحتمال p = 0.6 ويساراً باحتمال q = 0.4.",
+              "1. اكتب مصفوفة الانتقال على الشكل القانوني P = [[I, 0], [R, Q]].",
+              "2. احسب المصفوفة الأساسية N = (I - Q)⁻¹.",
+              "3. استنتج احتمال الامتصاص في 3 علماً أنها انطلقت من 1، وكذا زمن الامتصاص المتوسط."
+            ]
+          }
         ],
         DS3: [
-          { lessonAr: "امتحان تركيبي شامل لخيار الرياضيات المتقدمة", lessonFr: "Épreuve de synthèse Terminale Maths Expertes", weight: 100, hours: "18h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["موضوع امتحاني تركيبي يجمع الأعداد العقدية، الحسابيات، والمصفوفات"], capacitiesFr: ["Épreuve complète de synthèse (Complexes, Arithmétique, Graphes et Matrices)"] }
+          {
+            lessonAr: "امتحان تركيبي شامل لخيار الرياضيات المتقدمة",
+            lessonFr: "Épreuve de synthèse Terminale Maths Expertes",
+            weight: 100,
+            hours: "18h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"],
+            capacitiesAr: ["موضوع امتحاني تركيبي يجمع الأعداد العقدية، الحسابيات، والمصفوفات"],
+            capacitiesFr: ["Épreuve complète de synthèse (Complexes, Arithmétique, Graphes et Matrices)"],
+            sampleExerciseFr: [
+              "Partie A (Arithmétique) : Résolution dans ℤ² de l'équation diophantienne 17x - 40y = 1 et petit théorème de Fermat.",
+              "Partie B (Nombres complexes) : Racines 7-ièmes de l'unité et calcul de cos(2π/7) + cos(4π/7) + cos(6π/7).",
+              "Partie C (Matrices) : Puissances d'une matrice triangulaire 3×3 par décomposition M = D + N où N est nilpotente."
+            ],
+            sampleExerciseAr: [
+              "الجزء A (حسابيات): حل المعادلة الديفانتية 17x - 40y = 1 في Z² ومبرهنة فيرما الصغرى.",
+              "الجزء B (أعداد عقدية): الجذور السباعية للوحدة وحساب cos(2π/7) + cos(4π/7) + cos(6π/7).",
+              "الجزء C (مصفوفات): قوى مصفوفة مثلثة 3×3 بتفكيكها إلى M = D + N حيث N مصفوفة معدومة القوى."
+            ]
+          }
         ]
       }
     }
@@ -6559,14 +7354,104 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
       },
       S2: {
         DS1: [
-          { lessonAr: "المعادلات التفاضلية والنمذجة المستمرة", lessonFr: "Équations différentielles et modèles de croissance", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"], capacitiesAr: ["حل المعادلات y'=ay وحساب المقادير الأسية"], capacitiesFr: ["Résoudre des équations différentielles linéaires d'ordre 1 et interpréter les solutions"] },
-          { lessonAr: "الحساب التكاملي والقيمة المتوسطة", lessonFr: "Intégrales et valeurs moyennes en économie", weight: 50, hours: "14h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"], capacitiesAr: ["حساب الفائض الاستهلاكي وفائض المنتج بواسطة التكامل"], capacitiesFr: ["Calcul du surplus du consommateur et du producteur par intégration"] }
+          {
+            lessonAr: "المعادلات التفاضلية والنمذجة المستمرة",
+            lessonFr: "Équations différentielles et modèles de croissance",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"],
+            capacitiesAr: ["حل المعادلات y'=ay وحساب المقادير الأسية"],
+            capacitiesFr: ["Résoudre des équations différentielles linéaires d'ordre 1 et interpréter les solutions"],
+            sampleExerciseFr: [
+              "On modélise l'évolution d'une population animale P(t) par l'équation différentielle y' = 0.04 y où t est exprimé en années.",
+              "1. Déterminer toutes les solutions de cette équation différentielle sur [0; +∞[.",
+              "2. Déterminer l'unique solution vérifiant la condition initiale P(0) = 5000.",
+              "3. Au bout de combien d'années la population aura-t-elle doublé ? Donner la valeur exacte puis arrondie au dixième."
+            ],
+            sampleExerciseAr: [
+              "ننمذج تطور ساكنة كائنات حية P(t) بالمعادلة التفاضلية y' = 0.04 y حيث t بالسنوات.",
+              "1. حدد جميع حلول هذه المعادلة التفاضلية على [0; +∞[.",
+              "2. حدد الحل الوحيد الذي يحقق الشرط البدئي P(0) = 5000.",
+              "3. بعد كم سنة ستتضاعف الساكنة؟ أعط القيمة المضبوطة ثم المقربة إلى العُشر."
+            ]
+          },
+          {
+            lessonAr: "الحساب التكاملي والقيمة المتوسطة",
+            lessonFr: "Intégrales et valeurs moyennes en économie",
+            weight: 50,
+            hours: "14h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"],
+            capacitiesAr: ["حساب الفائض الاستهلاكي وفائض المنتج بواسطة التكامل"],
+            capacitiesFr: ["Calcul du surplus du consommateur et du producteur par intégration"],
+            sampleExerciseFr: [
+              "La fonction de coût marginal d'une entreprise est Cm(q) = 3q² - 12q + 20 pour q ∈ [0; 10] (en milliers d'unités).",
+              "1. Déterminer la fonction de coût total C(q) sachant que les coûts fixes s'élèvent à C(0) = 50.",
+              "2. Calculer le coût moyen de production lorsque l'entreprise fabrique 5 000 unités.",
+              "3. Calculer la valeur moyenne du coût marginal sur l'intervalle [0; 10]."
+            ],
+            sampleExerciseAr: [
+              "دالة التكلفة الهامشية لمقاولة هي Cm(q) = 3q² - 12q + 20 لكل q من [0; 10] (بآلاف الوحدات).",
+              "1. حدد دالة التكلفة الإجمالية C(q) علماً أن التكاليف الثابتة هي C(0) = 50.",
+              "2. احسب التكلفة المتوسطة للإنتاج عند تصنيع 5000 وحدة.",
+              "3. احسب القيمة المتوسطة للتكلفة الهامشية على المجال [0; 10]."
+            ]
+          }
         ],
         DS2: [
-          { lessonAr: "الاختبارات الإحصائية ومجالات الثقة", lessonFr: "Tests statistiques et intervalles de confiance", weight: 100, hours: "18h", category: "Probabilities", subCategory: "احتمالات وإحصاء", subCategoryFr: "Probabilités & Statistiques", tags: ["Probabilities","احتمالات وإحصاء"], capacitiesAr: ["مجال الثقة لنسبة مئوية، عينات الاستطلاع، واتخاذ القرار"], capacitiesFr: ["Intervalles de confiance pour une proportion et prise de décision"] }
+          {
+            lessonAr: "الاختبارات الإحصائية ومجالات الثقة",
+            lessonFr: "Tests statistiques et intervalles de confiance",
+            weight: 100,
+            hours: "18h",
+            category: "Probabilities",
+            subCategory: "احتمالات وإحصاء",
+            subCategoryFr: "Probabilités & Statistiques",
+            tags: ["Probabilities","احتمالات وإحصاء"],
+            capacitiesAr: ["مجال الثقة لنسبة مئوية، عينات الاستطلاع، واتخاذ القرار"],
+            capacitiesFr: ["Intervalles de confiance pour une proportion et prise de décision"],
+            sampleExerciseFr: [
+              "Un sondage réalisé auprès de 400 électeurs révèle que 220 ont l'intention de voter pour le candidat A.",
+              "1. Calculer la fréquence observée f dans l'échantillon.",
+              "2. Déterminer l'intervalle de confiance au niveau de confiance 95% pour la proportion p.",
+              "3. Peut-on affirmer avec un risque d'erreur de 5% que le candidat A sera élu au premier tour ?"
+            ],
+            sampleExerciseAr: [
+              "أظهر استطلاع شمل 400 ناخب أن 220 يعتزمون التصويت للمرشح A.",
+              "1. احسب التردد الملاحظ f في العينة.",
+              "2. حدد مجال الثقة عند مستوى الثقة 95% لنسبة التصويت p.",
+              "3. هل يمكن الجزم بمخاطرة خطأ قدرها 5% أن المرشح A سيفوز من الدور الأول؟"
+            ]
+          }
         ],
         DS3: [
-          { lessonAr: "امتحان تركيبي شامل للرياضيات التكميلية", lessonFr: "Épreuve de synthèse Terminale Maths Complémentaires", weight: 100, hours: "18h", category: "Calculus", subCategory: "تحليل", subCategoryFr: "Analyse", tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"], capacitiesAr: ["توليف المسائل الاقتصادية والبيولوجية والإحصائية"], capacitiesFr: ["Épreuve de synthèse générale axée sur les applications scientifiques et économiques"] }
+          {
+            lessonAr: "امتحان تركيبي شامل للرياضيات التكميلية",
+            lessonFr: "Épreuve de synthèse Terminale Maths Complémentaires",
+            weight: 100,
+            hours: "18h",
+            category: "Calculus",
+            subCategory: "تحليل",
+            subCategoryFr: "Analyse",
+            tags: ["Calculus","Algebra","Geometry","تحليل","جبر","هندسة فضائية"],
+            capacitiesAr: ["توليف المسائل الاقتصادية والبيولوجية والإحصائية"],
+            capacitiesFr: ["Épreuve de synthèse générale axée sur les applications scientifiques et économiques"],
+            sampleExerciseFr: [
+              "Exercice 1 : Étude d'une fonction logarithme népérien et application à l'élasticité de la demande.",
+              "Exercice 2 : Suite arithmético-géométrique modélisant le remboursement d'un emprunt bancaire.",
+              "Exercice 3 : Variable aléatoire discrète, loi de probabilité, espérance et prime d'assurance."
+            ],
+            sampleExerciseAr: [
+              "التمرين 1: دراسة دالة اللوغاريتم النيبيري وتطبيقها على مرونة الطلب في الاقتصاد.",
+              "التمرين 2: متتالية حسابية هندسية تنمذج سداد قرض بنكي بفائدة ثابتة.",
+              "التمرين 3: متغير عشوائي منفصل، قانون الاحتمال، الأمل الرياضي وقسط التأمين."
+            ]
+          }
         ]
       }
     }

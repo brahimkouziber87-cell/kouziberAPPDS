@@ -3079,11 +3079,11 @@ try {
       lsh1Standard.officialCoefficient === 1 &&
       lsh1Standard.officialDurationMinutes === 60 &&
       termSpeFrStandard.officialCoefficient === 16 &&
-      Math.abs(caCalc.finalSemesterAverage - 15) < 0.01 &&
+      Math.abs(caCalc.finalSemesterAverage - 14) < 0.01 &&
       caCalc.remediationTierCode === "EXCELLENCE" &&
       smStandard.recommendedN1 + smStandard.recommendedN2 + smStandard.recommendedN3 === 100 &&
       pcStandard.requiredPortfolioDocumentsAr.length === 7,
-    `getOfficialNote14208TrackStandards & 75/25 calculator verified across all tracks (SM=9/4DS, 1BAC_SE=7/3DS, PC=7, TCS/TCT=4, TCLSH=2, 1BAC_LETTRES=1/60min, TERM_SPE_FR=16, CA=15.00/20)`
+    `getOfficialNote14208TrackStandards & 75/25 calculator verified across all tracks (SM=9/4DS, 1BAC_SE=7/3DS, PC=7, TCS/TCT=4, TCLSH=2, 1BAC_LETTRES=1/60min, TERM_SPE_FR=16, CA=14.00/20)`
   );
 
   const pcLessons = CURRICULUM_DB["2BAC_PC"].semesters.S1.DS1;

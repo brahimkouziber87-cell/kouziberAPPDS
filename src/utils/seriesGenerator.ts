@@ -357,6 +357,12 @@ export function generateCustomCountSerieExercises(
     let hintFr = "";
     let partPts = "";
 
+    const stripLeadingQuestionNum = (txt: string): string =>
+      txt
+        .replace(/^\s*(?:Partie\s+[IVX]+\s*[—\-:]\s*|الجزء\s+[IVXأ-ي]+\s*[—\-:]\s*)?/i, "")
+        .replace(/^\s*\d+[\.\)]\s*(?:[a-cأ-ج][\)\.]\s*)?/i, "")
+        .trim();
+
     if (relativePos < 0.25 || i === 0) {
       // المرحلة الأولى: تطبيق مباشر وأوتوماتيزمات الحساب (N1) بأسئلة رياضية حقيقية من الدرس
       stars = "★";
@@ -364,18 +370,14 @@ export function generateCustomCountSerieExercises(
       badgeAr = `التمرين ${exNum} (★) [تطبيق وأوتوماتيزمات N1] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★) [Application & Automatismes N1] — ${lessonForEx.lessonFr}`;
       qAr = [
-        questionsAr[0] || `1. أ) أحسب وبسط التعبير الأساسي المرتبط بـ « ${cap0Ar} ».`,
-        altQuestionsAr[0] || questionsAr[1] || `2. تحقق جبرياً من العلاقة المرجعية لـ « ${cap1Ar} ».`,
-        questionsAr[1] && altQuestionsAr[0]
-          ? questionsAr[1]
-          : `3. استنتج مجموعة التعريف أو القيم الخاصة المرتبطة بـ « ${cap0Ar} ».`,
+        `1. ${stripLeadingQuestionNum(questionsAr[0] || `أحسب وبسط التعبير الأساسي المرتبط بـ « ${cap0Ar} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsAr[1] || questionsAr[1] || `تحقق جبرياً من العلاقة المرجعية لـ « ${cap1Ar} ».`)}`,
+        `3. ${stripLeadingQuestionNum(questionsAr[2] || `استنتج مجموعة التعريف أو القيم الخاصة المرتبطة بـ « ${cap0Ar} ».`)}`,
       ];
       qFr = [
-        questionsFr[0] || `1. a) Calculer et simplifier l'expression fondamentale liée à « ${cap0Fr} ».`,
-        altQuestionsFr[0] || questionsFr[1] || `2. Vérifier algébriquement la relation de référence sur « ${cap1Fr} ».`,
-        questionsFr[1] && altQuestionsFr[0]
-          ? questionsFr[1]
-          : `3. En déduire le domaine de validité et les valeurs remarquables pour « ${cap0Fr} ».`,
+        `1. ${stripLeadingQuestionNum(questionsFr[0] || `Calculer et simplifier l'expression fondamentale liée à « ${cap0Fr} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsFr[1] || questionsFr[1] || `Vérifier algébriquement la relation de référence sur « ${cap1Fr} ».`)}`,
+        `3. ${stripLeadingQuestionNum(questionsFr[2] || `En déduire le domaine de validité et les valeurs remarquables pour « ${cap0Fr} ».`)}`,
       ];
       hintAr = `تذكير ديداكتيكي: وظف مباشرة القواعد المرجعية لدرس ${lessonForEx.lessonAr} (${cap0Ar}).`;
       hintFr = `Rappel didactique : Appliquer directement les formules de référence sur ${lessonForEx.lessonFr} (${cap0Fr}).`;
@@ -386,13 +388,13 @@ export function generateCustomCountSerieExercises(
       badgeAr = `التمرين ${exNum} (★★) [طرائق وتمارين نموذجية N2] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★★) [Méthodes types & Modèles N2] — ${lessonForEx.lessonFr}`;
       qAr = [
-        questionsAr[1] || questionsAr[0] || `1. حل في المجموعة المناسبة المعادلات والمتراجحات المرتبطة بـ « ${cap0Ar} ».`,
-        altQuestionsAr[1] || questionsAr[2] || `2. أدرس الإشارة والرتابة باستعمال خواص « ${cap1Ar} ».`,
+        `1. ${stripLeadingQuestionNum(questionsAr[1] || questionsAr[0] || `حل في المجموعة المناسبة المعادلات والمتراجحات المرتبطة بـ « ${cap0Ar} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsAr[2] || questionsAr[2] || `أدرس الإشارة والرتابة باستعمال خواص « ${cap1Ar} ».`)}`,
         `3. أعطِ تأويلاً هندسياً أو بيانياً للنتيجة المحصل عليها في إطار « ${cap2Ar} ».`,
       ];
       qFr = [
-        questionsFr[1] || questionsFr[0] || `1. Résoudre les équations et inéquations associées à « ${cap0Fr} ».`,
-        altQuestionsFr[1] || questionsFr[2] || `2. Étudier le signe et les variations en mobilisant « ${cap1Fr} ».`,
+        `1. ${stripLeadingQuestionNum(questionsFr[1] || questionsFr[0] || `Résoudre les équations et inéquations associées à « ${cap0Fr} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsFr[2] || questionsFr[2] || `Étudier le signe et les variations en mobilisant « ${cap1Fr} ».`)}`,
         `3. Interpréter géométriquement ou graphiquement le résultat obtenu dans le cadre de « ${cap2Fr} ».`,
       ];
       hintAr = `منهجية: انتبه لشروط التكافؤ المنطقي وإشارات العوامل عند توظيف « ${cap1Ar} ».`;
@@ -404,14 +406,14 @@ export function generateCustomCountSerieExercises(
       badgeAr = `التمرين ${exNum} (★★) [توليفي ونمط الامتحان الوطني N3] — ${lessonForEx.lessonAr}`;
       badgeFr = `Exercice ${exNum} (★★) [Synthèse & Type Examen National N3] — ${lessonForEx.lessonFr}`;
       qAr = [
-        questionsAr[2] || questionsAr[0] || `1. بين تحقق الشروط القبلية للمبرهنة الأساسية في « ${cap1Ar} ».`,
-        altQuestionsAr[2] || synthQuestionsAr[synthQuestionsAr.length - 1] || `2. استنتج وجود الحل الوحيد أو العلاقة التوليفية المرتبطة بـ « ${cap2Ar} ».`,
-        synthQuestionsAr[synthQuestionsAr.length - 1] || `3. مسألة توليفية: اربط بين النتائج السابقة واستنتج التأطير أو القيمة المضبوطة بدقة.`,
+        `1. ${stripLeadingQuestionNum(questionsAr[2] || questionsAr[0] || `بين تحقق الشروط القبلية للمبرهنة الأساسية في « ${cap1Ar} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsAr[3] || synthQuestionsAr[synthQuestionsAr.length - 1] || `استنتج وجود الحل الوحيد أو العلاقة التوليفية المرتبطة بـ « ${cap2Ar} ».`)}`,
+        `3. مسألة توليفية: اربط بين النتائج السابقة واستنتج التأطير أو القيمة المضبوطة بدقة في إطار « ${cap2Ar} ».`,
       ];
       qFr = [
-        questionsFr[2] || questionsFr[0] || `1. Démontrer les hypothèses du théorème fondamental sur « ${cap1Fr} ».`,
-        altQuestionsFr[2] || synthQuestionsFr[synthQuestionsFr.length - 1] || `2. En déduire l'existence de la solution ou la relation de synthèse liée à « ${cap2Fr} ».`,
-        synthQuestionsFr[synthQuestionsFr.length - 1] || `3. Synthèse : Relier les résultats précédents pour conclure avec un encadrement précis.`,
+        `1. ${stripLeadingQuestionNum(questionsFr[2] || questionsFr[0] || `Démontrer les hypothèses du théorème fondamental sur « ${cap1Fr} ».`)}`,
+        `2. ${stripLeadingQuestionNum(altQuestionsFr[3] || synthQuestionsFr[synthQuestionsFr.length - 1] || `En déduire l'existence de la solution ou la relation de synthèse liée à « ${cap2Fr} ».`)}`,
+        `3. Synthèse : Relier les résultats précédents pour conclure avec un encadrement précis sur « ${cap2Fr} ».`,
       ];
       hintAr = `منهجية الامتحان: صغ الفرضيات والشروط القبلية بوضوح قبل تطبيق المبرهنة في « ${lessonForEx.lessonAr} ».`;
       hintFr = `Conseil examen : Rédiger explicitement toutes les hypothèses avant d'appliquer le théorème sur « ${lessonForEx.lessonFr} ».`;
@@ -443,6 +445,76 @@ export function generateCustomCountSerieExercises(
           `2. Déterminer la nature de l'ensemble des points M(z) vérifiant la condition géométrique.`,
           `3. Démontrer que les points forment un polygone régulier et exprimer son aire.`,
         ];
+      } else if (subCat === "هندسة مستوية" || titleFr.includes("vector") || titleFr.includes("projection")) {
+        qAr = [
+          `1. ليكن ABCD متوازي أضلاع، و E و F نقطتين بحيث $\\vec{AE} = \\frac{1}{3}\\vec{AB}$ و $\\vec{CF} = \\frac{1}{3}\\vec{CD}$. بين أن المتجهتين $\\vec{EC}$ و $\\vec{AF}$ متساويتان.`,
+          `2. ليكن G مركز ثقل المثلث ABD. عبر عن $\\vec{AG}$ بدلالة $\\vec{AB}$ و $\\vec{AD}$، ثم استنتج أن النقط A و G و C مستقيمية.`,
+          `3. أنشئ مسقط النقطة G على المستقيم (AD) بتوازٍ مع (AB)، ثم حدد نسبته على القطعة [AD].`,
+        ];
+        qFr = [
+          `1. Soit ABCD un parallélogramme, E et F définis par $\\vec{AE} = \\frac{1}{3}\\vec{AB}$ et $\\vec{CF} = \\frac{1}{3}\\vec{CD}$. Montrer que $\\vec{EC} = \\vec{AF}$.`,
+          `2. Soit G le centre de gravité du triangle ABD. Exprimer $\\vec{AG}$ en fonction de $\\vec{AB}$ et $\\vec{AD}$, puis déduire l'alignement de A, G et C.`,
+          `3. Construire le projeté de G sur (AD) parallèlement à (AB) et préciser sa position sur [AD].`,
+        ];
+        hintAr = `إرشاد هندسي: استعمل علاقة شال في الأساس $(\\vec{AB}, \\vec{AD})$ وخاصية الحفاظ على معامل الاستقامية بالإسقاط.`;
+        hintFr = `Indication géométrique : Utiliser Chasles dans la base $(\\vec{AB}, \\vec{AD})$ et la conservation du rapport par projection.`;
+      } else if (subCat === "منطق ومجموعات" || titleFr.includes("logique") || lessonForEx.lessonAr.includes("منطق")) {
+        qAr = [
+          `1. بين باستعمال الاستدلال بالخلف أنه لكل $n \\in \\mathbb{N}$ : العدد $\\sqrt{4n + 3}$ لا ينتمي إلى $\\mathbb{Q}$ (أو ليس مربعاً كاملاً).`,
+          `2. بين بالاستدلال بالترجع أنه لكل $n \\in \\mathbb{N}^*$ : $\\sum_{k=1}^n k(k+1) = \\frac{n(n+1)(n+2)}{3}$.`,
+          `3. بين بمضاد العكس أنه لكل $x, y \\in \\mathbb{R}^+$ : $x \\neq y \\implies \\frac{x}{x+1} \\neq \\frac{y}{y+1}$.`,
+        ];
+        qFr = [
+          `1. Montrer par l'absurde que pour tout $n \\in \\mathbb{N}$, $4n + 3$ n'est pas un carré parfait.`,
+          `2. Montrer par récurrence que pour tout $n \\in \\mathbb{N}^*$, $\\sum_{k=1}^n k(k+1) = \\frac{n(n+1)(n+2)}{3}$.`,
+          `3. Montrer par contraposée que pour tous $x, y \\ge 0$ : $x \\neq y \\implies \\frac{x}{x+1} \\neq \\frac{y}{y+1}$.`,
+        ];
+        hintAr = `إرشاد منطقي: في مضاد العكس، انطلق من $\\frac{x}{x+1} = \\frac{y}{y+1}$ واثبت أن $x = y$.`;
+        hintFr = `Indication logique : Pour la contraposée, partir de $\\frac{x}{x+1} = \\frac{y}{y+1}$ et en déduire $x = y$.`;
+      } else if (titleFr.includes("généralité") || lessonForEx.lessonAr.includes("عموميات")) {
+        qAr = [
+          `1. نعتبر الدالة $f(x) = \\frac{x^2 - 2x + 5}{x^2 + 1}$. بين أن $f$ مصغورة بـ $\\frac{3 - \\sqrt{5}}{2}$ ومكبورة على $\\mathbb{R}$ بدراسة إشارة الفرق.`,
+          `2. أدرس تغيرات الدالة $f$ على المجال $[0, +\\infty[$ انطلاقاً من معدل التغير $\\frac{f(a) - f(b)}{a - b}$، ثم ضع جدول تغيراتها.`,
+          `3. استنتج المطاريف القصوى والدنيا للدالة على المجال المدروس.`,
+        ];
+        qFr = [
+          `1. Soit $f(x) = \\frac{x^2 - 2x + 5}{x^2 + 1}$. Montrer que $f$ est bornée sur $\\mathbb{R}$ par étude de signe.`,
+          `2. Étudier les variations de $f$ à l'aide du taux d'accroissement $\\frac{f(a) - f(b)}{a - b}$ et dresser le tableau de variations.`,
+          `3. En déduire les extremums de $f$ sur l'intervalle étudié.`,
+        ];
+        hintAr = `إرشاد: استعمل معدل التغير $\\frac{f(a) - f(b)}{a - b}$ ومقارنة الدالة بثابت دون اللجوء إلى المشتقة.`;
+        hintFr = `Indication : Utiliser le taux d'accroissement et la comparaison avec une constante (sans dérivation).`;
+      } else if (titleFr.includes("suite") || lessonForEx.lessonAr.includes("متتاليات")) {
+        qAr = [
+          `1. يضع شخص مبلغاً قدره $10000\\text{ DH}$ في حساب بنكي بفائدة سنوية مركبة نسبتها $4\\%$. عبر عن الرصيد $u_n$ بعد $n$ سنة بدلالة $u_{n-1}$.`,
+          `2. بين أن $(u_n)$ متتالية هندسية وحدد أساسها، ثم احسب الرصيد بعد $10$ سنوات.`,
+          `3. استنتج المبلغ الإجمالي للودائع المتراكمة وحدد السنة التي يتجاوز فيها الرصيد ضعف المبلغ الأولي.`,
+        ];
+        qFr = [
+          `1. Un capital de $10000\\text{ DH}$ est placé à intérêts composés au taux annuel de $4\\%$. Exprimer $u_n$ en fonction de $u_{n-1}$.`,
+          `2. Montrer que $(u_n)$ est géométrique, préciser sa raison et calculer $u_{10}$.`,
+          `3. Déterminer le rang $n$ à partir duquel le capital double.`,
+        ];
+        hintAr = `إرشاد: الرصيد السنوي يضرب في المعامل $(1 + 0,04) = 1,04$ كل سنة.`;
+        hintFr = `Indication : Chaque année, le capital est multiplié par $1,04$.`;
+      } else if (
+        lessonForEx.lessonAr.includes("النسب") ||
+        lessonForEx.lessonAr.includes("الحساب العددي") ||
+        titleFr.includes("pourcentage") ||
+        titleFr.includes("numérique")
+      ) {
+        qAr = [
+          `1. ارتفع ثمن منتوج بنسبة $15\\%$ ثم انخفض بنسبة $10\\%$. حدد النسبة المئوية الإجمالية للتغير.`,
+          `2. حل في $\\mathbb{R}$ المعادلة $2x^2 - 7x + 3 = 0$ ثم المتراجحة $2x^2 - 7x + 3 \\le 0$.`,
+          `3. وظف النتيجة لتحديد هامش الربح الأمثل لمقاولة صغرى.`,
+        ];
+        qFr = [
+          `1. Un prix augmente de $15\\%$ puis diminue de $10\\%$. Calculer le taux d'évolution global.`,
+          `2. Résoudre dans $\\mathbb{R}$ l'équation $2x^2 - 7x + 3 = 0$ puis l'inéquation $2x^2 - 7x + 3 \\le 0$.`,
+          `3. Interpréter le résultat dans le cadre d'un problème commercial simple.`,
+        ];
+        hintAr = `إرشاد: المعامل الضربي الإجمالي يساوي $(1 + 0,15)(1 - 0,10)$.`;
+        hintFr = `Indication : Le coefficient multiplicateur global est $(1 + 0,15)(1 - 0,10)$.`;
       } else {
         qAr = [
           `1. نعتبر وضعية نمذجة لحساب مساحة حيز مستوٍ أو نمو ظاهرة طبيعية عبر الدالة f(x).`,
@@ -454,9 +526,9 @@ export function generateCustomCountSerieExercises(
           `2. Déterminer l'extremum local en étudiant la dérivée première et dresser le bilan.`,
           `3. Interpréter la portée pratique et discuter les limites du modèle.`,
         ];
+        hintAr = `إرشاد للنمذجة: حدد بوضوح المتغير المستقل ومجموعة تعريفه الواقعية قبل اشتقاق دالة الاستمثال.`;
+        hintFr = `Indication modélisation : Poser précisément la variable et son intervalle de définition réel.`;
       }
-      hintAr = `إرشاد للنمذجة: حدد بوضوح المتغير المستقل ومجموعة تعريفه الواقعية قبل اشتقاق دالة الاستمثال.`;
-      hintFr = `Indication modélisation : Poser précisément la variable et son intervalle de définition réel.`;
     } else {
       // المرحلة الأخيرة: تحدي التميز والبحث المفتوح والأولمبياد (N4)
       stars = "★★★";
@@ -465,40 +537,166 @@ export function generateCustomCountSerieExercises(
       badgeFr = `Exercice ${exNum} (★★★) [Défi d'Excellence & Olympiades N4] — ${lessonForEx.lessonFr}`;
       if (subCat === "حسابيات" || subCat === "جبر" || titleFr.includes("arithm")) {
         qAr = [
-          `مسألة أولمبياد مفتوحة: نعتبر الأعداد الصحيحة الطبيعية x و y و z التي تحقق: x³ + y³ = z³.`,
-          `1. باستعمال التوافقات بترديد 7 أو 9، أثبت أن أحد الأعداد يجب أن يكون مضاعفاً لـ 7.`,
-          `2. سؤال المبادرة والبحث: ناقش إمكانية وجود حلول غير بديهية في ℤ³.`,
+          `1. مسألة أولمبياد مفتوحة: ليكن n عدداً صحيحاً طبيعياً. بين أن العدد $A = n(n + 1)(2n + 1)$ مضاعف للعدد 6.`,
+          `2. حدد جميع الأزواج $(x, y) \\in \\mathbb{N}^2$ التي تحقق المعادلة: $xy = 2x + 3y + 1$.`,
+          `3. سؤال المبادرة والبحث: استنتج حلول المعادلة $x^2 - y^2 = 2025$ في $\\mathbb{N}^2$.`,
         ];
         qFr = [
-          `Défi Olympiades : Soient x, y, z des entiers naturels vérifiant x³ + y³ = z³.`,
-          `1. À l'aide des congruences modulo 7, montrer que l'un des entiers est divisible par 7.`,
-          `2. Prise d'initiative : Discuter l'existence de solutions non triviales dans ℤ³.`,
+          `1. Défi Olympiades : Soit $n \\in \\mathbb{N}$. Démontrer que $A = n(n + 1)(2n + 1)$ est un multiple de 6.`,
+          `2. Déterminer tous les couples $(x, y) \\in \\mathbb{N}^2$ vérifiant $xy = 2x + 3y + 1$.`,
+          `3. Prise d'initiative : Résoudre dans $\\mathbb{N}^2$ l'équation $x^2 - y^2 = 2025$.`,
         ];
+        hintAr = `تحدي حسابي: عمّل المعادلة على شكل $(x - 3)(y - 2) = 7$ وادرس قواسم 7 الموجبة.`;
+        hintFr = `Piste arithmétique : Factoriser sous la forme $(x - 3)(y - 2) = 7$ et étudier les diviseurs positifs de 7.`;
+      } else if (subCat === "هندسة مستوية" || titleFr.includes("vector") || titleFr.includes("projection")) {
+        qAr = [
+          `1. تحدي الهندسة المستوية: ليكن ABC مثلثاً، و P و Q نقطتين بحيث $\\vec{AP} = \\frac{1}{4}\\vec{AB}$ و $\\vec{AQ} = \\frac{1}{3}\\vec{AC}$.`,
+          `2. ليكن R نقطة تقاطع المستقيمين (BQ) و (CP)، و S مسقط النقطة R على (AC) بتوازٍ مع (BC). عبر عن $\\vec{AR}$ بدلالة $\\vec{AB}$ و $\\vec{AC}$.`,
+          `3. سؤال المبادرة: استنتج النسبة $\\frac{AS}{AC}$ باستعمال خاصيات الإسقاط في المستوى.`,
+        ];
+        qFr = [
+          `1. Défi géométrique : Soit ABC un triangle, P et Q tels que $\\vec{AP} = \\frac{1}{4}\\vec{AB}$ et $\\vec{AQ} = \\frac{1}{3}\\vec{AC}$.`,
+          `2. Soit R l'intersection de (BQ) et (CP), et S le projeté de R sur (AC) parallèlement à (BC). Exprimer $\\vec{AR}$ en fonction de $\\vec{AB}$ et $\\vec{AC}$.`,
+          `3. Prise d'initiative : En déduire le rapport $\\frac{AS}{AC}$ par projection dans le plan.`,
+        ];
+        hintAr = `تحدي هندسي: استعمل استقامية النقط B, R, Q والنقط C, R, P لتحديد معاملات $\\vec{AR}$ في الأساس $(\\vec{AB}, \\vec{AC})$.`;
+        hintFr = `Piste géométrique : Exploiter l'alignement de B, R, Q et de C, R, P dans la base $(\\vec{AB}, \\vec{AC})$.`;
       } else if (subCat === "أعداد عقدية" || titleFr.includes("complexe")) {
         qAr = [
-          `مسألة التحدي الأولمبي: لكل عدد عقدي z يحقق z^n = 1 مع z ≠ 1، نعتبر المجموع S_n = ∑_{k=1}^{n-1} 1/(1 - e^{i2kπ/n}).`,
-          `1. برهن أن الجزء الحقيقي لكل حد من حدود المجموع ثابت ويساوي 1/2.`,
-          `2. سؤال المبادرة: استنتج القيمة الدقيقة للمجموع S_n بدلالة n.`,
+          `1. مسألة التحدي الأولمبي: لكل عدد عقدي z يحقق z^n = 1 مع z ≠ 1، نعتبر المجموع S_n = ∑_{k=1}^{n-1} 1/(1 - e^{i2kπ/n}). تحقق أن 1/(1 - z) + 1/(1 - z̄) = 1.`,
+          `2. برهن أن الجزء الحقيقي لكل حد من حدود المجموع ثابت ويساوي 1/2.`,
+          `3. سؤال المبادرة: استنتج القيمة الدقيقة للمجموع S_n بدلالة n.`,
         ];
         qFr = [
-          `Défi d'Excellence : Pour tout z racine n-ième de l'unité (z ≠ 1), on considère S_n = ∑_{k=1}^{n-1} 1/(1 - e^{i2kπ/n}).`,
-          `1. Établir que la partie réelle de chaque terme est constante égale à 1/2.`,
-          `2. Prise d'initiative : En déduire la valeur exacte de la somme S_n en fonction de n.`,
+          `1. Défi d'Excellence : Pour tout z racine n-ième de l'unité (z ≠ 1), on pose S_n = ∑_{k=1}^{n-1} 1/(1 - e^{i2kπ/n}). Vérifier que 1/(1 - z) + 1/(1 - z̄) = 1.`,
+          `2. Établir que la partie réelle de chaque terme est constante égale à 1/2.`,
+          `3. Prise d'initiative : En déduire la valeur exacte de la somme S_n en fonction de n.`,
         ];
+        hintAr = `تحدي عقدي: استثمر المرافق الهندسي لجذور الوحدة في الدائرة المثلثية.`;
+        hintFr = `Piste complexe : Utiliser le conjugué des racines n-ièmes de l'unité.`;
+      } else if (subCat === "منطق ومجموعات" || titleFr.includes("logique") || lessonForEx.lessonAr.includes("منطق")) {
+        qAr = [
+          `1. بين باستعمال الاستدلال بالخلف أنه لكل $n \\in \\mathbb{N}$ : العدد $\\sqrt{4n + 3}$ لا ينتمي إلى $\\mathbb{Q}$ (أو ليس مربعاً كاملاً).`,
+          `2. بين بالاستدلال بالترجع أنه لكل $n \\in \\mathbb{N}^*$ : $\\sum_{k=1}^n k(k+1) = \\frac{n(n+1)(n+2)}{3}$.`,
+          `3. بين بمضاد العكس أنه لكل $x, y \\in \\mathbb{R}^+$ : $x \\neq y \\implies \\frac{x}{x+1} \\neq \\frac{y}{y+1}$.`,
+        ];
+        qFr = [
+          `1. Montrer par l'absurde que pour tout $n \\in \\mathbb{N}$, $4n + 3$ n'est pas un carré parfait.`,
+          `2. Montrer par récurrence que pour tout $n \\in \\mathbb{N}^*$, $\\sum_{k=1}^n k(k+1) = \\frac{n(n+1)(n+2)}{3}$.`,
+          `3. Montrer par contraposée que pour tous $x, y \\ge 0$ : $x \\neq y \\implies \\frac{x}{x+1} \\neq \\frac{y}{y+1}$.`,
+        ];
+        hintAr = `إرشاد منطقي: في مضاد العكس، انطلق من $\\frac{x}{x+1} = \\frac{y}{y+1}$ واثبت أن $x = y$.`;
+        hintFr = `Indication logique : Pour la contraposée, partir de $\\frac{x}{x+1} = \\frac{y}{y+1}$ et en déduire $x = y$.`;
+      } else if (titleFr.includes("généralité") || lessonForEx.lessonAr.includes("عموميات")) {
+        qAr = [
+          `1. نعتبر الدالة $f(x) = \\frac{x^2 - 2x + 5}{x^2 + 1}$. بين أن $f$ مصغورة بـ $\\frac{3 - \\sqrt{5}}{2}$ ومكبورة على $\\mathbb{R}$ بدراسة إشارة الفرق.`,
+          `2. أدرس تغيرات الدالة $f$ على المجال $[0, +\\infty[$ انطلاقاً من معدل التغير $\\frac{f(a) - f(b)}{a - b}$، ثم ضع جدول تغيراتها.`,
+          `3. استنتج المطاريف القصوى والدنيا للدالة على المجال المدروس.`,
+        ];
+        qFr = [
+          `1. Soit $f(x) = \\frac{x^2 - 2x + 5}{x^2 + 1}$. Montrer que $f$ est bornée sur $\\mathbb{R}$ par étude de signe.`,
+          `2. Étudier les variations de $f$ à l'aide du taux d'accroissement $\\frac{f(a) - f(b)}{a - b}$ et dresser le tableau de variations.`,
+          `3. En déduire les extremums de $f$ sur l'intervalle étudié.`,
+        ];
+        hintAr = `إرشاد: استعمل معدل التغير $\\frac{f(a) - f(b)}{a - b}$ ومقارنة الدالة بثابت دون اللجوء إلى المشتقة.`;
+        hintFr = `Indication : Utiliser le taux d'accroissement et la comparaison avec une constante (sans dérivation).`;
+      } else if (titleFr.includes("suite") || lessonForEx.lessonAr.includes("متتاليات")) {
+        qAr = [
+          `1. يضع شخص مبلغاً قدره $10000\\text{ DH}$ في حساب بنكي بفائدة سنوية مركبة نسبتها $4\\%$. عبر عن الرصيد $u_n$ بعد $n$ سنة بدلالة $u_{n-1}$.`,
+          `2. بين أن $(u_n)$ متتالية هندسية وحدد أساسها، ثم احسب الرصيد بعد $10$ سنوات.`,
+          `3. استنتج المبلغ الإجمالي للودائع المتراكمة وحدد السنة التي يتجاوز فيها الرصيد ضعف المبلغ الأولي.`,
+        ];
+        qFr = [
+          `1. Un capital de $10000\\text{ DH}$ est placé à intérêts composés au taux annuel de $4\\%$. Exprimer $u_n$ en fonction de $u_{n-1}$.`,
+          `2. Montrer que $(u_n)$ est géométrique, préciser sa raison et calculer $u_{10}$.`,
+          `3. Déterminer le rang $n$ à partir duquel le capital double.`,
+        ];
+        hintAr = `إرشاد: الرصيد السنوي يضرب في المعامل $(1 + 0,04) = 1,04$ كل سنة.`;
+        hintFr = `Indication : Chaque année, le capital est multiplié par $1,04$.`;
+      } else if (
+        lessonForEx.lessonAr.includes("النسب") ||
+        lessonForEx.lessonAr.includes("الحساب العددي") ||
+        titleFr.includes("pourcentage") ||
+        titleFr.includes("numérique")
+      ) {
+        qAr = [
+          `1. ارتفع ثمن منتوج بنسبة $15\\%$ ثم انخفض بنسبة $10\\%$. حدد النسبة المئوية الإجمالية للتغير.`,
+          `2. حل في $\\mathbb{R}$ المعادلة $2x^2 - 7x + 3 = 0$ ثم المتراجحة $2x^2 - 7x + 3 \\le 0$.`,
+          `3. وظف النتيجة لتحديد هامش الربح الأمثل لمقاولة صغرى.`,
+        ];
+        qFr = [
+          `1. Un prix augmente de $15\\%$ puis diminue de $10\\%$. Calculer le taux d'évolution global.`,
+          `2. Résoudre dans $\\mathbb{R}$ l'équation $2x^2 - 7x + 3 = 0$ puis l'inéquation $2x^2 - 7x + 3 \\le 0$.`,
+          `3. Interpréter le résultat dans le cadre d'un problème commercial simple.`,
+        ];
+        hintAr = `إرشاد: المعامل الضربي الإجمالي يساوي $(1 + 0,15)(1 - 0,10)$.`;
+        hintFr = `Indication : Le coefficient multiplicateur global est $(1 + 0,15)(1 - 0,10)$.`;
+      } else if (
+        lessonForEx.lessonAr.includes("مثلث") ||
+        titleFr.includes("trigonom")
+      ) {
+        qAr = [
+          `1. بسط التعبير $A(x) = \\cos^2(x) + \\sin^2(x) + \\cos(\\pi - x) + \\cos(x)$ لكل $x \\in \\mathbb{R}$.`,
+          `2. حل في المجال $[0, 2\\pi[$ المعادلة $2\\cos(x) - 1 = 0$ ثم المتراجحة $2\\cos(x) - 1 \\ge 0$.`,
+          `3. مثل مجموعة الحلول على الدائرة المثلثية.`,
+        ];
+        qFr = [
+          `1. Simplifier l'expression $A(x) = \\cos^2(x) + \\sin^2(x) + \\cos(\\pi - x) + \\cos(x)$.`,
+          `2. Résoudre dans $[0, 2\\pi[$ l'équation $2\\cos(x) - 1 = 0$ puis l'inéquation $2\\cos(x) - 1 \\ge 0$.`,
+          `3. Représenter les solutions sur le cercle trigonométrique.`,
+        ];
+        hintAr = `إرشاد: تذكر أن $\\cos(\\pi - x) = -\\cos(x)$ و$\\cos(\\frac{\\pi}{3}) = \\frac{1}{2}$.`;
+        hintFr = `Indication : Rappeler $\\cos(\\pi - x) = -\\cos(x)$ et $\\cos(\\frac{\\pi}{3}) = \\frac{1}{2}$.`;
+      } else if (
+        lessonForEx.lessonAr.includes("إحصاء") ||
+        titleFr.includes("statistiq")
+      ) {
+        qAr = [
+          `1. نعتبر سلسلة إحصائية قيمها $\\{5, 10, 15, 20\\}$ وحصيصاتها $\\{2, 5, 8, 5\\}$. احسب المعدل الحسابي $\\bar{x}$.`,
+          `2. احسب التباين $V$ والانحراف الطرازي $\\sigma$ لهذه السلسلة.`,
+          `3. أضف قيمة جديدة تساوي $\\bar{x}$ إلى السلسلة وعلق على تغير التشتت.`,
+        ];
+        qFr = [
+          `1. Soit la série statistique de valeurs $\\{5, 10, 15, 20\\}$ et d'effectifs $\\{2, 5, 8, 5\\}$. Calculer la moyenne $\\bar{x}$.`,
+          `2. Calculer la variance $V$ et l'écart-type $\\sigma$.`,
+          `3. Interpréter la dispersion autour de la moyenne.`,
+        ];
+        hintAr = `إرشاد: $V = \\frac{1}{N}\\sum n_i x_i^2 - \\bar{x}^2$ و$\\sigma = \\sqrt{V}$.`;
+        hintFr = `Indication : $V = \\frac{1}{N}\\sum n_i x_i^2 - \\bar{x}^2$ et $\\sigma = \\sqrt{V}$.`;
+      } else if (
+        lessonForEx.lessonAr.includes("اتصال") ||
+        lessonForEx.lessonAr.includes("اشتقاق") ||
+        lessonForEx.lessonAr.includes("تكامل") ||
+        titleFr.includes("continuit") ||
+        titleFr.includes("dériv") ||
+        titleFr.includes("intégral")
+      ) {
+        qAr = [
+          `1. مسألة التحدي والبحث المفتوح: لتكن $f$ دالة متصلة على $[0, 1]$ تحقق $f(0) = 0$ و$f(1) = 1$. نضع $g(x) = f(x + \\frac{1}{n}) - f(x) - \\frac{1}{n}$.`,
+          `2. بين أنه لكل عدد صحيح $n \\ge 2$، يوجد عدد $c_n \\in ]0, 1[$ بحيث $f(c_n + \\frac{1}{n}) - f(c_n) = \\frac{1}{n}$.`,
+          `3. سؤال المبادرة المفتوح: ادرس سلوك المتتالية $(c_n)$ عندما يؤول $n$ إلى $+\\infty$.`,
+        ];
+        qFr = [
+          `1. Problème de Recherche & Olympiades : Soit $f$ continue sur $[0, 1]$ avec $f(0) = 0$ et $f(1) = 1$. On pose $g(x) = f(x + \\frac{1}{n}) - f(x) - \\frac{1}{n}$.`,
+          `2. Démontrer que pour tout $n \\ge 2$, il existe $c_n \\in ]0, 1[$ tel que $f(c_n + \\frac{1}{n}) - f(c_n) = \\frac{1}{n}$.`,
+          `3. Question ouverte : Étudier le comportement de $(c_n)$ quand $n \\to +\\infty$.`,
+        ];
+        hintAr = `تحدي أولمبياد: استعمل الدالة المساعدة $g(x) = f(x + \\frac{1}{n}) - f(x) - \\frac{1}{n}$ والمجموع التلسكوبي وطبق مبرهنة القيم الوسيطية.`;
+        hintFr = `Piste Olympiades : Exploiter une somme télescopique et le théorème des valeurs intermédiaires.`;
       } else {
         qAr = [
-          `مسألة التحدي والبحث المفتوح: لتكن f دالة متصلة على [0, 1] تحقق f(0) = 0 و f(1) = 1.`,
-          `1. بين أنه لكل عدد صحيح n ≥ 2، يوجد عدد c_n من ]0, 1[ بحيث f(c_n + 1/n) - f(c_n) = 1/n.`,
-          `2. سؤال المبادرة المفتوح: ادرس تقارب المتتالية (c_n) عندما يؤول n إلى +∞.`,
+          `1. تطبيق تركيبي حول « ${lessonForEx.lessonAr} »: ${lessonForEx.sampleExerciseAr?.[0] || `تحقق من الخاصية الأساسية المرتبطة بـ « ${cap0Ar} ».`}`,
+          `2. توظيف وتعميق: ${lessonForEx.sampleExerciseAr?.[1] || `استثمر « ${cap1Ar} » لحل الوضعية واستنتاج النتيجة.`}`,
+          `3. سؤال التحدي: استخلص قاعدة عامة أو تأويلاً مناسباً انطلاقاً من النتائج السابقة.`,
         ];
         qFr = [
-          `Problème de Recherche & Olympiades : Soit f une fonction continue sur [0, 1] avec f(0) = 0 et f(1) = 1.`,
-          `1. Démontrer que pour tout entier n ≥ 2, il existe c_n ∈ ]0, 1[ tel que f(c_n + 1/n) - f(c_n) = 1/n.`,
-          `2. Question ouverte : Étudier le comportement asymptotique de la suite (c_n) quand n → +∞.`,
+          `1. Application de synthèse (« ${lessonForEx.lessonFr} ») : ${lessonForEx.sampleExerciseFr?.[0] || `Vérifier la propriété liée à « ${cap0Fr} ».`}`,
+          `2. Approfondissement : ${lessonForEx.sampleExerciseFr?.[1] || `Mobiliser « ${cap1Fr} » pour conclure.`}`,
+          `3. Question défi : Formuler une généralisation ou une interprétation pertinente.`,
         ];
+        hintAr = `إرشاد منهجي: اربط بين معطيات التمرين وخاصيات « ${cap0Ar} ».`;
+        hintFr = `Indication méthodologique : Articuler les données avec « ${cap0Fr} ».`;
       }
-      hintAr = `تحدي أولمبياد: استعمل الدالة المساعدة g(x) = f(x + 1/n) - f(x) - 1/n والمجموع التلسكوبي ∑ g(k/n) وطبق مبرهنة القيم الوسيطية.`;
-      hintFr = `Piste Olympiades : Considérer la fonction auxiliaire g(x) = f(x + 1/n) - f(x) - 1/n et exploiter une somme télescopique.`;
     }
 
     allBlocks.push({

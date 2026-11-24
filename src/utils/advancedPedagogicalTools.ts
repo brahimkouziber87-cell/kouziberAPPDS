@@ -5,6 +5,7 @@ import {
   InsertedFigure,
   DSQuestionDensity,
   computeExactExerciseEffectiveWeights,
+  generateMoroccanSynthesisProblem,
   getQuestionBaremesAndLevels,
   getVariantQuestions,
 } from "../data/curriculum";
@@ -220,6 +221,17 @@ export function build2DSpecificationMatrix(
   });
 
   if (hasProb) {
+    const synthProb = generateMoroccanSynthesisProblem(lessons, "A");
+    const probN1Count = synthProb.parts[0]?.questionsFr.length || 4;
+    const probN2Count = synthProb.parts[1]?.questionsFr.length || 5;
+    const probN3Count = synthProb.parts[2]?.questionsFr.length || 4;
+    const probTotalQ = probN1Count + probN2Count + probN3Count;
+    const n1Indices = Array.from({ length: probN1Count }, (_, i) => i + 1);
+    const n2Indices = Array.from({ length: probN2Count }, (_, i) => probN1Count + i + 1);
+    const n3Indices = Array.from(
+      { length: probN3Count },
+      (_, i) => probN1Count + probN2Count + i + 1
+    );
     rows.push({
       lessonIndex: rows.length + 1,
       lessonTitleAr: "المسألة التوليفية الشاملة (أجزاء I و II و III)",
@@ -233,13 +245,13 @@ export function build2DSpecificationMatrix(
         "Interprétation géométrique et résolution de problème de synthèse (Format Bac)",
       ],
       weightPercent: 42.5,
-      totalQuestions: 6,
+      totalQuestions: probTotalQ,
       totalPoints: 8.5,
       estimatedMinutes: Math.max(25, Math.round((8.5 / 20) * examDurationMinutes)),
       dominantLevel: "N3",
-      n1: { questionsCount: 1, points: 1.5, percentageOfTotal: 7.5, questionIndices: [1] },
-      n2: { questionsCount: 3, points: 4.0, percentageOfTotal: 20.0, questionIndices: [2, 3, 4] },
-      n3: { questionsCount: 2, points: 3.0, percentageOfTotal: 15.0, questionIndices: [5, 6] },
+      n1: { questionsCount: probN1Count, points: 2.0, percentageOfTotal: 10.0, questionIndices: n1Indices },
+      n2: { questionsCount: probN2Count, points: 3.5, percentageOfTotal: 17.5, questionIndices: n2Indices },
+      n3: { questionsCount: probN3Count, points: 3.0, percentageOfTotal: 15.0, questionIndices: n3Indices },
     });
   }
 

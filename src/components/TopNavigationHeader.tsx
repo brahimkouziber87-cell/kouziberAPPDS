@@ -553,10 +553,10 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
               onClick={() => toggleDropdown("EVAL_EXERCISES")}
               className={`h-7 px-2 rounded-lg text-[11px] font-black whitespace-nowrap shrink-0 flex items-center gap-1 transition-all cursor-pointer border ${
                 openMenu === "EVAL_EXERCISES"
-                  ? "bg-cyan-400 text-slate-950 border-cyan-300 shadow-md shadow-cyan-500/25"
+                  ? "bg-cyan-400 !text-slate-950 border-cyan-300 shadow-md shadow-cyan-500/25"
                   : isEvalGroupActive
-                  ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/20"
-                  : "bg-slate-900/90 hover:bg-slate-800 text-slate-100 border-slate-700/90"
+                  ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 !text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/20"
+                  : "bg-slate-900/90 hover:bg-slate-800 !text-slate-100 border-slate-700/90"
               }`}
               title="لائحة إنتاج الفروض المحروسة، السلاسل، والفروض المنزلية"
             >
@@ -868,10 +868,10 @@ export const TopNavigationHeader: React.FC<TopNavigationHeaderProps> = ({
               onClick={() => toggleDropdown("PLANNING_DOCS")}
               className={`h-7 px-2 rounded-lg text-[11px] font-black whitespace-nowrap shrink-0 flex items-center gap-1 transition-all cursor-pointer border ${
                 openMenu === "PLANNING_DOCS"
-                  ? "bg-cyan-400 text-slate-950 border-cyan-300 shadow-md shadow-cyan-500/25"
+                  ? "bg-cyan-400 !text-slate-950 border-cyan-300 shadow-md shadow-cyan-500/25"
                   : isPlanningGroupActive
-                  ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/20"
-                  : "bg-slate-900/90 hover:bg-slate-800 text-slate-100 border-slate-700/90"
+                  ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-400 !text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/20"
+                  : "bg-slate-900/90 hover:bg-slate-800 !text-slate-100 border-slate-700/90"
               }`}
               title="لائحة التوزيع السنوي، الجذاذات، ملخصات الدروس، والتشخيص"
             >

@@ -1236,9 +1236,29 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           ? { widthPx: wPx, heightPx: hPx }
           : prev
       );
+      let effectiveScrollW = wPx;
+      const rawScrollW = Math.max(320, Math.round(el.scrollWidth || rect.width || 794));
+      if (rawScrollW > wPx + 4) {
+        let maxOverflowPx = 0;
+        const children = el.querySelectorAll("table, pre, img, .katex-display-block");
+        children.forEach((child) => {
+          const scrollableParent = child.closest(".overflow-x-auto");
+          if (scrollableParent && el.contains(scrollableParent)) {
+            return;
+          }
+          const tRect = child.getBoundingClientRect();
+          const rightExcess = Math.max(0, tRect.right - rect.right);
+          const leftExcess = Math.max(0, rect.left - tRect.left);
+          const excess = Math.round(Math.max(rightExcess, leftExcess));
+          if (excess > maxOverflowPx) {
+            maxOverflowPx = excess;
+          }
+        });
+        effectiveScrollW = wPx + maxOverflowPx;
+      }
       const report = analyzeA4LayoutMetrics({
         contentWidthPx: wPx,
-        scrollWidthPx: Math.max(320, Math.round(el.scrollWidth || rect.width || 794)),
+        scrollWidthPx: effectiveScrollW,
         contentHeightPx: hPx,
         orientation: pageOrientation === "LANDSCAPE" ? "landscape" : "portrait",
         currentMarginTopMm: activeMarginModelSpec.topMm,
@@ -1381,7 +1401,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
   const examTimeBalance = React.useMemo(
     () =>
       calculateExamTimeBalance({
-        durationStr: diagDuration,
+        durationStr:
+          activeModule === "DIAGNOSTIC"
+            ? diagDuration
+            : track.durationFr || track.durationAr || "2h00",
         questions: liveExamGridSummary.allQuestions,
         hasQcm:
           dsStructureMode === "QCM_ET_EXERCICES" ||
@@ -1391,7 +1414,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
           dsStructureMode === "COMPLETE_EXAM_MAROC" ||
           dsStructureMode === "EXAMEN_BLANC_2BAC",
       }),
-    [liveExamGridSummary.allQuestions, diagDuration, dsStructureMode]
+    [
+      liveExamGridSummary.allQuestions,
+      activeModule,
+      diagDuration,
+      track.durationFr,
+      track.durationAr,
+      dsStructureMode,
+    ]
   );
 
   const [showCommonStudentErrorsCard, setShowCommonStudentErrorsCard] =
@@ -2684,6 +2714,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   : isFr
                   ? "Exercices progressifs (★ Application · ★★ Méthodes · ★★★ Approfondissement)"
                   : "تمارين متدرجة الصعوبة (★ تطبيق · ★★ توليف · ★★★ تعمق وتحدي)"
+                : activeModule === "FICHE_OP2007"
+                ? isFr
+                  ? `Fiche pédagogique · ${track.labelFr}`
+                  : `جذاذة تربوية · ${track.labelAr}`
                 : isFr
                 ? `Durée de l'épreuve : ${track.durationFr}`
                 : `المدة الزمنية: ${track.durationAr}`}
@@ -3776,7 +3810,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       : "bg-slate-100 text-slate-700 border border-slate-200"
                   }`}
                 >
-                  {printPageSizePreset} · {printMediaMetrics.estimatedPageCount}p
+                  {printPageSizePreset} · {a4LayoutReport.rawPageCount}p
                 </span>
               </button>
 
@@ -4524,7 +4558,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
             <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-mono tabular-nums text-[10px] border border-slate-700">
               المقاس: {printMediaMetrics.widthMm}×{printMediaMetrics.heightMm}mm · منطقة الطباعة الآمنة:{" "}
               {printMediaMetrics.printableWidthMm}×{printMediaMetrics.printableHeightMm}mm ({printMediaMetrics.printableAreaPercent}%) · فاصل الصفحة:{" "}
-              {printMediaMetrics.pageBreakIntervalPx}px ({printMediaMetrics.estimatedPageCount} صفحات)
+              {printMediaMetrics.pageBreakIntervalPx}px ({a4LayoutReport.rawPageCount} صفحات)
             </span>
           </div>
 
@@ -4931,7 +4965,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                 {printPageSizePreset})
               </span>
               <span>
-                Pages: {printMediaMetrics.estimatedPageCount} · {selectedLatexPkg.badge}
+                Pages: {a4LayoutReport.rawPageCount} · {selectedLatexPkg.badge}
               </span>
             </div>
             <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] font-mono tabular-nums font-bold text-teal-950 bg-teal-50/95 border border-teal-300 px-2 py-0.5 rounded shadow-2xs">
@@ -5337,39 +5371,73 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                         </span>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse border border-slate-400 text-center font-mono text-[10px]">
-                          <thead>
-                            <tr className="bg-slate-100 text-slate-900">
-                              <th className="border border-slate-400 px-1.5 py-0.5 text-start font-sans font-extrabold bg-indigo-50/70 w-20">
-                                {isFr ? "Question" : "السؤال"}
-                              </th>
-                              {liveExamGridSummary.allQuestions.slice(0, 14).map((q, qIdx) => (
-                                <th key={qIdx} className="border border-slate-400 px-1 py-0.5 font-extrabold">
-                                  <div>{isFr ? q.questionLabelFr : q.questionLabelAr}</div>
-                                  <div className="text-[9px] text-indigo-800 font-normal">
-                                    /{q.points}
-                                  </div>
-                                </th>
-                              ))}
-                              <th className="border border-slate-400 px-1.5 py-0.5 bg-amber-50 font-black text-indigo-950">
-                                <div>{isFr ? "TOTAL" : "المجموع"}</div>
-                                <div className="text-[9px]">/20</div>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="h-6 bg-white">
-                              <td className="border border-slate-400 px-1.5 py-1 text-start font-sans font-bold text-slate-700 bg-slate-50">
-                                {isFr ? "Note obtenue" : "النقطة المحصلة"}
-                              </td>
-                              {liveExamGridSummary.allQuestions.slice(0, 14).map((_, qIdx) => (
-                                <td key={qIdx} className="border border-slate-400 px-1 py-1" />
-                              ))}
-                              <td className="border border-slate-400 px-1.5 py-1 bg-amber-50/30 font-bold" />
-                            </tr>
-                          </tbody>
-                        </table>
+                      <div className="overflow-x-auto space-y-1">
+                        {Array.from(
+                          {
+                            length: Math.max(
+                              1,
+                              Math.ceil(liveExamGridSummary.allQuestions.length / 11)
+                            ),
+                          },
+                          (_, chunkIdx) => {
+                            const chunk = liveExamGridSummary.allQuestions.slice(
+                              chunkIdx * 11,
+                              (chunkIdx + 1) * 11
+                            );
+                            const isLastChunk =
+                              (chunkIdx + 1) * 11 >=
+                              liveExamGridSummary.allQuestions.length;
+                            return (
+                              <table
+                                key={chunkIdx}
+                                className="w-full border-collapse border border-slate-400 text-center font-mono text-[10px]"
+                              >
+                                <thead>
+                                  <tr className="bg-slate-100 text-slate-900">
+                                    <th className="border border-slate-400 px-1.5 py-0.5 text-start font-sans font-extrabold bg-indigo-50/70 w-20">
+                                      {isFr ? "Question" : "السؤال"}
+                                    </th>
+                                    {chunk.map((q, qIdx) => (
+                                      <th
+                                        key={qIdx}
+                                        className="border border-slate-400 px-1 py-0.5 font-extrabold"
+                                      >
+                                        <div>
+                                          {isFr ? q.questionLabelFr : q.questionLabelAr}
+                                        </div>
+                                        <div className="text-[9px] text-indigo-800 font-normal">
+                                          /{q.points}
+                                        </div>
+                                      </th>
+                                    ))}
+                                    {isLastChunk && (
+                                      <th className="border border-slate-400 px-1.5 py-0.5 bg-amber-50 font-black text-indigo-950">
+                                        <div>{isFr ? "TOTAL" : "المجموع"}</div>
+                                        <div className="text-[9px]">/20</div>
+                                      </th>
+                                    )}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="h-6 bg-white">
+                                    <td className="border border-slate-400 px-1.5 py-1 text-start font-sans font-bold text-slate-700 bg-slate-50">
+                                      {isFr ? "Note obtenue" : "النقطة المحصلة"}
+                                    </td>
+                                    {chunk.map((_, qIdx) => (
+                                      <td
+                                        key={qIdx}
+                                        className="border border-slate-400 px-1 py-1"
+                                      />
+                                    ))}
+                                    {isLastChunk && (
+                                      <td className="border border-slate-400 px-1.5 py-1 bg-amber-50/30 font-bold" />
+                                    )}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            );
+                          }
+                        )}
                       </div>
                     </div>
                   )}
@@ -7917,7 +7985,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 </div>
                               </div>
 
-                              <ol className="list-decimal list-inside space-y-2 text-xs text-slate-800 leading-relaxed">
+                              <ol className="list-none space-y-2 text-xs text-slate-800 leading-relaxed">
                                 {activeQs.map((q, qIdx) => (
                                   <li key={qIdx} className="space-y-1">
                                     <span className="font-medium"><MathText text={q} /></span>
@@ -7950,7 +8018,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                               {includeHints && block.hintAr && (
                                 <div className="pt-2 border-t border-slate-200/80 text-[11px] text-indigo-900 italic font-medium flex items-center gap-1.5 bg-indigo-50/50 p-2 rounded-lg">
                                   <span>💡</span>
-                                  <span>{isFr ? block.hintFr : block.hintAr}</span>
+                                  <span><MathText text={isFr ? block.hintFr : block.hintAr} inline /></span>
                                 </div>
                               )}
 
@@ -8164,17 +8232,28 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
                                       <ol className="list-decimal list-inside space-y-2 text-xs text-slate-800 leading-relaxed">
                                         {activeQs.map((q, qIdx) => {
-                                          const qMeta =
-                                            bIdx === 0 ? dmPartAMetas[qIdx] : undefined;
-                                          const fallbackPts =
-                                            blockCorr.solutions[qIdx]?.bareme || "1.0";
+                                          const rawPartPts = isDM
+                                            ? Number(block.partPoints || ((lesson.weight * 20) / 100) * (bIdx === 0 ? 0.25 : bIdx === 1 ? 0.45 : 0.3))
+                                            : (bIdx === 0 ? 2.5 : bIdx === 1 ? 3.0 : bIdx === 2 ? 3.5 : 4.5);
+                                          const roundedPartPts = Math.max(0.25, Math.round(rawPartPts * 4) / 4);
+                                          const partWeightPct = roundedPartPts * 5;
+                                          const partQMetas = getQuestionBaremesAndLevels(
+                                            partWeightPct,
+                                            Math.max(1, activeQs.length),
+                                            n1,
+                                            n2,
+                                            n3,
+                                            bIdx === 0 ? lesson.customQuestionBaremes : undefined,
+                                            bIdx === 0 ? lesson.customQuestionLevels : undefined
+                                          );
+                                          const qMeta = partQMetas[qIdx];
+                                          const rawFallbackPts = (blockCorr.solutions[qIdx]?.bareme || "1.0")
+                                            .replace(/\s*(?:pt|pts|ن)\s*$/i, "")
+                                            .trim();
                                           const fallbackLvl =
-                                            bIdx === 0
-                                              ? qMeta?.level || "N1"
-                                              : bIdx === 1
-                                              ? "N2"
-                                              : "N3";
-                                          const displayPts = qMeta?.points || fallbackPts;
+                                            qMeta?.level ||
+                                            (bIdx === 0 ? "N1" : bIdx === 1 ? "N2" : "N3");
+                                          const displayPts = qMeta?.points || rawFallbackPts;
                                           return (
                                           <li key={qIdx} className="space-y-1">
                                             <div className="inline">
@@ -8214,7 +8293,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
                                       {includeHints && (
                                         <div className="pt-1.5 border-t border-slate-200/80 text-[11px] text-indigo-900 italic font-medium">
-                                          💡 {isFr ? block.hintFr : block.hintAr}
+                                          💡 <MathText text={isFr ? block.hintFr : block.hintAr} inline />
                                         </div>
                                       )}
 
@@ -8299,7 +8378,9 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                 <th className="border border-slate-300 p-1.5 text-start">
                                   {isFr
                                     ? "Capacité / Compétence mathématique ciblée"
-                                    : "القدرة الرياضياتية المستهدفة في الفرض المنزلي"}
+                                    : dmSubType === "SERIE_TD"
+                                  ? "القدرة الرياضياتية المستهدفة في سلسلة التمارين"
+                                  : "القدرة الرياضياتية المستهدفة في الفرض المنزلي"}
                                 </th>
                                 <th className="border border-slate-300 p-1.5 text-center w-24">
                                   {isFr ? "Acquis (A)" : "متحكم (أ)"}
@@ -8863,35 +8944,35 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </span>
                 </div>
 
-                <div className="overflow-x-auto studio-scroll border border-slate-200 rounded-xl">
-                  <table className="w-full text-right text-[11px] border-collapse">
+                <div className="overflow-x-auto max-w-full studio-scroll border border-slate-200 rounded-xl">
+                  <table className="w-full table-fixed text-right text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-slate-900 text-white font-black border-b border-slate-800 text-[10.5px]">
-                        <th className="p-2 border-l border-slate-800 whitespace-nowrap">{isFr ? "Séance" : "الحصة"}</th>
-                        <th className="p-2 border-l border-slate-800">{isFr ? "Thème & Objectif de la séance" : "موضوع وهدف الحصة"}</th>
-                        <th className="p-2 border-l border-slate-800 whitespace-nowrap">{isFr ? "Nature" : "طبيعة الحصة"}</th>
-                        <th className="p-2 border-l border-slate-800 whitespace-nowrap">{isFr ? "Durée" : "الغلاف"}</th>
+                        <th className="p-2 border-l border-slate-800 w-14 text-center">{isFr ? "Séance" : "الحصة"}</th>
+                        <th className="p-2 border-l border-slate-800 w-[28%]">{isFr ? "Thème & Objectif de la séance" : "موضوع وهدف الحصة"}</th>
+                        <th className="p-2 border-l border-slate-800 w-24 text-center">{isFr ? "Nature" : "طبيعة الحصة"}</th>
+                        <th className="p-2 border-l border-slate-800 w-16 text-center">{isFr ? "Durée" : "الغلاف"}</th>
                         <th className="p-2">{isFr ? "Notions clés & Capacités" : "المفاهيم المحورية والقدرات"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {fiche.globalPlanningSessions.map((plan) => (
                         <tr key={plan.sessionNumber} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-2 font-mono font-bold text-cyan-900 bg-slate-50/60 border-l border-slate-200 text-center whitespace-nowrap">
+                          <td className="p-2 font-mono font-bold text-cyan-900 bg-slate-50/60 border-l border-slate-200 text-center">
                             #{plan.sessionNumber}
                           </td>
-                          <td className="p-2 border-l border-slate-200 font-bold text-slate-900">
+                          <td className="p-2 border-l border-slate-200 font-bold text-slate-900 break-words">
                             {isFr ? plan.themeFr : plan.themeAr}
                           </td>
-                          <td className="p-2 border-l border-slate-200 text-slate-600 font-semibold whitespace-nowrap">
-                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">
+                          <td className="p-2 border-l border-slate-200 text-slate-600 font-semibold text-center">
+                            <span className="inline-block bg-slate-100 px-1.5 py-0.5 rounded text-[10px] break-words">
                               {isFr ? plan.sessionTypeFr : plan.sessionTypeAr}
                             </span>
                           </td>
-                          <td className="p-2 border-l border-slate-200 font-mono text-cyan-800 font-bold text-center whitespace-nowrap">
+                          <td className="p-2 border-l border-slate-200 font-mono text-cyan-800 font-bold text-center">
                             {plan.allocatedHours}
                           </td>
-                          <td className="p-2 text-slate-600 text-[10.5px] leading-relaxed">
+                          <td className="p-2 text-slate-600 text-[10.5px] leading-relaxed break-words">
                             {isFr ? plan.keyConceptsFr : plan.keyConceptsAr}
                           </td>
                         </tr>
@@ -9002,7 +9083,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                             <MathText text={isFr ? def.contentFr : def.contentAr} />
                           </div>
                           {def.notationMath && (
-                            <div className="pt-1 font-mono text-center text-teal-900 font-bold bg-white/90 p-2 rounded-lg border border-teal-200 text-[11.5px] select-all">
+                            <div className="pt-1 font-mono text-center text-teal-900 font-bold bg-white/90 p-2 rounded-lg border border-teal-200 text-[11.5px] select-all overflow-x-auto max-w-full">
                               <MathText text={def.notationMath} inline />
                             </div>
                           )}
@@ -9101,7 +9182,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                           </div>
                           <div className="text-[10.5px] text-teal-950 bg-teal-50/80 p-2 rounded-lg border border-teal-200 font-medium">
                             🧑‍🏫 <strong>{isFr ? "Conseil de l'enseignant :" : "توجيه تربوي للمدرس:"}</strong>{" "}
-                            {isFr ? ex.pedagogicalNoteFr : ex.pedagogicalNoteAr}
+                            <MathText text={isFr ? ex.pedagogicalNoteFr : ex.pedagogicalNoteAr} inline />
                           </div>
                         </div>
                       ))}
@@ -9117,7 +9198,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                       </span>
                       <ul className="list-disc list-inside space-y-0.5 text-amber-900 font-medium">
                         {(isFr ? sec.commonMistakesFr : sec.commonMistakesAr)?.map((mistake, mIdx) => (
-                          <li key={mIdx}>{mistake}</li>
+                          <li key={mIdx}><MathText text={mistake} inline /></li>
                         ))}
                       </ul>
                     </div>
@@ -9142,14 +9223,14 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                     {fiche.officialFormulasSummary.map((f, fIdx) => (
-                      <div key={fIdx} className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 space-y-1">
+                      <div key={fIdx} className="min-w-0 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 space-y-1">
                         <div className="text-cyan-300 font-bold text-[10.5px]">
                           {isFr ? f.titleFr : f.titleAr}
                         </div>
-                        <div className="font-mono text-white text-center font-bold bg-slate-950 p-1.5 rounded border border-slate-800 text-[11px] overflow-x-auto">
+                        <div className="font-mono text-white text-center font-bold bg-slate-950 p-1.5 rounded border border-slate-800 text-[11px] overflow-x-auto max-w-full">
                           <MathText text={f.latex} inline />
                         </div>
-                        <div className="text-slate-400 text-[10px]">
+                        <div className="text-slate-400 text-[10px] overflow-x-auto max-w-full">
                           <MathText text={f.domainOrCondition} inline />
                         </div>
                       </div>
@@ -9176,17 +9257,17 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </span>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-right text-[11px] border-collapse">
+                <div className="overflow-x-auto max-w-full border border-slate-200 rounded-xl">
+                  <table className="w-full table-fixed text-right text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-slate-900 text-white font-bold">
-                        <th className="p-2 border-l border-slate-800">
+                        <th className="p-2 border-l border-slate-800 w-[30%]">
                           {isFr ? "Capacité / Question Type au DS" : "المهارة المستهدفة / السؤال النمطي في الفرض"}
                         </th>
-                        <th className="p-2 border-l border-slate-800">
+                        <th className="p-2 border-l border-slate-800 w-[32%]">
                           {isFr ? "Outil & Hypothèses à vérifier" : "الأداة الرياضية والشروط القبلية اللازمة"}
                         </th>
-                        <th className="p-2">
+                        <th className="p-2 w-[38%]">
                           {isFr ? "Schéma de Rédaction Officielle" : "قالب التحرير النموذجي لضمان النقطة الكاملة"}
                         </th>
                       </tr>
@@ -9194,30 +9275,48 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                     <tbody className="divide-y divide-slate-200">
                       {(isFr ? fiche.expectedCapacitiesFr : fiche.expectedCapacitiesAr)
                         .slice(0, 4)
-                        .map((capText, cIdx) => (
-                          <tr key={cIdx} className="hover:bg-slate-50">
-                            <td className="p-2 border-l border-slate-200 font-bold text-slate-900">
-                              {cIdx + 1}. {capText}
-                            </td>
-                            <td className="p-2 border-l border-slate-200 text-slate-700">
-                              {isFr
-                                ? "Vérifier le domaine de définition et les conditions du théorème sur l'intervalle."
-                                : "التحقق الصريح من مجموعة التعريف وشروط المبرهنة على المجال المدروس."}
-                            </td>
-                            <td className="p-2 text-indigo-950 font-medium bg-indigo-50/40">
-                              {isFr
-                                ? "« On a [Hypothèses], donc d'après [Théorème], on conclut que [Résultat]. »"
-                                : "« بما أن [الشروط محققة] على المجال، فإنه حسب [المبرهنة الرسمية] نستنتج أن [النتيجة المؤطرة]. »"}
-                            </td>
-                          </tr>
-                        ))}
+                        .map((capText, cIdx) => {
+                          const isPlanarVec =
+                            ficheLesson.subCategory === "هندسة مستوية" ||
+                            /متجه|إسقاط|vector|projection/i.test(
+                              `${fiche.lessonTitleAr} ${fiche.lessonTitleFr}`
+                            );
+                          const toolText = isFr
+                            ? isPlanarVec
+                              ? "Relation de Chasles, base (AB⃗, AC⃗) et facteur de colinéarité k ∈ ℝ."
+                              : "Vérifier les conditions et hypothèses du théorème applicable."
+                            : isPlanarVec
+                            ? "توظيف علاقة شال وتوحيد الأساس المتجهي (AB⃗, AC⃗) والبحث عن معامل الاستقامية k."
+                            : "التحقق الصريح من الشروط والفرضيات اللازمة لتطبيق الخاصية أو المبرهنة.";
+                          const templateText = isFr
+                            ? isPlanarVec
+                              ? "« D'après la relation de Chasles, on a u⃗ = k·v⃗, donc les vecteurs sont colinéaires et les points sont alignés. »"
+                              : "« Les hypothèses étant vérifiées, d'après le théorème officiel, on conclut que [Résultat]. »"
+                            : isPlanarVec
+                            ? "« باستعمال علاقة شال نجد أن u⃗ = k·v⃗، ومنه المتجهتان مستقيميتان والنقط المطلوبة مستقيمية. »"
+                            : "« بما أن الشروط محققة، فإنه حسب الخاصية الرسمية نستنتج أن النتيجة المطلوبة محققة. »";
+                          return (
+                            <tr key={cIdx} className="hover:bg-slate-50">
+                              <td className="p-2 border-l border-slate-200 font-bold text-slate-900 break-words">
+                                {cIdx + 1}. {capText}
+                              </td>
+                              <td className="p-2 border-l border-slate-200 text-slate-700 break-words">
+                                <MathText text={toolText} inline />
+                              </td>
+                              <td className="p-2 text-indigo-950 font-medium bg-indigo-50/40 break-words">
+                                <MathText text={templateText} inline />
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
 
-            {/* 3. المحطة الثالثة: السيناريو الديداكتيكي وتدبير الحصص */}
+            {/* 3. المحطة الثالثة: السيناريو الديداكتيكي وتدبير الحصص (تُعرض في الجذاذة الكاملة فقط) */}
+            {ficheContentDetailLevel !== "SYNTHETIC_OFFICIAL" && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
                 <div className="flex items-center gap-2">
@@ -9246,38 +9345,38 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto studio-scroll border border-slate-200 rounded-xl">
-                    <table className="w-full text-right text-[11px] border-collapse">
+                  <div className="overflow-x-auto max-w-full studio-scroll border border-slate-200 rounded-xl">
+                    <table className="w-full table-auto text-right text-[10.5px] leading-snug border-collapse">
                       <thead>
                         <tr className="bg-slate-900 text-white font-black border-b border-slate-800">
-                          <th className="p-2.5 border-l border-slate-800 whitespace-nowrap">{isFr ? "Étape / Durée" : "المرحلة والمدة"}</th>
-                          <th className="p-2.5 border-l border-slate-800">{isFr ? "Objectifs didactiques" : "الأهداف الإجرائية"}</th>
-                          <th className="p-2.5 border-l border-slate-800">{isFr ? "Rôle de l'enseignant" : "مهام الأستاذ وتدبير القسم"}</th>
-                          <th className="p-2.5 border-l border-slate-800">{isFr ? "Rôle de l'élève" : "مهام ونشاط المتعلم"}</th>
-                          <th className="p-2.5 whitespace-nowrap">{isFr ? "Modalités" : "صيغ العمل"}</th>
+                          <th className="p-2 border-l border-slate-800">{isFr ? "Étape / Durée" : "المرحلة والمدة"}</th>
+                          <th className="p-2 border-l border-slate-800">{isFr ? "Objectifs didactiques" : "الأهداف الإجرائية"}</th>
+                          <th className="p-2 border-l border-slate-800">{isFr ? "Rôle de l'enseignant" : "مهام الأستاذ وتدبير القسم"}</th>
+                          <th className="p-2 border-l border-slate-800">{isFr ? "Rôle de l'élève" : "مهام ونشاط المتعلم"}</th>
+                          <th className="p-2">{isFr ? "Modalités" : "صيغ العمل"}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {fiche.didacticSteps.map((step) => (
                           <tr key={step.stepNum} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-2.5 font-bold text-slate-950 border-l border-slate-200 bg-slate-50/70 align-top whitespace-nowrap">
+                            <td className="p-2.5 font-bold text-slate-950 border-l border-slate-200 bg-slate-50/70 align-top break-words">
                               <div className="font-black text-cyan-900">{isFr ? step.phaseFr : step.phaseAr}</div>
                               <div className="font-mono text-[10px] text-slate-500 font-bold mt-1">⏱ {step.durationMinutes} min</div>
                             </td>
-                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700">
+                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700 break-words">
                               <ul className="list-disc list-inside space-y-0.5">
                                 {(isFr ? step.objectifsFr : step.objectifsAr).map((obj, oIdx) => (
                                   <li key={oIdx}>{obj}</li>
                                 ))}
                               </ul>
                             </td>
-                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700 leading-relaxed">
+                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700 leading-relaxed break-words">
                               {isFr ? step.teacherRoleFr : step.teacherRoleAr}
                             </td>
-                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700 leading-relaxed">
+                            <td className="p-2.5 border-l border-slate-200 align-top text-slate-700 leading-relaxed break-words">
                               {isFr ? step.studentRoleFr : step.studentRoleAr}
                             </td>
-                            <td className="p-2.5 align-top text-slate-600 text-[10.5px]">
+                            <td className="p-2.5 align-top text-slate-600 text-[10.5px] break-words">
                               {isFr ? step.modalitiesFr : step.modalitiesAr}
                             </td>
                           </tr>
@@ -9389,6 +9488,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </div>
                 )}
             </div>
+            )}
 
             {/* 4. المحطة الرابعة: إدماج TICE وبرمجة بايثون (GeoGebra & Python Script) */}
             {includeFicheTICE && (
@@ -9409,18 +9509,18 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* نشاط GeoGebra */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  <div className="min-w-0 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
                     <div className="font-black text-slate-950 flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
                       <span className="font-serif text-teal-700 font-black">📐</span>
                       <span>{isFr ? fiche.ticeIntegration.geogebraActivity.titleFr : fiche.ticeIntegration.geogebraActivity.titleAr}</span>
                     </div>
                     <p className="text-slate-700 leading-relaxed font-medium">
-                      {isFr ? fiche.ticeIntegration.geogebraActivity.goalFr : fiche.ticeIntegration.geogebraActivity.goalAr}
+                      <MathText text={isFr ? fiche.ticeIntegration.geogebraActivity.goalFr : fiche.ticeIntegration.geogebraActivity.goalAr} inline />
                     </p>
                     <div className="space-y-1 pt-1 text-[11px]">
                       <span className="font-bold text-slate-900 block">{isFr ? "Protocole de manipulation :" : "خطوات الإنجاز والمحاكاة على GeoGebra:"}</span>
                       {(isFr ? fiche.ticeIntegration.geogebraActivity.stepsFr : fiche.ticeIntegration.geogebraActivity.stepsAr).map((step, sIdx) => (
-                        <div key={sIdx} className="bg-white p-1.5 rounded border border-slate-200 text-slate-700 font-mono text-[10.5px]">
+                        <div key={sIdx} className="bg-white p-1.5 rounded border border-slate-200 text-slate-700 font-mono text-[10.5px] break-words">
                           {step}
                         </div>
                       ))}
@@ -9428,17 +9528,17 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                   </div>
 
                   {/* كود وخوارزمية بايثون */}
-                  <div className="p-3.5 rounded-xl bg-slate-950 text-slate-100 border border-slate-800 space-y-2 text-xs font-mono">
+                  <div className="min-w-0 p-3.5 rounded-xl bg-slate-950 text-slate-100 border border-slate-800 space-y-2 text-xs font-mono">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 text-cyan-300 font-sans font-black">
                       <span>🐍 {isFr ? fiche.ticeIntegration.pythonScript.titleFr : fiche.ticeIntegration.pythonScript.titleAr}</span>
                       <span className="text-[10px] text-slate-400 font-mono">script.py</span>
                     </div>
-                    <pre dir="ltr" className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 overflow-x-auto text-[11px] leading-relaxed text-teal-200 select-all font-mono">
+                    <pre dir="ltr" className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 overflow-x-auto max-w-full text-[11px] leading-relaxed text-teal-200 select-all font-mono">
                       {fiche.ticeIntegration.pythonScript.code}
                     </pre>
                     <div className="text-[10.5px] font-sans text-slate-300 leading-relaxed pt-1">
                       <span className="font-bold text-cyan-300">{isFr ? "Explication :" : "شرح الخوارزمية:"} </span>
-                      <span>{isFr ? fiche.ticeIntegration.pythonScript.explanationFr : fiche.ticeIntegration.pythonScript.explanationAr}</span>
+                      <MathText text={isFr ? fiche.ticeIntegration.pythonScript.explanationFr : fiche.ticeIntegration.pythonScript.explanationAr} inline />
                     </div>
                     <div className="text-[10px] font-mono text-emerald-400 bg-slate-900/90 p-1.5 rounded border border-emerald-900/50">
                       <span>Output : </span>
@@ -10621,7 +10721,10 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
       )}
 
       {/* صندوق رمز الاستجابة السريعة (QR Code) للنسخة التفاعلية الرقمية للفرض في أسفل وثيقة PDF */}
-      {effectiveIncludeInteractiveQr && (
+      {effectiveIncludeInteractiveQr &&
+        (activeModule === "DS_142_08" ||
+          activeModule === "DM_SERIE" ||
+          activeModule === "DIAGNOSTIC") && (
         <InteractiveExamQrFooter
           url={resolvedInteractiveQuizUrl}
           docLang={isFr ? "FR" : "AR"}

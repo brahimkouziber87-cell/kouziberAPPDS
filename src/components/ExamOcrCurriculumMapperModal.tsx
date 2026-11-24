@@ -27,6 +27,16 @@ import {
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { MathText } from "./MathRenderer";
+
+function formatOcrLatexForDisplay(raw: string): string {
+  if (!raw) return "";
+  if (raw.includes("$")) return raw;
+  if (/\\text\{[^{}]*[\u0600-\u06FF]/.test(raw)) return raw;
+  return /\\(?:frac|sqrt|lim|int|sum|ln|vec|le|ge|neq|approx|infty|cdot|times|pm|mathbb)\b|[_^]/.test(raw)
+    ? `$${raw}$`
+    : raw;
+}
 import {
   OCR_ENHANCE_PRESETS,
   enhanceImageDataUrlOnCanvas,
@@ -1675,18 +1685,19 @@ export const ExamOcrCurriculumMapperModal: React.FC<
                                   </span>
                                 </td>
 
-                                <td className="border border-slate-300 p-2 font-mono text-[10.5px] text-slate-800 bg-white">
+                                <td className="border border-slate-300 p-2 text-[11px] text-slate-800 bg-white">
                                   <div dir="ltr" className="text-left break-words">
-                                    {item.studentAnswerLatex}
+                                    <MathText text={formatOcrLatexForDisplay(item.studentAnswerLatex)} inline />
                                   </div>
                                 </td>
 
                                 <td className="border border-slate-300 p-2 space-y-1">
                                   <div
                                     dir="ltr"
-                                    className="font-mono text-[10px] text-teal-900 bg-teal-50/70 p-1.5 rounded border border-teal-200 text-left"
+                                    className="text-[11px] text-teal-900 bg-teal-50/70 p-1.5 rounded border border-teal-200 text-left"
                                   >
-                                    Réf: {item.referenceSolutionLatex}
+                                    <span className="font-bold">Réf: </span>
+                                    <MathText text={formatOcrLatexForDisplay(item.referenceSolutionLatex)} inline />
                                   </div>
                                   <div
                                     className={`font-bold text-[10.5px] p-1.5 rounded ${
@@ -1695,7 +1706,7 @@ export const ExamOcrCurriculumMapperModal: React.FC<
                                         : "text-rose-700 bg-rose-50/80 border border-rose-200"
                                     }`}
                                   >
-                                    {item.redPenCommentAr}
+                                    <MathText text={item.redPenCommentAr} inline />
                                   </div>
                                 </td>
 
@@ -1740,7 +1751,9 @@ export const ExamOcrCurriculumMapperModal: React.FC<
                           <ul className="list-disc list-inside space-y-0.5 text-rose-900 font-semibold text-[11px]">
                             {gradingReport.printableRemediationSheet.diagnosedGapsAr.map(
                               (gap, gIdx) => (
-                                <li key={gIdx}>{gap}</li>
+                                <li key={gIdx}>
+                                  <MathText text={gap} inline />
+                                </li>
                               )
                             )}
                           </ul>
@@ -1753,15 +1766,17 @@ export const ExamOcrCurriculumMapperModal: React.FC<
                               className="bg-white border border-indigo-200 rounded-lg p-3 space-y-1.5 text-[11px]"
                             >
                               <div className="font-black text-indigo-950">
-                                ✍️ {rem.titleAr}
+                                ✍️ <MathText text={rem.titleAr} inline />
                               </div>
                               <div className="space-y-1 text-slate-800 font-medium">
                                 {rem.questionsAr.map((q, qIdx) => (
-                                  <div key={qIdx}>{q}</div>
+                                  <div key={qIdx}>
+                                    <MathText text={q} inline />
+                                  </div>
                                 ))}
                               </div>
                               <div className="text-[10.5px] text-teal-900 bg-teal-50 px-2.5 py-1 rounded border border-teal-200 font-semibold">
-                                💡 إرشاد التحرير السليم: {rem.solutionHintAr}
+                                💡 إرشاد التحرير السليم: <MathText text={rem.solutionHintAr} inline />
                               </div>
                             </div>
                           )

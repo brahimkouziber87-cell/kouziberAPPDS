@@ -244,6 +244,21 @@ export const MathTeacherInspectorStudioModal: React.FC<
 }) => {
   const [activeTab, setActiveTab] = useState<MathInspectorStudioTabId>(initialTab);
 
+  React.useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   // حالة التبويب 1: فاحص التعبيرات المباشر عبر MathJS
   const [liveTestQuestion, setLiveTestQuestion] = useState<string>(
     "نعتبر الدالة $f(x) = x^3 - 3x + 1$ المعرفة على $\\mathbb{R}$. بين أن $f'(x) = 3(x-1)(x+1)$."
@@ -967,14 +982,16 @@ export const MathTeacherInspectorStudioModal: React.FC<
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center transition cursor-pointer"
+            aria-label="إغلاق"
+            className="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
+            <span>إغلاق</span>
           </button>
         </div>
 
         {/* شريط التبويبات الـ 10 (شاملاً مقترحات المفتش 2 و 3 المطورة ومختبر مطور البرامج التربوية) */}
-        <div className="bg-slate-100 border-b border-slate-200 px-3 py-2 flex flex-wrap items-center gap-1.5 shrink-0">
+        <div className="bg-slate-100 border-b border-slate-200 px-3 py-2 flex items-center gap-1.5 overflow-x-auto flex-nowrap studio-scroll shrink-0">
           {[
             {
               id: "DOUBLE_PENALTY_DETECTOR" as MathInspectorStudioTabId,
@@ -996,7 +1013,7 @@ export const MathTeacherInspectorStudioModal: React.FC<
             },
             {
               id: "SIGN_TABLE_STUDIO" as MathInspectorStudioTabId,
-              label: "جدول الإشارة ومجموعة التعريف D_f",
+              label: "جدول الإشارة ومجموعة التعريف Df",
               badge: "مقترح أستاذ 1",
               icon: Wand2,
             },
@@ -1020,13 +1037,13 @@ export const MathTeacherInspectorStudioModal: React.FC<
             },
             {
               id: "FUNCTION_CURVE_STUDIO" as MathInspectorStudioTabId,
-              label: "منحنى (C_f) وجدول التغيرات",
+              label: "منحنى (Cf) وجدول التغيرات",
               badge: "مختبر الدوال",
               icon: LineChart,
             },
             {
               id: "COBWEB_SEQUENCE_STUDIO" as MathInspectorStudioTabId,
-              label: "المتتاليات u_{n+1}=f(u_n)",
+              label: "المتتاليات الترجعية uₙ₊₁ = f(uₙ)",
               badge: "الإنشاء الهندسي",
               icon: RefreshCw,
             },
@@ -1044,9 +1061,9 @@ export const MathTeacherInspectorStudioModal: React.FC<
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition cursor-pointer ${
+                className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
-                    ? "bg-slate-900 text-cyan-300 shadow-xs"
+                    ? "bg-slate-900 !text-cyan-300 shadow-xs"
                     : "bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200/90"
                 }`}
               >

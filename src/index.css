@@ -687,10 +687,12 @@
   direction: ltr !important;
   unicode-bidi: isolate;
   display: inline-block;
+  max-width: 100%;
+  overflow: visible;
   vertical-align: middle;
   padding: 0 0.15em;
   font-family: KaTeX_Main, "Times New Roman", serif;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .katex-display-block {
@@ -764,3 +766,23 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Accessibility & usability baseline (added) ===== */
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (hover: none) and (pointer: coarse) {
+  button, [role="button"], select { min-height: 40px; }
+}
+html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
+::selection { background: rgba(37, 99, 235, 0.22); }
