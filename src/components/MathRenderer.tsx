@@ -356,19 +356,29 @@ export function normalizeMathSyntax(latex: string): string {
   );
 
   // Normalisation des fractions algébriques abrégées : (A)/(B), (A)/B, A/(B), f(x)/g(x), a/b
-  // Ne pas réécrire les barres obliques si la formule contient déjà des commandes LaTeX structurées (\frac, \sqrt, \begin)
-  if (!/\\(?:frac|sqrt|begin\{)/.test(s)) {
+  // Ne pas réécrire les barres obliques si la formule contient déjà \frac ou \begin{...}
+  if (!/\\(?:frac|begin\{)/.test(s)) {
+    // 1. Fraction simple à l'intérieur d'une racine carrée : \sqrt{a/b} -> \sqrt{\frac{a}{b}}
+    s = s.replace(
+      /\\sqrt\{([^{}/]+)\s*\/\s*([^{}/]+)\}/g,
+      "\\sqrt{\\frac{$1}{$2}}"
+    );
+
+    const parenInner = "(?:[^()]|\\([^()]+\\))+";
+    const funcCallOrAtom =
+      "(?:\\\\(?:ln|log|exp|cos|sin|tan|cot|arcsin|arccos|arctan|arg|det|max|min|sup|inf|sqrt)\\s*(?:\\{[^{}]+\\}|\\([^()]+\\))|[a-zA-Z](?:_(?:\\{[^{}]+\\}|[0-9a-zA-Z]+))?(?:'+|''|\\^\\{-1\\})?\\([^()]+\\))";
+    const simpleNum =
+      "(?:\\\\pi|\\{[^{}]+\\}|(?<![\\\\a-zA-Z])[a-zA-Z0-9_]+(?:\\^(?:\\{[^{}]+\\}|[a-zA-Z0-9]+))?)";
+    const simpleDen =
+      "(?:\\\\sqrt\\{[^{}]+\\}|\\\\pi|\\{[^{}]+\\}|[a-zA-Z0-9_]+(?:\\^(?:\\{[^{}]+\\}|[a-zA-Z0-9]+))?)";
+
     s = s
-      .replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, "\\frac{$1}{$2}")
-      .replace(/\(([^()]+)\)\s*\/\s*((?:[a-zA-Z0-9_]+|\{[^{}]*\})(?:\^(?:\{[^{}]*\}|[a-zA-Z0-9]+))?)/g, "\\frac{$1}{$2}")
-      .replace(
-        /((?:\\?[a-zA-Z]+)'?\([^()]+\)|(?<!\\)[a-zA-Z0-9_^{}]+)\s*\/\s*\(([^()]+)\)/g,
-        "\\frac{$1}{$2}"
-      )
-      .replace(
-        /((?:\\?[a-zA-Z]+)'?\([^()]+\)|\\pi\s*|(?<!\\)[a-zA-Z0-9_^{}]+)\s*\/\s*((?:[a-zA-Z0-9_]+|\{[^{}]*\})(?:\^(?:\{[^{}]*\}|[a-zA-Z0-9]+))?)/g,
-        "\\frac{$1}{$2}"
-      );
+      .replace(new RegExp(`(?<![a-zA-Z0-9_\\\\])\\((${parenInner})\\)\\s*\\/\\s*\\((${parenInner})\\)`, "g"), "\\frac{$1}{$2}")
+      .replace(new RegExp(`(${funcCallOrAtom})\\s*\\/\\s*\\((${parenInner})\\)`, "g"), "\\frac{$1}{$2}")
+      .replace(new RegExp(`(${funcCallOrAtom})\\s*\\/\\s*(${simpleDen})`, "g"), "\\frac{$1}{$2}")
+      .replace(new RegExp(`(?<![a-zA-Z0-9_\\\\])\\((${parenInner})\\)\\s*\\/\\s*(${simpleDen})`, "g"), "\\frac{$1}{$2}")
+      .replace(new RegExp(`(${simpleNum})\\s*\\/\\s*\\((${parenInner})\\)`, "g"), "\\frac{$1}{$2}")
+      .replace(new RegExp(`(${simpleNum})\\s*\\/\\s*(${simpleDen})`, "g"), "\\frac{$1}{$2}");
   }
 
   return s;

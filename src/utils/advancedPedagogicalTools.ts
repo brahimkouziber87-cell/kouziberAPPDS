@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { evaluate as mathEvaluate } from "mathjs";
 import {
+  CycleType,
   LessonItem,
   InsertedFigure,
   DSQuestionDensity,
@@ -70,7 +71,8 @@ export function build2DSpecificationMatrix(
   isMission: boolean = false,
   dsQuestionDensity: DSQuestionDensity = "STANDARD",
   qcmQuestionCount: number = 4,
-  examDurationMinutes: number = 120
+  examDurationMinutes: number = 120,
+  cycle: CycleType = "2BAC"
 ): SpecMatrix2DSummary {
   const hasQCM =
     dsStructureMode === "QCM_ET_EXERCICES" || dsStructureMode === "COMPLETE_EXAM_MAROC";
@@ -79,9 +81,18 @@ export function build2DSpecificationMatrix(
     dsStructureMode === "COMPLETE_EXAM_MAROC" ||
     dsStructureMode === "EXAMEN_BLANC_2BAC";
 
+  const synthProbForBudget = hasProb
+    ? generateMoroccanSynthesisProblem(lessons, "A", cycle, isMission)
+    : null;
   const validQcmCount = Math.max(2, Math.min(10, qcmQuestionCount || 4));
   const fixedQcmPts = hasQCM ? Number((validQcmCount * 1.0).toFixed(2)) : 0;
-  const fixedProbPts = hasProb ? 8.5 : 0;
+  const fixedProbPts = synthProbForBudget
+    ? Number(
+        synthProbForBudget.parts
+          .reduce((acc, p) => acc + parseFloat(p.partPoints || "2.5"), 0)
+          .toFixed(2)
+      )
+    : 0;
   const exBudget =
     hasQCM || hasProb ? Math.max(4, 20 - fixedQcmPts - fixedProbPts) : 20;
 
@@ -220,22 +231,60 @@ export function build2DSpecificationMatrix(
     });
   });
 
-  if (hasProb) {
-    const synthProb = generateMoroccanSynthesisProblem(lessons, "A");
-    const probN1Count = synthProb.parts[0]?.questionsFr.length || 4;
-    const probN2Count = synthProb.parts[1]?.questionsFr.length || 5;
-    const probN3Count = synthProb.parts[2]?.questionsFr.length || 4;
-    const probTotalQ = probN1Count + probN2Count + probN3Count;
-    const n1Indices = Array.from({ length: probN1Count }, (_, i) => i + 1);
-    const n2Indices = Array.from({ length: probN2Count }, (_, i) => probN1Count + i + 1);
-    const n3Indices = Array.from(
-      { length: probN3Count },
-      (_, i) => probN1Count + probN2Count + i + 1
-    );
+  if (hasProb && synthProbForBudget) {
+    const synthProb = synthProbForBudget;
+    let qCounter = 0;
+    const n1Indices: number[] = [];
+    const n2Indices: number[] = [];
+    const n3Indices: number[] = [];
+    let probN1Pts = 0;
+    let probN2Pts = 0;
+    let probN3Pts = 0;
+
+    synthProb.parts.forEach((part, pIdx) => {
+      const defaultLvl: "N1" | "N2" | "N3" =
+        pIdx === 0 ? "N1" : pIdx === 1 ? "N2" : "N3";
+      const partPts = parseFloat(part.partPoints || "2.5");
+      const numbered = part.questionsFr.filter((q) => /^\d+[\.\)]/.test(q.trim()));
+      const graded = numbered.length > 0 ? numbered : part.questionsFr;
+      const firstPts = Number((Math.round((partPts / Math.max(1, graded.length)) * 4) / 4).toFixed(2));
+      const allTagged = graded.every((q) => /\[(\d+(?:\.\d+)?)\s*(?:pts?|ن)/i.test(q));
+
+      graded.forEach((qFr, qI) => {
+        const qIdxGlobal = ++qCounter;
+        const ptMatch = qFr.match(/\[(\d+(?:\.\d+)?)\s*(?:pts?|ن)/i);
+        const lvlMatch = qFr.match(/\b(N1|N2|N3)\b/);
+        const lvl = (lvlMatch ? lvlMatch[1] : defaultLvl) as "N1" | "N2" | "N3";
+        const qPts = allTagged && ptMatch
+          ? Number(parseFloat(ptMatch[1]).toFixed(2))
+          : qI === graded.length - 1
+          ? Number(Math.max(0.25, partPts - firstPts * (graded.length - 1)).toFixed(2))
+          : firstPts;
+
+        if (lvl === "N1") {
+          n1Indices.push(qIdxGlobal);
+          probN1Pts = Number((probN1Pts + qPts).toFixed(2));
+        } else if (lvl === "N2") {
+          n2Indices.push(qIdxGlobal);
+          probN2Pts = Number((probN2Pts + qPts).toFixed(2));
+        } else {
+          n3Indices.push(qIdxGlobal);
+          probN3Pts = Number((probN3Pts + qPts).toFixed(2));
+        }
+      });
+    });
+
+    const probTotalPts = Number((probN1Pts + probN2Pts + probN3Pts).toFixed(2));
     rows.push({
       lessonIndex: rows.length + 1,
-      lessonTitleAr: "المسألة التوليفية الشاملة (أجزاء I و II و III)",
-      lessonTitleFr: "Problème de Synthèse (Parties I, II, III)",
+      lessonTitleAr:
+        synthProb.parts.length >= 3
+          ? "المسألة التوليفية الشاملة (أجزاء I و II و III)"
+          : "المسألة التوليفية الشاملة (الجزء I و II)",
+      lessonTitleFr:
+        synthProb.parts.length >= 3
+          ? "Problème de Synthèse (Parties I, II, III)"
+          : "Problème de Synthèse (Parties I & II)",
       capacitiesAr: [
         "توليف موارد التحليل والدوال والمتتاليات في وضعية مسألة مركبة",
         "التأويل الهندسي وبناء الاستدلال الاستنتاجي المتدرج (نمط البكالوريا)",
@@ -244,14 +293,34 @@ export function build2DSpecificationMatrix(
         "Mobilisation conjointe de l'analyse, des fonctions et des suites numériques",
         "Interprétation géométrique et résolution de problème de synthèse (Format Bac)",
       ],
-      weightPercent: 42.5,
-      totalQuestions: probTotalQ,
-      totalPoints: 8.5,
-      estimatedMinutes: Math.max(25, Math.round((8.5 / 20) * examDurationMinutes)),
-      dominantLevel: "N3",
-      n1: { questionsCount: probN1Count, points: 2.0, percentageOfTotal: 10.0, questionIndices: n1Indices },
-      n2: { questionsCount: probN2Count, points: 3.5, percentageOfTotal: 17.5, questionIndices: n2Indices },
-      n3: { questionsCount: probN3Count, points: 3.0, percentageOfTotal: 15.0, questionIndices: n3Indices },
+      weightPercent: Number(((probTotalPts / 20) * 100).toFixed(1)),
+      totalQuestions: qCounter,
+      totalPoints: probTotalPts,
+      estimatedMinutes: Math.max(25, Math.round((probTotalPts / 20) * examDurationMinutes)),
+      dominantLevel:
+        probN3Pts >= probN2Pts && probN3Pts >= probN1Pts
+          ? "N3"
+          : probN2Pts >= probN1Pts
+          ? "N2"
+          : "N1",
+      n1: {
+        questionsCount: n1Indices.length,
+        points: probN1Pts,
+        percentageOfTotal: Number(((probN1Pts / 20) * 100).toFixed(1)),
+        questionIndices: n1Indices,
+      },
+      n2: {
+        questionsCount: n2Indices.length,
+        points: probN2Pts,
+        percentageOfTotal: Number(((probN2Pts / 20) * 100).toFixed(1)),
+        questionIndices: n2Indices,
+      },
+      n3: {
+        questionsCount: n3Indices.length,
+        points: probN3Pts,
+        percentageOfTotal: Number(((probN3Pts / 20) * 100).toFixed(1)),
+        questionIndices: n3Indices,
+      },
     });
   }
 

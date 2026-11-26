@@ -450,8 +450,21 @@ export function getOfficialNote14208TrackStandards(
   const track: TrackData | undefined =
     CURRICULUM_DB[trackCode] || CURRICULUM_DB[code];
 
+  const aliasTrackCode =
+    code === "2BAC_ECO_TGC"
+      ? "2BAC_ECO"
+      : code === "2BAC_SVT_AGRO"
+      ? "2BAC_SVT"
+      : code === "2BAC_STE_STM"
+      ? "2BAC_STE"
+      : code;
+
   const catalogMatch = MOROCCAN_NOTE_14208_OFFICIAL_CATALOG.find(
-    (r) => r.trackCode === code || r.trackCode === trackCode || (track && r.trackCode === track.code)
+    (r) =>
+      r.trackCode === code ||
+      r.trackCode === aliasTrackCode ||
+      r.trackCode === trackCode ||
+      (track && r.trackCode === track.code)
   );
 
   let officialCoefficient = catalogMatch?.coefficient ?? 7;

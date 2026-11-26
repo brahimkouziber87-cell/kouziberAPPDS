@@ -415,6 +415,13 @@ export const SpecMatrix2DInspectorCard: React.FC<SpecMatrix2DInspectorCardProps>
         [lessons, studentEvaluations, trackCode, n1, n2, n3]
       );
 
+      const inferredCycle =
+        trackCode.startsWith("TC") || trackCode.startsWith("2NDE")
+          ? "TC"
+          : trackCode.startsWith("1BAC") || trackCode.startsWith("1ERE")
+          ? "1BAC"
+          : "2BAC";
+
       const spec2D = useMemo(
         () =>
           build2DSpecificationMatrix(
@@ -426,7 +433,8 @@ export const SpecMatrix2DInspectorCard: React.FC<SpecMatrix2DInspectorCardProps>
             isMission,
             dsQuestionDensity,
             qcmQuestionCount,
-            examDurationMinutes
+            examDurationMinutes,
+            inferredCycle
           ),
         [
           lessons,
@@ -438,6 +446,7 @@ export const SpecMatrix2DInspectorCard: React.FC<SpecMatrix2DInspectorCardProps>
           dsQuestionDensity,
           qcmQuestionCount,
           examDurationMinutes,
+          inferredCycle,
         ]
       );
 

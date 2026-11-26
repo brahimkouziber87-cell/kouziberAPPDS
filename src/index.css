@@ -67,15 +67,23 @@
   background-position: 0 0, 0 0, -1px -1px, -1px -1px;
 }
 
-/* خلفية الواجهة العامة: نمط شبكي بارد هادئ مع رموز رياضية شفافة (Calm Cool Mathematical Canvas) */
+/* خلفية الواجهة العامة: نمط شبكي بارد مائل وعصري مع توهج داخلي طفيف لتعزيز العمق البصري (Modern Tilted Mathematical Canvas & Subtle Inner Glow) */
 .math-canvas-cool {
   background-color: #f1f5f9;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(13, 148, 136, 0.04) 0%, transparent 40%),
-    linear-gradient(to right, rgba(203, 213, 225, 0.4) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(203, 213, 225, 0.4) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(56, 189, 248, 0.065) 0%, transparent 45%),
+    radial-gradient(circle at 88% 82%, rgba(13, 148, 136, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.025) 0%, transparent 65%),
+    repeating-linear-gradient(93deg, rgba(148, 163, 184, 0.22) 0px, rgba(148, 163, 184, 0.22) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(3deg, rgba(148, 163, 184, 0.22) 0px, rgba(148, 163, 184, 0.22) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(93deg, rgba(56, 189, 248, 0.08) 0px, rgba(56, 189, 248, 0.08) 1px, transparent 1px, transparent 112px),
+    repeating-linear-gradient(3deg, rgba(56, 189, 248, 0.08) 0px, rgba(56, 189, 248, 0.08) 1px, transparent 1px, transparent 112px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0, 0 0, -1px -1px, -1px -1px, -2px -2px, -2px -2px;
+  box-shadow:
+    inset 0 0 42px rgba(14, 165, 233, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -10px 28px rgba(15, 23, 42, 0.035);
 }
 
 /* خلفية الشريط العلوي الرصين بألوان هادئة عالية المقروئية والراحة البصرية */

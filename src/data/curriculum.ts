@@ -3418,27 +3418,30 @@ export function computeExactExerciseEffectiveWeights(
   if (!lessons || lessons.length === 0) return [];
   const rawSum = lessons.reduce((acc, l) => acc + (Number(l.weight) || 0), 0) || 100;
   const targetBudget = Math.max(1, Math.round(exBudgetPoints * 4) / 4);
+  const minPerExercise = Math.min(2.0, Math.max(0.5, Math.floor((targetBudget / lessons.length) * 4) / 4));
   let allocatedPts = 0;
 
-  return lessons.map((lesson, idx) => {
+  const rawPoints = lessons.map((lesson, idx) => {
     let exPts: number;
     if (idx === lessons.length - 1) {
       exPts = Math.max(0.5, Math.round((targetBudget - allocatedPts) * 4) / 4);
-  } else {
+    } else {
       const proportionalPts = ((Number(lesson.weight) || 0) / rawSum) * targetBudget;
-      exPts = Math.max(0.5, Math.round(proportionalPts * 4) / 4);
-      const minRemainingForOthers = (lessons.length - 1 - idx) * 0.5;
+      exPts = Math.max(minPerExercise, Math.round(proportionalPts * 4) / 4);
+      const minRemainingForOthers = (lessons.length - 1 - idx) * minPerExercise;
       if (allocatedPts + exPts > targetBudget - minRemainingForOthers) {
-        exPts = Math.max(0.5, targetBudget - allocatedPts - minRemainingForOthers);
+        exPts = Math.max(0.5, Math.round((targetBudget - allocatedPts - minRemainingForOthers) * 4) / 4);
       }
-      allocatedPts += exPts;
+      allocatedPts = Number((allocatedPts + exPts).toFixed(2));
     }
-    return Number(((exPts / 20) * 100).toFixed(2));
+    return exPts;
   });
+
+  return rawPoints.map((exPts) => Number(((exPts / 20) * 100).toFixed(2)));
 }
 
 /**
- * يوزع نقط التمرين (حسب وزنه المئوي ومستويات المذكرة 142-08 N1/N2/N3) على أسئلة التمرين بدقة رياضية (مضاعفات 0.25)
+ * يوزع نقط التمرين (حسب وزنه المئوي ومستويات المذكرة 142-08 N1/N2/N3) على أسئلة التمرين بدقة رياضية
  */
 export function getQuestionBaremesAndLevels(
   lessonWeight: number,
@@ -3480,7 +3483,7 @@ export function getQuestionBaremesAndLevels(
     } else if (i >= questionCount - targetN3Count) {
       levels.push("N3");
       rawRatios.push(Math.max(10, normN3 / Math.max(1, targetN3Count)));
-  } else {
+    } else {
       levels.push("N2");
       const n2Count = Math.max(1, questionCount - targetN1Count - targetN3Count);
       rawRatios.push(Math.max(10, (100 - normN1 - normN3) / n2Count));
@@ -3507,11 +3510,10 @@ export function getQuestionBaremesAndLevels(
   }
 
   const ratioSum = rawRatios.reduce((a, b) => a + b, 0) || 1;
-  const roundedTotalExPoints = Math.max(
-    questionCount * 0.25,
-    Math.round(totalExPoints * 4) / 4
-  );
-  const minStep = 0.25;
+  const roundedTotalExPoints = Math.round(totalExPoints * 4) / 4;
+  const minStep =
+    questionCount * 0.25 <= roundedTotalExPoints ? 0.25 : 0.125;
+  const stepInv = minStep === 0.25 ? 4 : 8;
   let allocated = 0;
 
   return rawRatios.map((r, idx) => {
@@ -3520,21 +3522,21 @@ export function getQuestionBaremesAndLevels(
     if (remainingAfterCurrent === 0) {
       pt = Math.max(
         minStep,
-        Math.round((roundedTotalExPoints - allocated) * 4) / 4
+        Number((roundedTotalExPoints - allocated).toFixed(3))
       );
-  } else {
+    } else {
       const rawPt = (roundedTotalExPoints * r) / ratioSum;
-      pt = Math.max(0.25, Math.round(rawPt * 4) / 4);
+      pt = Math.max(minStep, Math.round(rawPt * stepInv) / stepInv);
       const maxAllowedForCurrent = Math.max(
         minStep,
         Math.round(
-          (roundedTotalExPoints - allocated - remainingAfterCurrent * minStep) * 4
-        ) / 4
+          (roundedTotalExPoints - allocated - remainingAfterCurrent * minStep) * stepInv
+        ) / stepInv
       );
       if (pt > maxAllowedForCurrent) {
         pt = maxAllowedForCurrent;
       }
-      allocated = Number((allocated + pt).toFixed(2));
+      allocated = Number((allocated + pt).toFixed(3));
     }
 
     const lvl = levels[idx];

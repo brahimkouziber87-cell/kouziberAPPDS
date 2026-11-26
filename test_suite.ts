@@ -3447,6 +3447,64 @@ try {
       singleChapterAudit.overallScorePercent === 100,
     `runDeepPedagogical14208Audit achieves 10/10 (100%) compliance on single-chapter 20h DS assessments (2BAC_SM S1.DS3)`
   );
+
+  // Verify normalizeMathSyntax handles radical fractions, nested trig denominators, and ln(x)/x cleanly
+  const { normalizeMathSyntax } = await import("./src/components/MathRenderer.tsx");
+  const normSqrtFrac = normalizeMathSyntax("f(x) = (√(x + 3) - 2)/(x - 1)");
+  const normInsideSqrt = normalizeMathSyntax("√(a/b)");
+  const normLnFrac = normalizeMathSyntax("ln(x)/x");
+  const normTrigNested = normalizeMathSyntax("sin(2x)/(1 + cos(2x))");
+  assert(
+    normSqrtFrac === "f(x) = \\frac{\\sqrt{x + 3} - 2}{x - 1}" &&
+      normInsideSqrt === "\\sqrt{\\frac{a}{b}}" &&
+      normLnFrac === "\\frac{\\ln(x)}{x}" &&
+      normTrigNested === "\\frac{\\sin(2x)}{1 + \\cos(2x)}",
+    `normalizeMathSyntax accurately converts radical fractions, sqrt(a/b), ln(x)/x, and nested trigonometric denominators`
+  );
+
+  // Verify 2BAC_ECO_TGC resolves official Note 142-08 coefficient 4 & 4h/week
+  const eco2Std = getStandards("2BAC_ECO_TGC");
+  assert(
+    eco2Std.officialCoefficient === 4 && eco2Std.weeklyHours.includes("4"),
+    `getOfficialNote14208TrackStandards resolves 2BAC_ECO_TGC to official coefficient 4 and 4h/week`
+  );
+
+  // Verify buildCustomEvaluationGrid & build2DSpecificationMatrix honor track.cycle and exclude intro lines from Prob-Q items
+  const { buildCustomEvaluationGrid } = await import("./src/utils/evaluationGridExporter.ts");
+  const { build2DSpecificationMatrix } = await import("./src/utils/advancedPedagogicalTools.ts");
+  const tcsGrid = buildCustomEvaluationGrid({
+    track: CURRICULUM_DB["TCS"],
+    sem: "S1",
+    dsKey: "DS1",
+    dmSubType: "DEVOIR_MAISON",
+    dmNumber: "1",
+    activeModule: "DS_142_08",
+    lessons: CURRICULUM_DB["TCS"].semesters.S1.DS1,
+    n1: 45,
+    n2: 40,
+    n3: 15,
+    dsStructureMode: "EXERCICES_ET_PROBLEME",
+  });
+  const tcsProbRow = tcsGrid.exercises[tcsGrid.exercises.length - 1];
+  const tcsSpec = build2DSpecificationMatrix(
+    CURRICULUM_DB["TCS"].semesters.S1.DS1,
+    45,
+    40,
+    15,
+    "EXERCICES_ET_PROBLEME",
+    false,
+    "STANDARD",
+    4,
+    120,
+    "TC"
+  );
+  assert(
+    tcsGrid.totalPoints === 20 &&
+      tcsProbRow.questions.every((q) => !q.questionSnippetFr.includes("ln(x)")) &&
+      tcsProbRow.totalPoints === 8.5 &&
+      tcsSpec.totals.grandTotalPoints === 20,
+    `buildCustomEvaluationGrid and build2DSpecificationMatrix align synthesis problem with TC cycle (no 2BAC ln(x)) and sum to 20.00/20`
+  );
 } catch (e: any) {
   assert(false, `Section 42 test crashed: ${e.message}`);
 }

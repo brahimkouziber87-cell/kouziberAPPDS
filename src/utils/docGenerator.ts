@@ -436,7 +436,9 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
           dsStructureMode,
           isMission,
           dsQuestionDensity,
-          qcmConfig?.questionCount || 4
+          qcmConfig?.questionCount || 4,
+          120,
+          track.cycle
         )
       : null;
 

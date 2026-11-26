@@ -130,8 +130,19 @@ export function buildCustomEvaluationGrid(
     !isMission &&
     (dsStructureMode === "EXERCICES_ET_PROBLEME" ||
       dsStructureMode === "COMPLETE_EXAM_MAROC");
-  const fixedQcmPoints = hasQCM ? Number((Math.min(6, Math.max(2, qcmQuestionCount)) * 1.0).toFixed(2)) : 0;
-  const fixedProblemPoints = hasSynthesisProblem ? 8.5 : 0;
+  const synthProbForBudget = hasSynthesisProblem
+    ? generateMoroccanSynthesisProblem(lessons, modelCode, track.cycle, isMission)
+    : null;
+  const fixedQcmPoints = hasQCM
+    ? Number((Math.min(6, Math.max(2, qcmQuestionCount)) * 1.0).toFixed(2))
+    : 0;
+  const fixedProblemPoints = synthProbForBudget
+    ? Number(
+        synthProbForBudget.parts
+          .reduce((acc, p) => acc + parseFloat(p.partPoints || "2.5"), 0)
+          .toFixed(2)
+      )
+    : 0;
   const exercisesPointBudget = Math.max(
     4,
     20 - fixedQcmPoints - fixedProblemPoints
@@ -416,27 +427,57 @@ export function buildCustomEvaluationGrid(
     });
 
     // 3. إدراج المسألة التوليفية الشاملة في شبكة التقويم إذا كانت مفعلة
-    if (hasSynthesisProblem) {
-      const synthProb = generateMoroccanSynthesisProblem(lessons, modelCode);
+    if (hasSynthesisProblem && synthProbForBudget) {
+      const synthProb = synthProbForBudget;
       const probExNum = currentExNum++;
-      const probWeight = 42.5;
+      const probTotalPts = fixedProblemPoints;
+      const probWeight = Number(((probTotalPts / 20) * 100).toFixed(1));
       let globalProbQIdx = 0;
       const probQuestions: EvaluationQuestionRow[] = synthProb.parts.flatMap(
         (part, pIdx) => {
-          const lvl: "N1" | "N2" | "N3" =
+          const defaultLvl: "N1" | "N2" | "N3" =
             pIdx === 0 ? "N1" : pIdx === 1 ? "N2" : "N3";
           const partPts = parseFloat(part.partPoints || "2.5");
-          const qCountInPart = Math.max(1, part.questionsFr.length);
-          const firstQPts = Number((Math.round((partPts / qCountInPart) * 4) / 4).toFixed(2));
-          return part.questionsFr.map((qFr, qI) => {
-            const qAr = part.questionsAr[qI] || qFr;
-            const qPts =
-              qI === qCountInPart - 1
-                ? Number(Math.max(0.25, partPts - firstQPts * (qCountInPart - 1)).toFixed(2))
-                : firstQPts;
+          const indexedPairs = part.questionsFr.map((qFr, idx) => ({
+            qFr,
+            qAr: part.questionsAr[idx] || qFr,
+          }));
+          const numberedPairs = indexedPairs.filter((pair) =>
+            /^\d+[\.\)]/.test(pair.qFr.trim())
+          );
+          const gradedPairs = numberedPairs.length > 0 ? numberedPairs : indexedPairs;
+          const qCountInPart = Math.max(1, gradedPairs.length);
+
+          // Parse explicit [X pt · N1] tags if present in all graded questions of the part
+          const parsedMeta = gradedPairs.map((pair) => {
+            const ptMatch = pair.qFr.match(/\[(\d+(?:\.\d+)?)\s*(?:pts?|ن)/i);
+            const lvlMatch = pair.qFr.match(/\b(N1|N2|N3)\b/);
+            return {
+              explicitPts: ptMatch ? parseFloat(ptMatch[1]) : null,
+              lvl: (lvlMatch ? lvlMatch[1] : defaultLvl) as "N1" | "N2" | "N3",
+            };
+          });
+          const allHaveExplicitPts = parsedMeta.every(
+            (m) => m.explicitPts !== null && !Number.isNaN(m.explicitPts)
+          );
+          const firstQPts = Number(
+            (Math.round((partPts / qCountInPart) * 4) / 4).toFixed(2)
+          );
+
+          return gradedPairs.map(({ qFr, qAr }, qI) => {
+            const lvl = parsedMeta[qI].lvl;
+            const qPts = allHaveExplicitPts
+              ? Number((parsedMeta[qI].explicitPts as number).toFixed(2))
+              : qI === qCountInPart - 1
+              ? Number(
+                  Math.max(0.25, partPts - firstQPts * (qCountInPart - 1)).toFixed(2)
+                )
+              : firstQPts;
             const qNum = ++globalProbQIdx;
-            const cleanAr = qAr.replace(/^\d+[\.\)]\s*/, "").trim();
-            const cleanFr = qFr.replace(/^\d+[\.\)]\s*/, "").trim();
+            const stripBracket = (txt: string) =>
+              txt.replace(/\s*\[[^\]]*(?:pt|pts|ن)[^\]]*\]\s*$/i, "").trim();
+            const cleanAr = stripBracket(qAr.replace(/^\d+[\.\)]\s*/, ""));
+            const cleanFr = stripBracket(qFr.replace(/^\d+[\.\)]\s*/, ""));
             const row: EvaluationQuestionRow = {
               exerciseIndex: exercises.length,
               exerciseNumber: probExNum,
@@ -445,7 +486,7 @@ export function buildCustomEvaluationGrid(
               subCategoryAr: "مسألة توليفية شاملة",
               subCategoryFr: "Problème de Synthèse",
               exerciseWeight: probWeight,
-              exerciseTotalPoints: 8.5,
+              exerciseTotalPoints: probTotalPts,
               questionIndex: qNum - 1,
               questionCode: `Prob-Q${qNum}`,
               questionLabelAr: `م - س${qNum}`,
@@ -487,7 +528,7 @@ export function buildCustomEvaluationGrid(
         subCategoryAr: "مسألة توليفية شاملة",
         subCategoryFr: "Problème de Synthèse",
         weight: probWeight,
-        totalPoints: 8.5,
+        totalPoints: probTotalPts,
         questionCount: probQuestions.length,
         capacitiesAr: [
           "الربط بين التحليل والدوال والمتتاليات والتأويل الهندسي في وضعية مركبة",
