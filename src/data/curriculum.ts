@@ -5777,8 +5777,8 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"],
-            capacitiesAr: ["الدوال الأصلية وحل المعادلات التفاضلية y'=ay+b و y''+ay'+by=0"],
-            capacitiesFr: ["Primitives et résolution de y'=ay+b et y''+ay'+by=0"],
+            capacitiesAr: ["الدوال الأصلية وحل المعادلات التفاضلية $y'=ay+b$ و $y''+ay'+by=0$"],
+            capacitiesFr: ["Primitives et résolution de $y'=ay+b$ et $y''+ay'+by=0$"],
           },
         ],
         DS3: [
@@ -6022,8 +6022,8 @@ export const CURRICULUM_DB: Record<string, TrackData> = {
             subCategory: "تحليل",
             subCategoryFr: "Analyse",
             tags: ["Calculus","تحليل","حساب تكاملي ومعادلات تفاضلية"],
-            capacitiesAr: ["حل المعادلة y'=ay+b والمعادلة y''+ay'+by=0"],
-            capacitiesFr: ["Résoudre les équations différentielles y'=ay+b et y''+ay'+by=0"],
+            capacitiesAr: ["حل المعادلة $y'=ay+b$ والمعادلة $y''+ay'+by=0$"],
+            capacitiesFr: ["Résoudre les équations différentielles $y'=ay+b$ et $y''+ay'+by=0$"],
           },
         ],
         DS2: [

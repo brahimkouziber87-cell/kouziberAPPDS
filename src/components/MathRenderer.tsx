@@ -469,8 +469,8 @@ const MATH_ATOM_SOURCE = `(?:\\b(?:${MATH_FUNC_NAMES})\\s*\\([^()]+\\)|\\b[a-zA-
 // Motif unifié pour détecter les expressions mathématiques implicites non délimitées par $...$
 // Ne capture jamais les mots de prose français ou arabes.
 const IMPLICIT_MATH_TOKEN_SOURCE = [
-  // 1. Commandes LaTeX explicites
-  "\\\\(?:frac|sqrt|lim|int|sum|prod|vec|vect|mathbb|mathrm|mathbf|mathcal|binom|over|left|right|overline|forall|exists|alpha|beta|gamma|delta|Delta|varepsilon|epsilon|lambda|theta|tau|omega|Omega|pi|infty|le|ge|neq|times|cdot|pm|in|notin|subset|cup|cap|to|iff|implies)\\b(?:\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}|\\[[^[\\]]*\\]|_\\{[^{}]*\\}|\\^\\{[^{}]*\\}|_[a-zA-Z0-9]|\\^[a-zA-Z0-9]|[a-zA-Z0-9+\\-*/=<>^_().,]+|\\s+)*",
+  // 1. Commandes LaTeX explicites (y compris les macros pédagogiques marocaines)
+  "\\\\(?:frac|sqrt|lim|int|sum|prod|vec|vect|overrightarrow|mathbb|mathrm|mathbf|mathcal|mathscr|binom|over|left|right|overline|forall|exists|alpha|beta|gamma|delta|Delta|varepsilon|epsilon|lambda|theta|tau|omega|Omega|pi|infty|le|ge|neq|times|cdot|pm|in|notin|subset|cup|cap|to|iff|implies|Cf|Cg|Ch|Df|Dg|Dh|Oij|Ouv|Oijk|Rstarplus|Rstar|Rplus|Rminus|R|Nstar|N|Zstar|Z|Q|Cstar|C|K|dx|dt|du|dy|dz|ds|norme|abs|pscal|intervalleFF|intervalleOO|intervalleFO|intervalleOF|Card|card|pgcd|ppcm|PGCD|PPCM|Arg|conj|systeme)\\b(?:\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}|\\[[^[\\]]*\\]|_\\{[^{}]*\\}|\\^\\{[^{}]*\\}|_[a-zA-Z0-9]|\\^[a-zA-Z0-9]|[a-zA-Z0-9+\\-*/=<>^_().,]+|\\s+)*",
   // 2. Intégrales, sommes et limites complètes (y compris égalités chaînées lim ... = lim ... = f(x₀))
   "(?:\\b[A-Za-z](?:_[0-9a-zA-Z]+)?\\s*=\\s*)?(?:\\blim_\\{[^{}]*\\}|[∫∑∏]_(?:\\{[^{}]*\\}|[^\\s,;:{]+)(?:\\^(?:\\{[^{}]*\\}|[^\\s,;:{]+))?)\\s*(?:\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|\\{[^{}]*\\}|[A-Za-z0-9_^+\\-*/.·√π∞e'₀₁₂₃₄₅₆₇₈₉ₙ₊₋²³⁴⁰⁵⁶⁷⁸⁹⁺⁻]|\\s+(?=(?:\\blim_\\{|\\([^()]+\\)|\\b(?:ln|log|exp|cos|sin|tan|dx|dt|du)\\b|[0-9√π∞=≤≥<>→+\\-]|[A-Za-z](?:_\\{|\\^\\{|[_^0-9'()=≤≥<>→+\\-*/₀₁₂₃₄₅₆₇₈₉ₙ₊₋²³⁴⁰⁵⁶⁷⁸⁹⁺⁻]|\\b))))*(?:\\s*(?:=|≤|≥|<|>|→)\\s*(?:\\blim_\\{[^{}]*\\}\\s*)?[+\\-]?(?:∞|oo|(?:\\{[^{}]*\\}|\\([^()]+\\)|[A-Za-z0-9_^+\\-*/.·√π∞e'₀₁₂₃₄₅₆₇₈₉ₙ₊₋²³⁴⁰⁵⁶⁷⁸⁹⁺⁻])+(?:\\s*[+\\-*/·×]\\s*(?:\\{[^{}]*\\}|\\([^()]+\\)|[A-Za-z0-9_^+\\-*/.·√π∞e'₀₁₂₃₄₅₆₇₈₉ₙ₊₋²³⁴⁰⁵⁶⁷⁸⁹⁺⁻])+)*))*",
   // 3. Repères du plan/espace, courbes et suites entre parenthèses : (O, i⃗, j⃗), (C_f), (u_n)
@@ -490,7 +490,7 @@ const IMPLICIT_MATH_TOKEN_SOURCE = [
 const IMPLICIT_MATH_REGEX = new RegExp(`(${IMPLICIT_MATH_TOKEN_SOURCE})`, "g");
 
 const PURE_LATEX_COMMAND_TRIGGER =
-  /\\(?:lim|frac|sqrt|int|sum|prod|forall|exists|iff|implies|quad|qquad|text|overline|underline|vec|vect|mathbb|mathcal|mathrm|mathbf|binom|begin|left|right|in|notin|subset|cup|cap|le|ge|neq|approx|equiv|times|cdot|pm|to|infty|alpha|beta|gamma|delta|Delta|varepsilon|epsilon|theta|lambda|mu|pi|rho|sigma|tau|phi|omega|Omega|ln|log|exp|cos|sin|tan)\b/;
+  /\\(?:lim|frac|sqrt|int|sum|prod|forall|exists|iff|implies|quad|qquad|text|overline|underline|vec|vect|overrightarrow|mathbb|mathcal|mathscr|mathrm|mathbf|binom|begin|left|right|in|notin|subset|cup|cap|le|ge|neq|approx|equiv|times|cdot|pm|to|infty|alpha|beta|gamma|delta|Delta|varepsilon|epsilon|theta|lambda|mu|pi|rho|sigma|tau|phi|omega|Omega|ln|log|exp|cos|sin|tan|Cf|Cg|Ch|Df|Dg|Dh|Oij|Ouv|Oijk|Rstarplus|Rstar|Rplus|Rminus|R|Nstar|N|Zstar|Z|Q|Cstar|C|K|dx|dt|du|dy|dz|ds|norme|abs|pscal|intervalleFF|intervalleOO|intervalleFO|intervalleOF|Card|card|pgcd|ppcm|PGCD|PPCM|Arg|conj|systeme)\b/;
 
 /**
  * Vérifie si une chaîne sans délimiteurs $...$ est en réalité une formule LaTeX complète

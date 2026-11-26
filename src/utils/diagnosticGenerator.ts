@@ -533,12 +533,12 @@ export function generateMoroccanDiagnosticPaper(
         prerequisiteAr: "التحكم في المتطابقات الهامة الثلاث وتقنيات النشر والتعميل",
         prerequisiteFr: "Maîtrise des trois identités remarquables et de la factorisation",
         questionsAr: [
-          { label: "1.", text: `انشر وبسط التعبير: E = (2x - 3)² - (x + 1)(x - 1).`, points: "2.0 ن" },
-          { label: "2.", text: `عمل التعبير: F = 4x² - 9 + (2x - 3)(x + 4).`, points: "2.0 ن" },
+          { label: "1.", text: `انشر وبسط التعبير: $E = (2x - 3)^2 - (x + 1)(x - 1)$.`, points: "2.0 ن" },
+          { label: "2.", text: `عمل التعبير: $F = 4x^2 - 9 + (2x - 3)(x + 4)$.`, points: "2.0 ن" },
         ],
         questionsFr: [
-          { label: "1.", text: `Développer et réduire : E = (2x - 3)² - (x + 1)(x - 1).`, points: "2.0 pt" },
-          { label: "2.", text: `Factoriser l'expression : F = 4x² - 9 + (2x - 3)(x + 4).`, points: "2.0 pt" },
+          { label: "1.", text: `Développer et réduire : $E = (2x - 3)^2 - (x + 1)(x - 1)$.`, points: "2.0 pt" },
+          { label: "2.", text: `Factoriser l'expression : $F = 4x^2 - 9 + (2x - 3)(x + 4)$.`, points: "2.0 pt" },
         ],
         solutionsAr: [
           `1. E = (4x² - 12x + 9) - (x² - 1) = 4x² - 12x + 9 - x² + 1 = 3x² - 12x + 10.`,

@@ -504,15 +504,6 @@
     margin: 9mm 11mm;
   }
 
-  body.print-portrait,
-  body:not(.print-landscape) {
-    size: A4 portrait;
-  }
-
-  body.print-landscape {
-    size: A4 landscape;
-  }
-
   body.print-landscape .sheet-landscape {
     page: landscape-mode;
   }
@@ -557,7 +548,9 @@
     display: block !important;
   }
 
-  .print-sheet {
+  .print-sheet,
+  .sheet-portrait,
+  .sheet-landscape {
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
@@ -565,6 +558,7 @@
     padding: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    min-height: auto !important;
     overflow: visible !important;
     orphans: 3;
     widows: 3;
@@ -736,6 +730,7 @@
   .katex-display-block {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    overflow: visible !important;
   }
 }
 

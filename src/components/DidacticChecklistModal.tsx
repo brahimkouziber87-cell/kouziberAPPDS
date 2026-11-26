@@ -86,10 +86,15 @@ export const DidacticChecklistModal: React.FC<DidacticChecklistModalProps> = ({
 
   if (!isOpen) return null;
 
-  // فحص النقط بدقة 0.25 ن
-  const exactPoints = computeExactExerciseEffectiveWeights(lessons, 20);
-  const barèmeSum = exactPoints.reduce((acc, p) => acc + p, 0);
-  const isBaremeExact20 = Math.abs(barèmeSum - 20) < 0.05;
+  // فحص النقط بدقة 0.25 ن (تحويل الأوزان المئوية إلى نقط فعلية من 20)
+  const effectiveWeightsPct = computeExactExerciseEffectiveWeights(lessons, totalPoints || 20);
+  const targetMaxPts = totalPoints || 20;
+  const barèmeSum = Number(
+    effectiveWeightsPct
+      .reduce((acc, w) => acc + Math.round(((w / 100) * targetMaxPts) * 4) / 4, 0)
+      .toFixed(2)
+  );
+  const isBaremeExact20 = Math.abs(barèmeSum - targetMaxPts) < 0.05;
 
   // نسب الأطر المرجعية الرسمية والمذكرة الوزارية 142-08 حسب المسلك
   const isScMath = track.code.includes("SM");

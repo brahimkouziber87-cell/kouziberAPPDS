@@ -151,7 +151,7 @@ export function computePrintMediaQueryMetrics(params: {
       : `${widthMm}mm ${heightMm}mm`;
 
   const cssPageRule = `@page { size: ${cssPageSizeValue}; margin: ${marginTopMm}mm ${marginRightMm}mm ${marginBottomMm}mm ${marginLeftMm}mm; }`;
-  const cssMediaPrintBlock = `@media print {\n  ${cssPageRule}\n  .print-sheet { width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; min-height: ${heightMm}mm !important; }\n}`;
+  const cssMediaPrintBlock = `@media print {\n  ${cssPageRule}\n  .print-sheet { width: 100% !important; max-width: ${printableWidthMm}mm !important; min-height: auto !important; }\n}`;
 
   const labelAr =
     params.preset === "A4"

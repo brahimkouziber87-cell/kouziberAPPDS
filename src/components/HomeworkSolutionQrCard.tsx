@@ -187,11 +187,11 @@ export const HomeworkSolutionQrCard: React.FC<HomeworkSolutionQrCardProps> = ({
       dir={isAr ? "rtl" : "ltr"}
       data-homework-qr-id={homeworkId}
       data-homework-verification-pin={verificationCode}
-      className="avoid-break mt-4 border-2 border-emerald-900 rounded-xl bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 p-3.5 shadow-2xs text-slate-900 select-none"
+      className="avoid-break mt-4 border-2 border-emerald-900 rounded-xl bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 p-3.5 shadow-2xs text-slate-900 select-none overflow-hidden max-w-full"
     >
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* مصفوفة رمز QR الفريد الخاص بالفرض المنزلي */}
-        <div className="flex items-center gap-3.5 shrink-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div
             className="relative bg-white p-2 rounded-xl border-2 border-emerald-900 shadow-2xs flex flex-col items-center justify-center"
             title={
@@ -278,9 +278,9 @@ export const HomeworkSolutionQrCard: React.FC<HomeworkSolutionQrCardProps> = ({
         </div>
 
         {/* الجانب الأيسر/الأيمن: الرابط الفريد + أزرار المعاينة والنسخ الفورية (.no-print) */}
-        <div className="flex flex-col items-stretch sm:items-end justify-between gap-2 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-200">
+        <div className="flex flex-col items-stretch sm:items-end justify-between gap-2 w-full sm:w-auto max-w-full min-w-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-200">
           <div
-            className="text-[9px] text-slate-700 font-mono bg-white/90 border border-emerald-300 rounded-lg px-2.5 py-1.5 max-w-[260px] truncate text-left"
+            className="text-[9px] text-slate-700 font-mono bg-white/90 border border-emerald-300 rounded-lg px-2.5 py-1.5 max-w-full sm:max-w-[230px] truncate text-left"
             dir="ltr"
           >
             <div className="flex items-center gap-1 text-[8.5px] font-sans font-bold text-emerald-800 mb-0.5">

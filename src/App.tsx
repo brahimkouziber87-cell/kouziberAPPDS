@@ -6512,9 +6512,13 @@ function AppWorkspace() {
 
     if (isOnly) {
       setOnlyPrintSolutions(true);
+      const resetAfterPrint = () => {
+        setOnlyPrintSolutions(false);
+        window.removeEventListener("afterprint", resetAfterPrint);
+      };
+      window.addEventListener("afterprint", resetAfterPrint, { once: true });
       setTimeout(() => {
         window.print();
-        setTimeout(() => setOnlyPrintSolutions(false), 500);
       }, 150);
     } else {
       setOnlyPrintSolutions(false);

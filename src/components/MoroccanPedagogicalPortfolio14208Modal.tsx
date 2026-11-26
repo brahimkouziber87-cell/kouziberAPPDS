@@ -344,7 +344,7 @@ export const MoroccanPedagogicalPortfolio14208Modal: React.FC<
 
         {/* Navigation Tabs & Live Metrics Strip */}
         <div className="px-5 pt-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5">
+          <div className="flex flex-wrap items-center gap-1.5 pb-2.5">
             <button
               type="button"
               onClick={() => setActiveTab("DEEP_AUDIT_142_08")}
