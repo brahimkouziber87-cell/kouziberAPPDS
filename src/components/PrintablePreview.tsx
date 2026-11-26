@@ -50,7 +50,6 @@ import { MathText } from "./MathRenderer";
 import { SpecMatrix2DInspectorCard } from "./SpecMatrix2DInspectorCard";
 import { InsertedFigure } from "../data/curriculum";
 import {
-  Calculator,
   Code2,
   Compass,
   Image as ImageIcon,
@@ -60,11 +59,7 @@ import {
   Smartphone,
   Sparkles,
   Upload,
-  BrainCircuit,
-  FileArchive,
-  Play,
   QrCode,
-  Terminal,
   Trash2,
 } from "lucide-react";
 import {
@@ -118,12 +113,10 @@ import {
 import type { ReprographicsStudioTabId } from "./ReprographicsAndTeacherStudioModal";
 import {
   PythonAlgorithmPreset,
-  executeSimulatedPython,
 } from "../data/pythonAlgorithms";
 import {
   analyzeFullAnswerWorkspaceRequirement,
   DEFAULT_TCOLORBOX_CONFIG,
-  formatMathTypography,
   getTcolorboxClasses,
   LATEX_PACKAGE_OPTIONS,
   LatexPackageTheme,
@@ -144,11 +137,8 @@ import {
   BAC_CERTIFIED_CURVE_PRESETS,
   buildCustomEvaluationGrid,
   calculateExamTimeBalance,
-  DEFAULT_MOROCCAN_CLASS_ROSTER,
-  exportMassarPronoteGradeSheet,
   GridGranularity,
   MassarStudentEntry,
-  parseMassarPronoteCSV,
   EvalGridCustomConfig142_08,
   applyEvalGridCustomConfigToGridData,
   formatMasteryScaleCheckboxText,
@@ -165,7 +155,6 @@ import {
 } from "../utils/diagnosticGenerator";
 import { buildDiagnosticInteractiveQrUrl } from "../utils/diagnosticAndDynamicSpecMatrixEngine";
 import {
-  build2DSpecificationMatrix,
   generateOMRGridData,
   getTypicalErrorsForLessons,
   ExtendedExamModelCode,

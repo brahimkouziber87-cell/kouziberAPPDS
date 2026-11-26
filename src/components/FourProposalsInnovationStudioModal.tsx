@@ -1,24 +1,16 @@
 import React, { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
-  BookOpen,
   Check,
-  CheckCircle2,
   Copy,
-  Download,
   FilePlus2,
-  FileSpreadsheet,
   HelpCircle,
-  Layers,
   LineChart,
   MousePointerClick,
   QrCode,
-  RefreshCw,
   Search,
   Sparkles,
   Scan,
-  Upload,
-  Users,
   X,
 } from "lucide-react";
 import {

@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ChevronLeft,
   EyeOff,
-  Camera,
   Scan,
 } from "lucide-react";
 import { LessonItem, InsertedFigure } from "../data/curriculum";

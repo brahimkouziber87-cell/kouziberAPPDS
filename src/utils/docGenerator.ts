@@ -29,9 +29,7 @@ import {
 } from "./correctionGenerator";
 import {
   generateCustomCountSerieExercises,
-  getMoroccanLessonMemo,
   MoroccanDMType,
-  MOROCCAN_DM_PRESETS,
 } from "./seriesGenerator";
 import {
   StudentGridStyle,

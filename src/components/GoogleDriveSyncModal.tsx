@@ -4,8 +4,6 @@ import {
   Check,
   CheckCircle2,
   Cloud,
-  CloudCheck,
-  CloudOff,
   CloudUpload,
   Database,
   ExternalLink,
@@ -16,14 +14,8 @@ import {
   RefreshCw,
   RotateCcw,
   Shield,
-  ShieldAlert,
   ShieldCheck,
-  Sparkles,
   Trash2,
-  Unlock,
-  Upload,
-  UserCheck,
-  Wifi,
   X,
   Zap,
 } from "lucide-react";
@@ -31,14 +23,12 @@ import { User } from "firebase/auth";
 import {
   DriveFileItem,
   SETTINGS_FILE_NAME,
-  SyncSettingsPayload,
 } from "../services/googleDrive";
 import {
   isLocalEncryptionEnabled,
   setLocalEncryptionEnabled,
   hasTeacherMasterPin,
   setTeacherMasterPin,
-  verifyTeacherMasterPin,
   runCryptoEngineSelfTest,
 } from "../utils/cryptoStorage";
 

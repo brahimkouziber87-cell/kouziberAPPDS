@@ -1,30 +1,23 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Compass,
-  Box,
-  CircleDot,
   Sparkles,
   Plus,
   Trash2,
   CheckCircle2,
-  Eye,
   Layers,
   Sliders,
   Search,
-  ExternalLink,
-  QrCode,
   X,
   FilePlus2,
   Check,
   Maximize2,
   Grid,
-  MoveHorizontal,
 } from "lucide-react";
 import {
   GeoGebraResource,
   InsertedFigure,
   LessonItem,
-  GEOGEBRA_PRESET_LIBRARY,
 } from "../data/curriculum";
 
 export type GeoGebraCategoryFilter =

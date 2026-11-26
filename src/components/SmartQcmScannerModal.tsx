@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
-  CheckCircle2,
   FileSpreadsheet,
   Printer,
   RefreshCw,
@@ -10,7 +9,6 @@ import {
   Upload,
   UserCheck,
   X,
-  AlertTriangle,
   FileCheck2,
   Sliders,
   Zap,

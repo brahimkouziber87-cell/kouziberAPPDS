@@ -13,7 +13,6 @@ import {
   FolderOpen,
   Laptop,
   Layers,
-  Lock,
   Scale,
   ShieldCheck,
   Sparkles,

@@ -2,27 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   Command,
-  FileDown,
-  Printer,
-  Code2,
-  Sparkles,
-  Layers,
-  Sliders,
-  Scissors,
-  Check,
-  Maximize2,
-  Tv2,
-  Table2,
-  FileText,
-  FileSpreadsheet,
-  Zap,
   ArrowRight,
   X,
-  Compass,
-  GraduationCap,
-  ShieldCheck,
-  RotateCcw,
-  BookOpen,
 } from "lucide-react";
 
 export interface CommandItem {

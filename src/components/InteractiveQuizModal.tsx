@@ -9,9 +9,6 @@ import {
   Clock,
   Compass,
   Copy,
-  Download,
-  ExternalLink,
-  Eye,
   FileCheck2,
   FileSpreadsheet,
   FileText,
@@ -27,9 +24,7 @@ import {
   RotateCcw,
   Sparkles,
   Stethoscope,
-  Timer,
   UserCheck,
-  Users,
   X,
   XCircle,
   Zap,
@@ -44,7 +39,6 @@ import {
   StudentQuizSubmission,
 } from "../utils/quizGenerator";
 import { CURRICULUM_DB } from "../data/curriculum";
-import { formatMathTypography } from "../utils/latexPackagesAndMath";
 import { MathText } from "./MathRenderer";
 
 interface InteractiveQuizModalProps {

@@ -1,21 +1,10 @@
 import React, { useState } from "react";
 import {
-  AlertTriangle,
-  ArrowRight,
   BookOpen,
   Check,
-  CheckCircle2,
   Clock,
-  Compass,
-  Download,
-  FileCode2,
-  FileDown,
-  FileText,
   GraduationCap,
   HeartHandshake,
-  Layers,
-  Printer,
-  RefreshCw,
   Sparkles,
   Target,
   Wand2,
@@ -26,7 +15,6 @@ import {
   LessonItem,
   TrackData,
 } from "../data/curriculum";
-import { MathText } from "./MathRenderer";
 
 export interface RemedialExamModalProps {
   isOpen: boolean;

@@ -96,9 +96,6 @@ export function build2DSpecificationMatrix(
   const exBudget =
     hasQCM || hasProb ? Math.max(4, 20 - fixedQcmPts - fixedProbPts) : 20;
 
-  const totalRawWeight =
-    lessons.reduce((sum, l) => sum + (Number(l.weight) || 0), 0) || 100;
-
   const rows: SpecMatrixRow[] = [];
 
   if (hasQCM) {

@@ -56,7 +56,6 @@ import {
   BUILT_IN_MARGIN_PRESETS,
   VERTICAL_DENSITY_PRESETS,
   saveCustomMarginPresetToStorage,
-  loadCustomMarginPresets,
   DEFAULT_READING_MODE_CONFIG,
   READING_MODE_SCALE_PRESETS,
   READING_MODE_PAPER_TONES,
@@ -80,7 +79,6 @@ import { analyzeFunctionAsymptotesAndCurve } from './src/utils/asymptoteCurveEng
 import {
   buildCustomEvaluationGrid,
   EVAL_GRID_TEMPLATES_142_08,
-  getEvalGridTemplateById,
   createCustomConfigFromTemplate,
   applyEvalGridCustomConfigToGridData,
   formatMasteryScaleCheckboxText,
@@ -116,9 +114,6 @@ import {
 } from './src/utils/lazyFontsLoader.ts';
 import {
   sanitizeTrustedPedagogicalHtml,
-  savePedagogicalRecord,
-  getPedagogicalRecord,
-  computeStorageHealthReport,
 } from './src/utils/pedagogicalIndexedDbEngine.ts';
 import {
   generateStandaloneLessonSummary,

@@ -21,7 +21,6 @@ import {
   Scissors,
   Sliders,
   Sparkles,
-  Trash2,
   Wand2,
   X,
 } from "lucide-react";

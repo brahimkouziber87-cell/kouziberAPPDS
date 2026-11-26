@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import {
-  Activity,
   CheckCircle2,
   Code2,
   Copy,
   Cpu,
-  FileCode2,
   History,
   Layers,
   RefreshCw,

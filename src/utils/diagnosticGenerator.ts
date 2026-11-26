@@ -71,7 +71,6 @@ export function generateMoroccanDiagnosticPaper(
   model: "A" | "B" = "A"
 ): MoroccanDiagnosticPaper {
   const is2Bac = trackCode.startsWith("2BAC") || trackCode.startsWith("TERM_");
-  const is1Bac = trackCode.startsWith("1BAC") || trackCode.startsWith("1ERE_");
   const isTC = trackCode.startsWith("TC") || trackCode.startsWith("2NDE");
   const isMissionTrack =
     trackCode.endsWith("_FR") ||

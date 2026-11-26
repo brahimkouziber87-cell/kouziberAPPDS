@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 export interface MathSymbolItem {
   glyph: string;

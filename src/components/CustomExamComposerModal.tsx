@@ -2,17 +2,12 @@ import React, { useState } from "react";
 import {
   X,
   Layers,
-  Sparkles,
   Check,
   Plus,
   Trash2,
   ArrowUp,
   ArrowDown,
-  Sigma,
   Scale,
-  Shuffle,
-  FileCheck2,
-  Sliders,
 } from "lucide-react";
 import { LessonItem, TrackData } from "../data/curriculum";
 

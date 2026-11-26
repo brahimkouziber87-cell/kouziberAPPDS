@@ -7,7 +7,6 @@ import {
   FileDown,
   FileSpreadsheet,
   Layers,
-  Plus,
   RotateCcw,
   Save,
   Sliders,

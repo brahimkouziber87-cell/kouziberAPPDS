@@ -4,20 +4,14 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  Download,
   Laptop,
-  QrCode,
-  RefreshCw,
   Scan,
   Share2,
   Smartphone,
   Sparkles,
   Tablet,
-  Upload,
   Wifi,
-  WifiOff,
   X,
-  AlertTriangle,
 } from "lucide-react";
 import { renderQrSvgString } from "../utils/qrCodeHelper";
 import { ExamConfigBlueprintJSON } from "../utils/examConfigStorage";

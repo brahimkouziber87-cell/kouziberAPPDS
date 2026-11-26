@@ -4,17 +4,8 @@ import {
   Printer,
   CheckSquare,
   Square,
-  FileText,
-  Layers,
-  ArrowUpDown,
   BookOpen,
-  CheckCircle2,
-  FileCheck2,
   Settings,
-  Sparkles,
-  HelpCircle,
-  Eye,
-  AlertCircle,
 } from "lucide-react";
 import { ExamConfigBlueprintJSON } from "../utils/examConfigStorage";
 import { computeBookletImpositionSpreads } from "../utils/pdfExporter";

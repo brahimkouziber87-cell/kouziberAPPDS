@@ -440,7 +440,6 @@ export function generateFullMoroccanPedagogicalFiche(
  */
 function buildGlobalPlanningMatrix(lesson: LessonItem, totalHours: number): FicheGlobalPlanningSession[] {
   const sessionsCount = Math.min(Math.max(4, Math.round(totalHours / 2)), 8);
-  const title = (lesson.lessonAr || "").toLowerCase();
 
   const matrix: FicheGlobalPlanningSession[] = [];
 
@@ -684,7 +683,6 @@ function buildDetailedSessionScenarios(
   courseSections: FicheCourseSection[],
   introAct: any
 ): DidacticSessionScenario[] {
-  const sessionsCount = Math.min(Math.max(4, Math.round(totalHours / 2)), 6);
   const scenarios: DidacticSessionScenario[] = [];
 
   // الحصة 1: استكشاف وبناء المفاهيم

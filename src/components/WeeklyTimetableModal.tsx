@@ -2,20 +2,15 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   Calendar,
   Clock,
-  Download,
   Plus,
   Trash2,
   X,
   CheckCircle2,
   Sparkles,
   BookOpen,
-  Building2,
-  User,
-  Award,
   RotateCcw,
   FileDown,
   Layers,
-  MapPin,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";

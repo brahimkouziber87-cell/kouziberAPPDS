@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   X,
   Zap,
-  ShieldCheck,
   BrainCircuit,
 } from "lucide-react";
 import {

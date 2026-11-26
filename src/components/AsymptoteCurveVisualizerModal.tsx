@@ -6,13 +6,9 @@ import {
   Copy,
   Check,
   Sparkles,
-  TrendingUp,
-  Sliders,
-  CheckCircle2,
 } from "lucide-react";
 import {
   analyzeFunctionAsymptotesAndCurve,
-  AsymptoteSpec,
 } from "../utils/asymptoteCurveEngine";
 
 export interface AsymptoteCurveVisualizerModalProps {

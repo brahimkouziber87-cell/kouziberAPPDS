@@ -1,22 +1,10 @@
 import React, { useState } from "react";
 import {
-  Award,
-  BookOpen,
-  CheckCircle2,
-  Copy,
-  Download,
-  FileDown,
-  GraduationCap,
   HeartHandshake,
-  Layers,
   Printer,
-  QrCode,
-  RefreshCw,
-  Sparkles,
   Target,
   UserCheck,
   X,
-  AlertTriangle,
 } from "lucide-react";
 import { renderQrSvgString } from "../utils/qrCodeHelper";
 import { DEFAULT_MOROCCAN_CLASS_ROSTER } from "../utils/evaluationGridExporter";

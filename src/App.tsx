@@ -12,7 +12,6 @@ import {
   AlertTriangle,
   Award,
   BookOpen,
-  CalendarRange,
   Calculator,
   Check,
   CheckCircle2,
@@ -34,17 +33,13 @@ import {
   Filter,
   FolderOpen,
   GraduationCap,
-  Highlighter,
   Layers,
   LayoutTemplate,
   Link2,
-  LogOut,
   MapPin,
-  Menu,
   Mic,
   PenLine,
   Percent,
-  Plus,
   Printer,
   QrCode,
   RectangleHorizontal,
@@ -55,7 +50,6 @@ import {
   Scale,
   School,
   Sliders,
-  Smartphone,
   Sparkles,
   Stethoscope,
   Table2,
@@ -68,7 +62,6 @@ import {
   ZoomIn,
   ZoomOut,
   Scissors,
-  Tv2,
   TrendingUp,
   Star,
   Split,
@@ -90,11 +83,9 @@ import {
   EducationSystem,
   ExamModel,
   ExportFormat,
-  FRENCH_COMPETENCIES,
   GEOGEBRA_PRESET_LIBRARY,
   generateMoroccanSynthesisProblem,
   GeoGebraResource,
-  getAutoGeoGebraResourceForLesson,
   getLessonBadgeColor,
   getLessonTags,
   getQuestionBaremesAndLevels,
@@ -156,10 +147,8 @@ import {
 } from "./utils/pdfExporter";
 import {
   buildCustomEvaluationGrid,
-  DEFAULT_MOROCCAN_CLASS_ROSTER,
   exportEvaluationGridToCSV,
   exportEvaluationGridToExcel,
-  exportMassarPronoteGradeSheet,
   GridGranularity,
   EvalGridCustomConfig142_08,
   createCustomConfigFromTemplate,
@@ -192,7 +181,6 @@ import {
 import { TeacherLogo, TeacherLogoVariant } from "./components/TeacherLogo";
 import { TopNavigationHeader } from "./components/TopNavigationHeader";
 import { OfflineStatusBanner } from "./components/OfflineStatusBanner";
-import { MathSymbolPaletteBar } from "./components/MathSymbolPaletteBar";
 import {
   DocumentVoiceDictationStudio,
   InlineVoiceDictationButton,
@@ -243,7 +231,6 @@ import {
 import type { CentralHubTabId } from "./components/CentralFirebaseExamsAndTexStudioModal";
 import {
   cleanLatexDocument,
-  SAMPLE_DIRTY_LATEX_WITH_CONFLICTS,
 } from "./utils/latexPreambleAndSymbolCleaner";
 import {
   PrintLayoutTemplateId,
@@ -260,7 +247,6 @@ import {
 } from "./utils/printLayoutTemplates";
 import {
   ExerciseSolutionQrMap,
-  initializeExerciseSolutionQrs,
 } from "./utils/exerciseSolutionQrEngine";
 import type { CommandItem } from "./components/CommandPaletteModal";
 import {
@@ -280,15 +266,10 @@ import {
   initAuth,
   listSavedDriveDocuments,
   logout,
-  SETTINGS_FILE_NAME,
   syncSettingsToDrive,
   SyncSettingsPayload,
   uploadDocumentToDrive,
 } from "./services/googleDrive";
-import {
-  isLocalEncryptionEnabled,
-  setLocalEncryptionEnabled,
-} from "./utils/cryptoStorage";
 import {
   DEFAULT_LONGITUDINAL_COHORT_CONFIG,
   DifferentiatedPathConfig,
@@ -303,7 +284,6 @@ import type { MathInspectorStudioTabId } from "./components/MathTeacherInspector
 import type { InnovationProposalTabId } from "./components/FourProposalsInnovationStudioModal";
 import type { StrategicProposalTabId } from "./components/SevenStrategicProposalsModal";
 import { PedagogicalStudioProvider } from "./context/PedagogicalStudioContext";
-import { buildPedagogicalDomainStoreSnapshot } from "./utils/sevenStrategicProposalsEngine";
 import {
   BindingAndCropConfig,
   DEFAULT_BINDING_AND_CROP_CONFIG,

@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import {
-  BookOpen,
   Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Crop,
   Eye,
   EyeOff,
@@ -14,14 +12,11 @@ import {
   FileText,
   FileUp,
   Highlighter,
-  Layers,
   Loader2,
   MousePointerClick,
   PlusCircle,
-  RefreshCw,
   Sparkles,
   Trash2,
-  Wand2,
   ZoomIn,
   ZoomOut,
   Scissors,

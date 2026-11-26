@@ -1,19 +1,8 @@
 import React, { useMemo, useState } from "react";
 import {
-  AlertTriangle,
-  ArrowLeftRight,
-  BarChart3,
-  BookOpen,
   CheckCircle2,
   Columns,
-  Diff,
-  Download,
-  Eye,
-  FileCheck2,
-  Layers,
-  Percent,
   Scale,
-  Sparkles,
   Split,
   X,
 } from "lucide-react";

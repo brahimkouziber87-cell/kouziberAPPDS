@@ -2384,8 +2384,6 @@ export function generateMoroccanQCMExercise(
   const isModelA = model === "A" || model === "C";
   const l0 = lessons[0]?.lessonAr || "التحليل والدوال";
   const l0Fr = lessons[0]?.lessonFr || "Analyse et Fonctions";
-  const l1 = lessons[1]?.lessonAr || l0;
-  const l1Fr = lessons[1]?.lessonFr || l0Fr;
 
   const scoringMode: QCMScoringMode = config?.scoringMode || "JUSTIFICATION_REQUIRED";
   const requestedCount = Math.min(6, Math.max(2, config?.questionCount || 4));
@@ -3589,7 +3587,6 @@ export function getSerieAndDMExercises(
   const cap1Fr = lesson.capacitiesFr[1] || cap0Fr;
   const subCat = lesson.subCategory || "تحليل";
   const titleFr = lesson.lessonFr.toLowerCase();
-  const totalLessonPts = ((lesson.weight * 20) / 100).toFixed(1);
   const partAPts = (((lesson.weight * 20) / 100) * 0.25).toFixed(1);
   const partBPts = (((lesson.weight * 20) / 100) * 0.45).toFixed(1);
   const partCPts = (((lesson.weight * 20) / 100) * 0.30).toFixed(1);

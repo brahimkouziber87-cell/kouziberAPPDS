@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   X,
   QrCode,
@@ -6,13 +6,9 @@ import {
   Link2,
   ExternalLink,
   Check,
-  Layers,
   Smartphone,
-  Eye,
-  Settings2,
   FileText,
   Compass,
-  Video,
   Copy,
   Info,
   CheckCircle2,
@@ -20,7 +16,6 @@ import {
 import {
   ExerciseSolutionQrConfig,
   ExerciseSolutionQrMap,
-  ExerciseQrTargetType,
   ExerciseQrBadgePosition,
   ExerciseQrBadgeSize,
   buildExerciseSolutionUrl,

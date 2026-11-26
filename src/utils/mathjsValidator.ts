@@ -1819,7 +1819,6 @@ export function generateSignTableAndDomainData(
     const k = criticalPoints.length;
     const width = 620;
     const labelColW = 155;
-    const contentW = width - labelColW - 20;
     const rowH = 42;
     const rowsCount = hasDenominator ? 4 : 2;
     const height = 24 + rowsCount * rowH;

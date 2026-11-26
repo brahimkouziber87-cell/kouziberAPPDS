@@ -1,10 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
   Bookmark,
-  BookmarkCheck,
-  Check,
-  Download,
-  Filter,
   Layers,
   Play,
   Plus,

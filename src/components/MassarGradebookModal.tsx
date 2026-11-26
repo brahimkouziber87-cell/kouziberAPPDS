@@ -3,18 +3,10 @@ import {
   X,
   FileSpreadsheet,
   Download,
-  Upload,
-  UserCheck,
   AlertTriangle,
   Award,
-  CheckCircle2,
-  TrendingDown,
   TrendingUp,
-  FileText,
-  Printer,
   Sparkles,
-  ShieldCheck,
-  Search,
 } from "lucide-react";
 import { LessonItem, TrackData } from "../data/curriculum";
 

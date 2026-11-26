@@ -13,7 +13,6 @@ import {
   Scissors,
   Layers,
   Sparkles,
-  CheckCircle2,
   PenTool,
   ZoomIn,
   ZoomOut,

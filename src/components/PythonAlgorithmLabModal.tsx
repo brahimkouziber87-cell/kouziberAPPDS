@@ -7,12 +7,9 @@ import {
   Copy,
   Terminal,
   BookOpen,
-  Sparkles,
   FileCode,
-  Layers,
   HelpCircle,
   PlusCircle,
-  Download,
 } from "lucide-react";
 import {
   PYTHON_ALGORITHMS_BANK,

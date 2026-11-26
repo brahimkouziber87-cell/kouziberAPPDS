@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { InsertedFigure } from "../data/curriculum";
 import {
-  formatMathTypography,
   WOLFRAM_HIGH_SCHOOL_PRESETS,
   WolframPresetItem,
 } from "../utils/latexPackagesAndMath";
