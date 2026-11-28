@@ -51,6 +51,42 @@ const ARABIC_SUB_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
 const FRENCH_SUB_LABELS = ["a", "b", "c", "d", "e", "f"];
 
 /**
+ * يزيل الترقيم الرقمي أو الحرفي المكرر في بداية نص السؤال عند عرضه داخل قائمة مرقمة آلياً (<ol> / enumerate / +).
+ */
+export function stripLeadingQuestionIndex(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(
+      /^(\s*(?:(?:Partie|الجزء)\s+[IVX123الأولثانيثالث]+[^:：]*[:：]\s*)?)(?:\d+|[\u0660-\u0669]+)[\.\)\-]\s*(?:(?:[a-dA-D]|[أبجد])[\)\.\-]\s+)?/i,
+      "$1"
+    )
+    .replace(/^\s*(?:[a-dA-D]|[أبجد])[\)\.\-]\s+/, "")
+    .trim();
+}
+
+function stripMathParensForSubLabelCheck(text: string): string {
+  let res = text;
+  for (let i = 0; i < 3; i++) {
+    const next = res.replace(/\([^()]*\)/g, " ");
+    if (next === res) break;
+    res = next;
+  }
+  return res;
+}
+
+function cleanSubQuestionPrefixAr(text: string): string {
+  return (text || "")
+    .replace(/^\s*(?:(?:(?:\d+|[\u0660-\u0669]+)[\.\)\-]\s*)?(?:أ|ب|ج|د)[\)\.\-]\s+)+/, "")
+    .trim();
+}
+
+function cleanSubQuestionPrefixFr(text: string): string {
+  return (text || "")
+    .replace(/^\s*(?:(?:\d+[\.\)\-]\s*)?[a-d][\)\.\-]\s+)+/i, "")
+    .trim();
+}
+
+/**
  * توزيع نقطة السؤال الرئيسي على الأسئلة الفرعية (أ، ب، ج) بحيث يساوي المجموع نقطة السؤال الأصلية تماماً
  */
 export function distributeParentPointsAcrossSubQuestions(
@@ -123,12 +159,16 @@ export function decomposeQuestionIntoSubQuestions(params: {
 
   const rawCleanAr = (questionAr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
   const rawCleanFr = (questionFr || "").replace(/^\s*\d+[\.\)\-]\s*/, "").trim();
+  const maskedAr = stripMathParensForSubLabelCheck(rawCleanAr);
+  const maskedFr = stripMathParensForSubLabelCheck(rawCleanFr);
   const hasMultipleExplicitAr =
-    rawCleanAr.split(/(?:^|\s+)(?:أ|ب|ج|د)[\)\-\.]\s+/).filter(Boolean).length >= 2 &&
-    /(?:^|\s+)أ[\)\-\.]\s+/.test(rawCleanAr);
+    maskedAr.split(/(?:^|\s+|[.:؛—–]\s*)(?:أ|ب|ج|د)[\)\-\.]\s+/).filter(Boolean).length >= 2 &&
+    /(?:^|\s+|[.:؛—–]\s*)أ[\)\-\.]\s+/.test(maskedAr) &&
+    /(?:^|\s+|[.:؛—–]\s*)ب[\)\-\.]\s+/.test(maskedAr);
   const hasMultipleExplicitFr =
-    rawCleanFr.split(/(?:^|\s+)(?:a|b|c|d)[\)\.]\s+/i).filter(Boolean).length >= 2 &&
-    /(?:^|\s+)a[\)\.]\s+/i.test(rawCleanFr);
+    maskedFr.split(/(?:^|\s+|[.:;—–]\s*)(?:a|b|c|d)[\)\.]\s+/i).filter(Boolean).length >= 2 &&
+    /(?:^|\s+|[.:;—–]\s*)a[\)\.]\s+/i.test(maskedFr) &&
+    /(?:^|\s+|[.:;—–]\s*)b[\)\.]\s+/i.test(maskedFr);
   const cleanAr = hasMultipleExplicitAr
     ? rawCleanAr
     : rawCleanAr.replace(/^\s*(?:أ|ب|ج|د)[\)\-\.]\s+/, "").trim();
@@ -150,16 +190,20 @@ export function decomposeQuestionIntoSubQuestions(params: {
   }
 
   // 1. فحص ما إذا كان النص يحتوي صراحة على ترقيم فرعي مسبق مثل "أ)" و "ب)" أو "a)" و "b)"
-  const explicitArParts = cleanAr
-    .split(/(?:^|\s+)(?:أ|ب|ج|د)[\)\-\.]\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const explicitFrParts = cleanFr
-    .split(/(?:^|\s+)(?:a|b|c|d)[\)\.]\s+/i)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const explicitArParts = hasMultipleExplicitAr
+    ? cleanAr
+        .split(/(?:^|\s+|[.:؛—–]\s*)(?:أ|ب|ج|د)[\)\-\.]\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  const explicitFrParts = hasMultipleExplicitFr
+    ? cleanFr
+        .split(/(?:^|\s+|[.:;—–]\s*)(?:a|b|c|d)[\)\.]\s+/i)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
 
-  if (explicitArParts.length >= 2 && cleanAr.match(/(?:^|\s+)أ[\)\-\.]\s+/)) {
+  if (hasMultipleExplicitAr && explicitArParts.length >= 2 && cleanAr.match(/(?:^|\s+|[.:؛—–]\s*)أ[\)\-\.]\s+/)) {
     const hasLeadingStem = !/^\s*أ[\)\-\.]/.test(cleanAr);
     const stemAr = hasLeadingStem ? explicitArParts[0] : "";
     const rawSubsAr = hasLeadingStem ? explicitArParts.slice(1) : explicitArParts;
@@ -181,8 +225,8 @@ export function decomposeQuestionIntoSubQuestions(params: {
       (_, idx) => {
         const subLvl: "N1" | "N2" | "N3" =
           idx === 0 ? "N1" : idx === subCount - 1 ? parentLevel : "N2";
-        const tAr = rawSubsAr[idx] || rawSubsAr[rawSubsAr.length - 1] || cleanAr;
-        const tFr = rawSubsFr[idx] || rawSubsFr[rawSubsFr.length - 1] || cleanFr;
+        const tAr = cleanSubQuestionPrefixAr(rawSubsAr[idx] || rawSubsAr[rawSubsAr.length - 1] || cleanAr);
+        const tFr = cleanSubQuestionPrefixFr(rawSubsFr[idx] || rawSubsFr[rawSubsFr.length - 1] || cleanFr);
         const estMin = Math.max(
           2,
           Math.round(estimateSingleTaskMinutes(tAr, tFr, subLvl) * 0.65)
@@ -228,12 +272,12 @@ export function decomposeQuestionIntoSubQuestions(params: {
   );
 
   if (compoundSplitAr.length >= 2) {
-    const part1Ar = compoundSplitAr[0].replace(/[،.؛]+$/, "").trim();
-    const part2Ar = `استنتج ${compoundSplitAr.slice(1).join(" ثم ").trim()}`;
-    const part1Fr = (compoundSplitFr[0] || cleanFr).replace(/[,.;]+$/, "").trim();
+    const part1Ar = cleanSubQuestionPrefixAr(compoundSplitAr[0].replace(/[،.؛]+$/, ""));
+    const part2Ar = cleanSubQuestionPrefixAr(`استنتج ${compoundSplitAr.slice(1).join(" ثم ").trim()}`);
+    const part1Fr = cleanSubQuestionPrefixFr((compoundSplitFr[0] || cleanFr).replace(/[,.;]+$/, ""));
     const part2Fr =
       compoundSplitFr.length >= 2
-        ? `En déduire ${compoundSplitFr.slice(1).join(" puis ").trim()}`
+        ? cleanSubQuestionPrefixFr(`En déduire ${compoundSplitFr.slice(1).join(" puis ").trim()}`)
         : "En déduire le résultat algébrique ou géométrique correspondant.";
 
     const subPts = distributeParentPointsAcrossSubQuestions(safeParentPts, 2);
@@ -861,18 +905,20 @@ export interface LessonDsCoverageStatus {
   badgeTextAr: string;
   badgeTextFr: string;
   badgeColorClass: string;
-  appearedInDsKeys: Array<"DS1" | "DS2" | "DS3">;
+  appearedInDsKeys: Array<"DS1" | "DS2" | "DS3" | "DS4">;
   officialWeightInFirstMatch?: number;
 }
 
 export function getLessonEvaluationHistoryAcrossDS(
   trackCode: string,
   semester: SemesterType,
-  currentDsKey: "DS1" | "DS2" | "DS3" | string,
+  currentDsKey: "DS1" | "DS2" | "DS3" | "DS4" | string,
   lessonFr: string
 ): LessonDsCoverageStatus {
-  const normalizedDsKey: "DS1" | "DS2" | "DS3" =
-    currentDsKey === "DS2" || currentDsKey === "DS3" ? currentDsKey : "DS1";
+  const normalizedDsKey: "DS1" | "DS2" | "DS3" | "DS4" =
+    currentDsKey === "DS2" || currentDsKey === "DS3" || currentDsKey === "DS4"
+      ? currentDsKey
+      : "DS1";
   const track = CURRICULUM_DB[trackCode];
   if (!track) {
     return {
@@ -895,10 +941,10 @@ export function getLessonEvaluationHistoryAcrossDS(
     };
   }
 
-  const appearedInDsKeys: Array<"DS1" | "DS2" | "DS3"> = [];
+  const appearedInDsKeys: Array<"DS1" | "DS2" | "DS3" | "DS4"> = [];
   let officialWeightInFirstMatch: number | undefined;
 
-  (["DS1", "DS2", "DS3"] as const).forEach((dsK) => {
+  (["DS1", "DS2", "DS3", "DS4"] as const).forEach((dsK) => {
     const found = (semData[dsK] || []).find((l) => l.lessonFr === lessonFr);
     if (found) {
       appearedInDsKeys.push(dsK);
@@ -919,10 +965,11 @@ export function getLessonEvaluationHistoryAcrossDS(
     };
   }
 
-  const dsOrder: Record<"DS1" | "DS2" | "DS3", number> = {
+  const dsOrder: Record<"DS1" | "DS2" | "DS3" | "DS4", number> = {
     DS1: 1,
     DS2: 2,
     DS3: 3,
+    DS4: 4,
   };
   const currentOrd = dsOrder[normalizedDsKey];
   const prevDs = appearedInDsKeys.filter((k) => dsOrder[k] < currentOrd);

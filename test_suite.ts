@@ -3504,6 +3504,134 @@ try {
   assert(false, `Section 42 test crashed: ${e.message}`);
 }
 
+// =========================================================================
+// 43. REALISTIC FULL-CURRICULUM DS CREATION SIMULATION (ALL 19 TRACKS)
+// =========================================================================
+console.log("\n--- 43. Testing Realistic DS Creation Across All 19 Tracks, Semesters, & Structure Modes ---");
+try {
+  const {
+    decomposeQuestionIntoSubQuestions,
+    getLessonEvaluationHistoryAcrossDS,
+    stripLeadingQuestionIndex,
+  } = await import("./src/utils/dsSupervisedExamEnhancements.ts");
+  const { buildCustomEvaluationGrid } = await import("./src/utils/evaluationGridExporter.ts");
+
+  let duplicateDsExercises = 0;
+  let syllabusLeaks = 0;
+  let literal1x2Count = 0;
+  let totalDsChecked = 0;
+
+  for (const [trackCode, track] of Object.entries(CURRICULUM_DB)) {
+    for (const sem of ["S1", "S2"] as const) {
+      for (const [dsKey, lessons] of Object.entries(track.semesters[sem])) {
+        totalDsChecked++;
+        const seenSignatures = new Set<string>();
+        for (const lesson of lessons) {
+          const { questionsAr, questionsFr } = getVariantQuestions(lesson, "A", false, 0, "INTENSIVE");
+          const sig = questionsFr.join(" || ");
+          if (seenSignatures.has(sig)) duplicateDsExercises++;
+          seenSignatures.add(sig);
+
+          const allFr = questionsFr.join(" ");
+          if (/\b1x²|\b1x\s*-\s*1\s*\+\s*ln/i.test(allFr)) literal1x2Count++;
+
+          if (track.cycle === "TC") {
+            if (/Card\(Ω\)|probabilit|produit vectoriel|∧|\bln\b|e\^x|bijection|récurrence/i.test(allFr)) {
+              syllabusLeaks++;
+            }
+            if (sem === "S1" && /produit scalaire/i.test(allFr)) {
+              syllabusLeaks++;
+            }
+          }
+          if (track.cycle === "1BAC") {
+            const isSetApps = lesson.lessonFr.toLowerCase().includes("ensembles et applications");
+            if (
+              /Card\(Ω\)|probabilit|variable aléatoire|\bln\b|e\^x|u\^\{-1\}/i.test(allFr) ||
+              (!isSetApps && /bijection/i.test(allFr))
+            ) {
+              syllabusLeaks++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert(
+    duplicateDsExercises === 0,
+    `Realistic DS simulation across ${totalDsChecked} DS slots (19 tracks): 0 duplicate exercises within any DS`
+  );
+  assert(
+    syllabusLeaks === 0 && literal1x2Count === 0,
+    `Realistic DS simulation (STANDARD & INTENSIVE): 0 out-of-syllabus leaks across TC/1BAC and 0 literal "1x²" typos`
+  );
+
+  // Verify (c - a)/(b - a) math parens do not produce "a) a)" double sub-labels
+  const decompComplex = decomposeQuestionIntoSubQuestions({
+    questionAr: "2. أ) أكتب العدد العقدي (c - a)/(b - a) على الشكل الجبري ثم المثلثي، واستنتج طبيعة المثلث ABC.",
+    questionFr: "2. a) Écrire le quotient (c - a)/(b - a) sous forme trigonométrique et en déduire la nature exacte du triangle ABC.",
+    parentPoints: 2,
+    parentLevel: "N2",
+    mode: "AUTO_DETECT_ONLY",
+    questionIndex: 2,
+  });
+  assert(
+    decompComplex.isDecomposed &&
+      !decompComplex.subQuestions[0].textFr.startsWith("a)") &&
+      !decompComplex.subQuestions[0].textAr.startsWith("أ)") &&
+      stripLeadingQuestionIndex("2. a) Calculer f'(x).") === "Calculer f'(x).",
+    `decomposeQuestionIntoSubQuestions protects (c - a)/(b - a) from false sub-label split & stripLeadingQuestionIndex cleans prefixes`
+  );
+
+  // Verify DS4 is supported for 2BAC_SM & 1BAC_SM
+  const sm2Ds4Lesson = CURRICULUM_DB["2BAC_SM"].semesters.S1.DS4[0];
+  const ds4History = getLessonEvaluationHistoryAcrossDS("2BAC_SM", "S1", "DS4", sm2Ds4Lesson.lessonFr);
+  assert(
+    ds4History.status === "OFFICIAL_IN_CURRENT_DS" &&
+      ds4History.appearedInDsKeys.includes("DS4") &&
+      ds4History.badgeTextAr.includes("DS4"),
+    `getLessonEvaluationHistoryAcrossDS accurately recognizes DS4 for 2BAC_SM (${ds4History.badgeTextAr})`
+  );
+
+  // Verify buildCustomEvaluationGrid includes Synthesis Problem for EXAMEN_BLANC_2BAC and MISSION_FRANCAISE
+  const blancGrid = buildCustomEvaluationGrid({
+    track: CURRICULUM_DB["2BAC_PC"],
+    sem: "S2",
+    dsKey: "DS3",
+    dmSubType: "DEVOIR_MAISON",
+    dmNumber: "1",
+    activeModule: "DS_142_08",
+    lessons: CURRICULUM_DB["2BAC_PC"].semesters.S2.DS3,
+    n1: 35,
+    n2: 45,
+    n3: 20,
+    dsStructureMode: "EXAMEN_BLANC_2BAC",
+  });
+  const missionProbGrid = buildCustomEvaluationGrid({
+    track: CURRICULUM_DB["TERM_SPE_FR"],
+    sem: "S1",
+    dsKey: "DS2",
+    dmSubType: "DEVOIR_MAISON",
+    dmNumber: "1",
+    activeModule: "DS_142_08",
+    lessons: CURRICULUM_DB["TERM_SPE_FR"].semesters.S1.DS2,
+    n1: 30,
+    n2: 45,
+    n3: 25,
+    dsStructureMode: "EXERCICES_ET_PROBLEME",
+    isMission: true,
+  });
+  assert(
+    blancGrid.totalPoints === 20 &&
+      blancGrid.exercises.some((e) => e.totalPoints === 8.5) &&
+      missionProbGrid.totalPoints === 20 &&
+      missionProbGrid.exercises.some((e) => e.totalPoints === 8.5),
+    `buildCustomEvaluationGrid syncs 8.5pt Synthesis Problem & 20.00/20 total for EXAMEN_BLANC_2BAC and MISSION_FRANCAISE`
+  );
+} catch (e: any) {
+  assert(false, `Section 43 realistic DS test crashed: ${e.message}`);
+}
+
 console.log("\n=================================================");
 console.log(`=== TEST SUMMARY: ${passCount} PASSED, ${failCount} FAILED ===`);
 console.log("=================================================");

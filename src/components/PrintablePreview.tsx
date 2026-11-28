@@ -96,6 +96,7 @@ import { MemoizedDualModelABComparisonView } from "../context/PedagogicalStudioC
 import type { StrategicProposalTabId } from "./SevenStrategicProposalsModal";
 import {
   decomposeQuestionIntoSubQuestions,
+  stripLeadingQuestionIndex,
   SubQuestionDecompositionMode,
 } from "../utils/dsSupervisedExamEnhancements";
 import {
@@ -6097,7 +6098,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                                 >
                                                   <div>
                                                     <span className="font-mono font-extrabold text-indigo-950 mr-1.5">
-                                                      {sub.labelFr})
+                                                      {`${sub.labelFr}) `}
                                                     </span>
                                                     <MathText text={sub.textFr} />
                                                   </div>
@@ -6112,7 +6113,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                           </>
                                         ) : (
                                           <>
-                                            <span><MathText text={q} /></span>
+                                            <span><MathText text={stripLeadingQuestionIndex(q)} /></span>
                                             {showQuestionBareme && meta && (
                                               <span className="inline-block ml-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
                                                 [{meta.points} pt · {meta.level}]
@@ -6206,7 +6207,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                                 >
                                                   <div>
                                                     <span className="font-mono font-extrabold text-indigo-950 ml-1.5">
-                                                      {sub.labelAr})
+                                                      {`${sub.labelAr}) `}
                                                     </span>
                                                     <MathText text={sub.textAr} />
                                                   </div>
@@ -6221,7 +6222,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                           </>
                                         ) : (
                                           <>
-                                            <span><MathText text={q} /></span>
+                                            <span><MathText text={stripLeadingQuestionIndex(q)} /></span>
                                             {showQuestionBareme && meta && (
                                               <span className="inline-block mr-2 font-mono text-[10.5px] font-bold text-indigo-900 tabular-nums">
                                                 [{meta.points} ن · {meta.level}]
@@ -6526,7 +6527,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                           >
                                             <div>
                                               <span className="font-mono font-black text-indigo-950 mx-1">
-                                                {isFr ? `${sub.labelFr})` : `${sub.labelAr})`}
+                                                {isFr ? `${sub.labelFr}) ` : `${sub.labelAr}) `}
                                               </span>
                                               <MathText
                                                 text={isFr ? sub.textFr : sub.textAr}
@@ -6537,7 +6538,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                                   className="text-left text-slate-600 italic text-[11px] mt-0.5 pl-3"
                                                 >
                                                   <span className="font-mono font-bold mr-1">
-                                                    {sub.labelFr})
+                                                    {`${sub.labelFr}) `}
                                                   </span>
                                                   <MathText text={sub.textFr} />
                                                 </div>
@@ -6560,7 +6561,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                           {prefix && (
                                             <span className="font-semibold">{prefix}</span>
                                           )}
-                                          <MathText text={q} />
+                                          <MathText text={stripLeadingQuestionIndex(q)} />
                                         </span>
                                         {showQuestionBareme && meta && (
                                           <span className="inline-block mx-2 font-mono text-[11px] font-bold text-indigo-900 tabular-nums">
@@ -6573,7 +6574,7 @@ export const PrintablePreview: React.FC<PrintablePreviewProps> = React.memo(({
                                           dir="ltr"
                                           className="text-left text-slate-600 italic mt-0.5 pl-4"
                                         >
-                                          <MathText text={questionsFr[qIdx]} />
+                                          <MathText text={stripLeadingQuestionIndex(questionsFr[qIdx])} />
                                         </div>
                                       )}
                                     </>

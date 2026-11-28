@@ -69,6 +69,7 @@ import {
 } from "./qrCodeHelper";
 import {
   decomposeQuestionIntoSubQuestions,
+  stripLeadingQuestionIndex,
   SubQuestionDecompositionMode,
 } from "./dsSupervisedExamEnhancements";
 
@@ -637,7 +638,7 @@ export function generateOfflineSourceCode(params: GeneratorParams): string {
                             : `[${gridStyleBadge}] ${wsSpec.taskBadgeAr} (${wsSpec.recommendedLines} أسطر — ${wsSpec.methodStepsAr.join(" · ")})`
                         }]]`
                       : "";
-                    return `+ ${q}${wsTypst}`;
+                    return `+ ${stripLeadingQuestionIndex(q)}${wsTypst}`;
                   })
                   .join("\n")
             )
@@ -768,12 +769,19 @@ ${activeQuestions
             : `[${gridStyleBadge}] ${wsSpec.taskBadgeAr} · ${wsSpec.recommendedLines} أسطر (${meta?.level || "N1"}) — ${wsSpec.methodStepsAr.join(" | ")}`
         }]]`
       : "";
+    const itemMainText =
+      decomp && decomp.isDecomposed && decomp.subQuestions.length > 1
+        ? (isMission || isPureFr ? decomp.stemFr : decomp.stemAr) ||
+          (isMission || isPureFr
+            ? "Répondre méthodiquement aux sous-questions suivantes :"
+            : "أجب عن الأسئلة الفرعية التالية بتدرج منهجي:")
+        : stripLeadingQuestionIndex(q);
     return `+ ${
       fillBlanks && idx === 0 && qIdx === 0
         ? isMission || isPureFr
-          ? `_(Preuve guidée à trous)_ ${q}`
-          : `_(برهان موجه بملء الفراغات)_ ${q}`
-        : q
+          ? `_(Preuve guidée à trous)_ ${itemMainText}`
+          : `_(برهان موجه بملء الفراغات)_ ${itemMainText}`
+        : itemMainText
     }${baremeSuffix}${subItemsTypst}${workspaceTypst}`;
   })
   .join("\n")}${ggbTypst}${
@@ -1579,7 +1587,7 @@ ${
                         isMission || isPureFr ? "lignes" : "أسطر"
                       }]}\\vspace{${wsSpec.heightCmLatex}}}}\\vspace{0.12cm}`
                     : "";
-                  return `  \\item ${q}${wsLatex}`;
+                  return `  \\item ${stripLeadingQuestionIndex(q)}${wsLatex}`;
                 })
                 .join("\n") +
               `\n\\end{enumerate}`
@@ -1740,10 +1748,17 @@ ${activeQs
           isMission || isPureFr ? "lignes" : "أسطر"
         } $\\cdot$ ${meta?.level || "N1"}]}\\vspace{${wsSpec.heightCmLatex}}}}\\vspace{0.12cm}`
       : "";
+    const itemMainTextLatex =
+      decomp && decomp.isDecomposed && decomp.subQuestions.length > 1
+        ? (isMission || isPureFr ? decomp.stemFr : decomp.stemAr) ||
+          (isMission || isPureFr
+            ? "Répondre méthodiquement aux sous-questions suivantes :"
+            : "أجب عن الأسئلة الفرعية التالية بتدرج منهجي:")
+        : stripLeadingQuestionIndex(q);
     return `  \\item ${
       fillBlanks && idx === 0 && qIdx === 0
-        ? `\\textit{(${isMission || isPureFr ? "Preuve guidée à trous" : "برهان موجه بملء الفراغات"})} ${q}`
-        : q
+        ? `\\textit{(${isMission || isPureFr ? "Preuve guidée à trous" : "برهان موجه بملء الفراغات"})} ${itemMainTextLatex}`
+        : itemMainTextLatex
     }${baremeLatex}${subItemsLatex}${workspaceLatex}`;
   })
   .join("\n")}

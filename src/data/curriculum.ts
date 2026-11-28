@@ -1818,6 +1818,8 @@ export function getVariantQuestions(
   const titleFr = lesson.lessonFr.toLowerCase();
   const titleAr = lesson.lessonAr;
   const subCat = lesson.subCategory || "";
+  const capsFrLower = (lesson.capacitiesFr || []).join(" ").toLowerCase();
+  const capsArText = (lesson.capacitiesAr || []).join(" ");
   let questionsAr: string[] = [];
   let questionsFr: string[] = [];
 
@@ -1972,6 +1974,26 @@ export function getVariantQuestions(
         );
       }
     }
+  } else if (
+    (subCat === "هندسة فضائية" || titleFr.includes("espace") || titleAr.includes("الفضائية")) &&
+    !/vectoriel|sphère|analytique|équation cartésienne/.test(capsFrLower) &&
+    !/الجداء المتجهي|الفلكة|معادلة ديكارتية/.test(capsArText)
+  ) {
+    // الهندسة الفضائية التركيبية (الجذع المشترك العلمي والتكنولوجي — بدون جداء متجهي أو فلكة)
+    const sideA = String((model === "A" ? 4 : 6) + (Math.abs(Math.floor(variantSeed)) % 3) * 2);
+    const heightH = String(Number(sideA) + 2);
+    questionsAr = [
+      `ليكن $SABCD$ هرماً قاعدته مربع $ABCD$ طول ضلعه $a = ${sideA}\\text{ cm}$، وارتفاعه $[SA]$ عمودي على المستوى $(ABCD)$ حيث $SA = ${heightH}\\text{ cm}$. أحسب المسافتين $AC$ و $SC$ باستعمال مبرهنة فيتاغورس.`,
+      `بين أن المستقيم $(BC)$ عمودي على المستوى $(SAB)$، ثم استنتج أن المثلث $SBC$ قائم الزاوية في $B$.`,
+      `لتكن $I$ و $J$ منتصفي القطعتين $[SA]$ و $[SB]$ على التوالي. بين أن $(IJ) \\parallel (CD)$ وأن المستقيم $(IJ)$ يوازي المستوى $(SCD)$.`,
+      `أحسب حجم الهرم $SABCD$، ثم حدد حجم الهرم المصغر الناتج عن قطع الهرم بمستوى موازٍ للقاعدة يمر من $I$.`,
+    ];
+    questionsFr = [
+      `Soit $SABCD$ une pyramide de base carrée $ABCD$ de côté $a = ${sideA}\\text{ cm}$ et de hauteur $[SA]$ orthogonale au plan $(ABCD)$ avec $SA = ${heightH}\\text{ cm}$. Calculer les longueurs $AC$ et $SC$ par le théorème de Pythagore.`,
+      `Montrer que la droite $(BC)$ est orthogonale au plan $(SAB)$, puis en déduire que le triangle $SBC$ est rectangle en $B$.`,
+      `Soient $I$ et $J$ les milieux respectifs des segments $[SA]$ et $[SB]$. Montrer que $(IJ) \\parallel (CD)$ et en déduire que la droite $(IJ)$ est parallèle au plan $(SCD)$.`,
+      `Calculer le volume de la pyramide $SABCD$, puis déterminer le volume de la pyramide réduite obtenue par section par un plan parallèle à la base passant par $I$.`,
+    ];
   } else if (subCat === "هندسة فضائية" || titleFr.includes("espace") || titleAr.includes("الفضائية")) {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
     const isAlt = seedMod % 2 === 1;
@@ -2000,22 +2022,42 @@ export function getVariantQuestions(
     const aNum = (model === "A" ? 3 : 4) + seedMod;
     const bNum = aNum - 1;
     const u0 = String(bNum - 1);
-    questionsAr = [
-      `نعتبر المتتالية العددية (u_n) المعرفة بـ u_0 = ${u0} و u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) لكل n من N.`,
-      `1. أ) أحسب الحدين u_1 و u_2، ثم بين بالترجع أن u_n > ${bNum - 2} لكل n من N.`,
-      `1. ب) تحقق أن u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2)، ثم أدرس رتابة المتتالية (u_n) واستنتج أنها متقاربة.`,
-      `2. نعتبر المتتالية العددية (v_n) المعرفة بـ: v_n = (u_n - ${bNum})/(u_n + 1) لكل n من N.`,
-      `2. أ) بين أن (v_n) متتالية هندسية محدداً أساسها q وحدها الأول v_0.`,
-      `2. ب) أكتب v_n ثم u_n بدلالة n، وأحسب نهاية المتتالية (u_n) والمجموع S_n = v_0 + v_1 + ... + v_n بدلالة n.`,
-    ];
-    questionsFr = [
-      `Soit (u_n) la suite numérique définie par u_0 = ${u0} et u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) pour tout n ∈ ℕ.`,
-      `1. a) Calculer u_1 et u_2, puis montrer par récurrence que u_n > ${bNum - 2} pour tout n ∈ ℕ.`,
-      `1. b) Vérifier que u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2), étudier la monotonie de (u_n) et en déduire qu'elle est convergente.`,
-      `2. On considère la suite auxiliaire (v_n) définie sur ℕ par : v_n = (u_n - ${bNum})/(u_n + 1).`,
-      `2. a) Montrer que (v_n) est une suite géométrique dont on précisera la raison q et le premier terme v_0.`,
-      `2. b) Exprimer v_n puis u_n en fonction de n, calculer lim u_n et exprimer la somme S_n = v_0 + v_1 + ... + v_n en fonction de n.`,
-    ];
+    const isSuiteWithoutLimit =
+      !titleFr.includes("limite") &&
+      !titleAr.includes("نهاية") &&
+      !/limite|convergence/.test(capsFrLower) &&
+      !/نهاية|تقارب/.test(capsArText);
+    if (isSuiteWithoutLimit) {
+      questionsAr = [
+        `نعتبر المتتالية العددية $(u_n)$ المعرفة بـ $u_0 = ${u0}$ و $u_{n+1} = \\frac{${aNum}u_n + ${bNum}}{u_n + 2}$ لكل $n \\in \\mathbb{N}$. أحسب الحدين $u_1$ و $u_2$، ثم بين بالترجع أن $u_n < ${bNum}$ لكل $n \\in \\mathbb{N}$.`,
+        `تحقق أن $u_{n+1} - u_n = \\frac{-(u_n - ${bNum})(u_n + 1)}{u_n + 2}$ لكل $n \\in \\mathbb{N}$، ثم أدرس رتابة المتتالية $(u_n)$ وحدد ما إذا كانت مكبورة أو مصغورة.`,
+        `نعتبر المتتالية العددية $(v_n)$ المعرفة على $\\mathbb{N}$ بـ: $v_n = \\frac{u_n - ${bNum}}{u_n + 1}$. بين أن $(v_n)$ متتالية هندسية محدداً أساسها $q$ وحدها الأول $v_0$.`,
+        `أكتب $v_n$ ثم $u_n$ بدلالة $n$، ثم أحسب المجموع $S_n = v_0 + v_1 + \\dots + v_n$ بدلالة $n$.`,
+      ];
+      questionsFr = [
+        `Soit $(u_n)$ la suite numérique définie par $u_0 = ${u0}$ et $u_{n+1} = \\frac{${aNum}u_n + ${bNum}}{u_n + 2}$ pour tout $n \\in \\mathbb{N}$. Calculer $u_1$ et $u_2$, puis montrer par récurrence que $u_n < ${bNum}$ pour tout $n \\in \\mathbb{N}$.`,
+        `Vérifier que $u_{n+1} - u_n = \\frac{-(u_n - ${bNum})(u_n + 1)}{u_n + 2}$ pour tout $n \\in \\mathbb{N}$, puis étudier la monotonie de la suite $(u_n)$.`,
+        `On considère la suite auxiliaire $(v_n)$ définie sur $\\mathbb{N}$ par : $v_n = \\frac{u_n - ${bNum}}{u_n + 1}$. Montrer que $(v_n)$ est une suite géométrique dont on précisera la raison $q$ et le premier terme $v_0$.`,
+        `Exprimer $v_n$ puis $u_n$ en fonction de $n$, et calculer la somme $S_n = v_0 + v_1 + \\dots + v_n$ en fonction de $n$.`,
+      ];
+    } else {
+      questionsAr = [
+        `نعتبر المتتالية العددية (u_n) المعرفة بـ u_0 = ${u0} و u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) لكل n من N.`,
+        `1. أ) أحسب الحدين u_1 و u_2، ثم بين بالترجع أن u_n > ${bNum - 2} لكل n من N.`,
+        `1. ب) تحقق أن u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2)، ثم أدرس رتابة المتتالية (u_n) واستنتج أنها متقاربة.`,
+        `2. نعتبر المتتالية العددية (v_n) المعرفة بـ: v_n = (u_n - ${bNum})/(u_n + 1) لكل n من N.`,
+        `2. أ) بين أن (v_n) متتالية هندسية محدداً أساسها q وحدها الأول v_0.`,
+        `2. ب) أكتب v_n ثم u_n بدلالة n، وأحسب نهاية المتتالية (u_n) والمجموع S_n = v_0 + v_1 + ... + v_n بدلالة n.`,
+      ];
+      questionsFr = [
+        `Soit (u_n) la suite numérique définie par u_0 = ${u0} et u_{n+1} = (${aNum}u_n + ${bNum})/(u_n + 2) pour tout n ∈ ℕ.`,
+        `1. a) Calculer u_1 et u_2, puis montrer par récurrence que u_n > ${bNum - 2} pour tout n ∈ ℕ.`,
+        `1. b) Vérifier que u_{n+1} - u_n = -(u_n - ${bNum})(u_n + 1)/(u_n + 2), étudier la monotonie de (u_n) et en déduire qu'elle est convergente.`,
+        `2. On considère la suite auxiliaire (v_n) définie sur ℕ par : v_n = (u_n - ${bNum})/(u_n + 1).`,
+        `2. a) Montrer que (v_n) est une suite géométrique dont on précisera la raison q et le premier terme v_0.`,
+        `2. b) Exprimer v_n puis u_n en fonction de n, calculer lim u_n et exprimer la somme S_n = v_0 + v_1 + ... + v_n en fonction de n.`,
+      ];
+    }
   } else if (titleFr.includes("complexe") || subCat === "أعداد عقدية") {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
     const kNum = (model === "A" ? 1 : 2) + seedMod;
@@ -2096,21 +2138,58 @@ export function getVariantQuestions(
   } else if (titleFr.includes("logarithm") || titleAr.includes("اللوغاريتمية")) {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 5;
     const k = String((model === "A" ? 1 : 2) + seedMod);
+    const kCoeff = k === "1" ? "" : k;
     questionsAr = [
-      `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على المجال ]0, +∞[ بـ: g(x) = ${k}x² - ${k} - ln(x).`,
+      `الجزء الأول: نعتبر الدالة المساعدة g المعرفة على المجال ]0, +∞[ بـ: g(x) = ${kCoeff}x² - ${k} - ln(x).`,
       `1. أ) أحسب g'(x) لكل x > 0، ثم ضع جدول تغيرات الدالة g على ]0, +∞[ (لا يطلب حساب النهايات).`,
       `1. ب) أحسب g(1)، ثم استنتج إشارة g(x) على كل من المجالين ]0, 1] و [1, +∞[.`,
-      `الجزء الثاني: نعتبر الدالة العددية f المعرفة على ]0, +∞[ بـ: f(x) = ${k}x - 1 + ln(x)/x، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
-      `2. أ) أحسب lim_{x→0^+} f(x) و lim_{x→+∞} f(x)، وبين أن المستقيم (Δ) ذا المعادلة y = ${k}x - 1 مقارب مائل للمنحنى (C_f) بجوار +∞ وأدرس وضعه النسبي مع (C_f).`,
+      `الجزء الثاني: نعتبر الدالة العددية f المعرفة على ]0, +∞[ بـ: f(x) = ${kCoeff}x - 1 + ln(x)/x، وليكن (C_f) منحناها في معلم متعامد ممنظم (O, i, j).`,
+      `2. أ) أحسب lim_{x→0^+} f(x) و lim_{x→+∞} f(x)، وبين أن المستقيم (Δ) ذا المعادلة y = ${kCoeff}x - 1 مقارب مائل للمنحنى (C_f) بجوار +∞ وأدرس وضعه النسبي مع (C_f).`,
       `2. ب) بين أن f'(x) = g(x)/x² لكل x > 0، ضع جدول تغيرات الدالة f، ثم أنشئ المستقيم (Δ) والمنحنى (C_f) وأحسب مساحة الحيز المحصور بين (C_f) و (Δ) والمستقيمين x = 1 و x = e.`,
     ];
     questionsFr = [
-      `Partie I : Soit g la fonction auxiliaire définie sur ]0, +∞[ par : g(x) = ${k}x² - ${k} - ln(x).`,
+      `Partie I : Soit g la fonction auxiliaire définie sur ]0, +∞[ par : g(x) = ${kCoeff}x² - ${k} - ln(x).`,
       `1. a) Calculer g'(x) pour tout x > 0 et dresser le tableau de variations de g sur ]0, +∞[.`,
       `1. b) Calculer g(1) et en déduire le signe de g(x) sur ]0, +∞[.`,
-      `Partie II : On considère la fonction f définie sur ]0, +∞[ par : f(x) = ${k}x - 1 + ln(x)/x et (C_f) sa courbe représentative dans un repère orthonormé (O, i, j).`,
-      `2. a) Calculer les limites de f en 0^+ et en +∞, montrer que la droite (Δ) : y = ${k}x - 1 est asymptote oblique à (C_f) en +∞ et étudier leur position relative.`,
+      `Partie II : On considère la fonction f définie sur ]0, +∞[ par : f(x) = ${kCoeff}x - 1 + ln(x)/x et (C_f) sa courbe représentative dans un repère orthonormé (O, i, j).`,
+      `2. a) Calculer les limites de f en 0^+ et en +∞, montrer que la droite (Δ) : y = ${kCoeff}x - 1 est asymptote oblique à (C_f) en +∞ et étudier leur position relative.`,
       `2. b) Montrer que f'(x) = g(x)/x² pour tout x > 0, dresser le tableau de variations de f, construire (Δ) et (C_f), puis calculer l'aire du domaine compris entre (C_f), (Δ) et les droites x = 1 et x = e.`,
+    ];
+  } else if (titleFr.includes("statistique") || titleAr.includes("الإحصاء")) {
+    // الإحصاء الوصفي (الجذوع المشتركة — بدون احتمالات أو متغيرات عشوائية)
+    const e1 = model === "A" ? 4 : 5;
+    const e2 = model === "A" ? 7 : 6;
+    const e3 = model === "A" ? 5 : 6;
+    const e4 = model === "A" ? 4 : 3;
+    questionsAr = [
+      `يمثل الجدول التالي توزيع نقط تلاميذ قسم في فرض محروس للرياضيات: القيم $x_i \\in \\{8, 10, 12, 14\\}$ بحصيصات موافقة $n_i \\in \\{${e1}, ${e2}, ${e3}, ${e4}\\}$. أنشئ جدول الحصيصات المتراكمة الصاعدة وحدد الحصيص الإجمالي $N$.`,
+      `حدد منوال هذه المتسلسلة الإحصائية، ثم حدد القيمة الوسطية $M_e$ مع التعليل.`,
+      `أحسب المعدل الحسابي $\\bar{x}$ لهذه المتسلسلة الإحصائية، ثم استنتج النسبة المئوية للتلاميذ الذين حصلوا على نقطة أكبر من أو تساوي $10$.`,
+      `أحسب المغايرة $V$ والانحراف الطرازي $\\sigma$ لهذه المتسلسلة الإحصائية.`,
+    ];
+    questionsFr = [
+      `Le relevé des notes d'une classe donne les valeurs $x_i \\in \\{8, 10, 12, 14\\}$ d'effectifs respectifs $n_i \\in \\{${e1}, ${e2}, ${e3}, ${e4}\\}$. Dresser le tableau des effectifs cumulés croissants et déterminer l'effectif total $N$.`,
+      `Déterminer le mode de cette série statistique, puis déterminer sa médiane $M_e$ en justifiant.`,
+      `Calculer la moyenne arithmétique $\\bar{x}$ de cette série, puis en déduire le pourcentage d'élèves ayant obtenu une note supérieure ou égale à $10$.`,
+      `Calculer la variance $V$ et l'écart-type $\\sigma$ de cette série statistique.`,
+    ];
+  } else if (titleFr.includes("dénombrement") || titleAr.includes("التعداد")) {
+    // التعداد (السنة الأولى بكالوريا — بدون احتمالات أو متغيرات عشوائية)
+    const nR = model === "A" ? 5 : 6;
+    const nV = model === "A" ? 4 : 3;
+    const nB = 2;
+    const tot = nR + nV + nB;
+    questionsAr = [
+      `يحتوي كيس على $${tot}$ كرات لا يمكن التمييز بينها باللمس: $${nR}$ كرات حمراء، $${nV}$ كرات خضراء، وكرتين بيضاوين. نسحب آنياً $3$ كرات من الكيس. أحسب عدد السحبات الممكنة، ثم عدد السحبات التي تضم $3$ كرات من نفس اللون.`,
+      `في نفس تجربة السحب الآني لـ $3$ كرات، أحسب عدد السحبات التي تضم كرة بيضاء واحدة على الأقل (باستعمال الحدث المضاد).`,
+      `نسحب الآن بالتتابع وبدون إحلال $3$ كرات من الكيس. أحسب عدد السحبات الممكنة ($A_{${tot}}^3$) وعدد السحبات التي تضم $3$ كرات مختلفة اللون مثنى مثنى.`,
+      `نسحب بالتتابع وبإحلال $3$ كرات من الكيس. حدد عدد السحبات التي تكون فيها الكرة الأولى حمراء والكرتان الأخريان من لونين مختلفين.`,
+    ];
+    questionsFr = [
+      `Une urne contient $${tot}$ boules indiscernables au toucher : $${nR}$ rouges, $${nV}$ vertes et $${nB}$ blanches. On tire simultanément $3$ boules. Calculer le nombre total de tirages possibles, puis le nombre de tirages unicolores.`,
+      `Dans ce même tirage simultané de $3$ boules, calculer le nombre de tirages contenant au moins une boule blanche.`,
+      `On tire maintenant successivement et sans remise $3$ boules de l'urne. Calculer le nombre total de tirages ($A_{${tot}}^3$) et le nombre de tirages contenant $3$ boules de couleurs deux à deux distinctes.`,
+      `On tire successivement avec remise $3$ boules de l'urne. Déterminer le nombre de tirages dont la première boule est rouge et les deux autres sont de couleurs distinctes.`,
     ];
   } else if (subCat === "احتمالات وإحصاء" || titleFr.includes("probabilit") || titleAr.includes("الاحتمالات")) {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
@@ -2150,6 +2229,55 @@ export function getVariantQuestions(
       `2. b) Résoudre dans [0, 2π] l'équation : 2cos²(x) - 3cos(x) + 1 = 0.`,
       `3. Résoudre dans ]-π, π] l'inéquation trigonométrique : (2sin(x) - 1)(2cos(x) - √3) ≤ 0 à l'aide du cercle trigonométrique.`,
     ];
+  } else if (titleFr.includes("barycentre") || titleAr.includes("المرجح")) {
+    // المرجح في المستوى (الأولى بكالوريا علوم رياضية وتجريبية وتكنولوجية)
+    const alpha = model === "A" ? 2 : 3;
+    const beta = model === "A" ? 3 : 2;
+    const gamma = 1;
+    const sumAB = alpha + beta;
+    questionsAr = [
+      `ليكن $ABC$ مثلثاً في المستوى. بين أن النقطتين المتزنتين $(A, ${alpha})$ و $(B, ${beta})$ تقبلان مرجحاً وحيداً $G$، ثم عبر عن المتجهة $\\overrightarrow{AG}$ بدلالة $\\overrightarrow{AB}$ وأنشئ النقطة $G$.`,
+      `ليكن $H$ مرجح النظمة المتزنة $\\{(A, ${alpha}); (B, ${beta}); (C, ${gamma})\\}$. باستعمال خاصية التجميعية، بين أن $H$ مرجح النقطتين $(G, ${sumAB})$ و $(C, ${gamma})$، ثم استنتج أن النقط $G$ و $H$ و $C$ مستقيمية.`,
+      `في معلم متعامد ممنظم $(O; \\vec{i}, \\vec{j})$ حيث $A(1, -2)$ و $B(6, 3)$ و $C(0, 4)$، أحسب إحداثيتي كل من النقطتين $G$ و $H$.`,
+      `حدد وأنشئ في المستوى مجموعة النقط $M$ التي تحقق العلاقة المتجهية: $\\|${alpha}\\overrightarrow{MA} + ${beta}\\overrightarrow{MB}\\| = ${sumAB * 2}$.`,
+    ];
+    questionsFr = [
+      `Soit $ABC$ un triangle du plan. Justifier l'existence du barycentre $G$ des points pondérés $(A, ${alpha})$ et $(B, ${beta})$, exprimer $\\overrightarrow{AG}$ en fonction de $\\overrightarrow{AB}$ puis construire $G$.`,
+      `Soit $H = \\mathrm{bar}\\{(A, ${alpha}); (B, ${beta}); (C, ${gamma})\\}$. Par associativité du barycentre, montrer que $H = \\mathrm{bar}\\{(G, ${sumAB}); (C, ${gamma})\\}$, puis en déduire que les points $G$, $H$ et $C$ sont alignés.`,
+      `Dans un repère orthonormé $(O; \\vec{i}, \\vec{j})$ avec $A(1, -2)$, $B(6, 3)$ et $C(0, 4)$, calculer les coordonnées des points $G$ et $H$.`,
+      `Déterminer et construire l'ensemble $(\\Gamma)$ des points $M$ du plan vérifiant : $\\|${alpha}\\overrightarrow{MA} + ${beta}\\overrightarrow{MB}\\| = ${sumAB * 2}$.`,
+    ];
+  } else if (titleFr.includes("droite dans le plan") || titleAr.includes("المستقيم في المستوى")) {
+    // المستقيم في المستوى (الجذع المشترك العلمي والتكنولوجي — بدون جداء سلمي أو معادلة دائرة)
+    const xb = model === "A" ? 3 : 4;
+    const yc = model === "A" ? 5 : 6;
+    questionsAr = [
+      `في المستوى المنسوب إلى معلم $(O; \\vec{i}, \\vec{j})$، نعتبر النقط $A(1, 2)$ و $B(${xb}, 4)$ و $C(-1, ${yc})$. أحسب إحداثيتي المتجهتين $\\overrightarrow{AB}$ و $\\overrightarrow{AC}$، ثم أحسب المحددة $\\det(\\overrightarrow{AB}, \\overrightarrow{AC})$ واستنتج أن النقط $A$ و $B$ و $C$ غير مستقيمية.`,
+      `حدد معادلة ديكارتية للمستقيم $(AB)$، ثم أعط تمثيلاً بارامترياً للمستقيم $(D)$ المار من $C$ والموجه بالمتجهة $\\vec{u}(2, -1)$.`,
+      `أدرس الوضع النسبي للمستقيمين $(AB)$ و $(D)$ وحدد إحداثيتي نقطة تقاطعهما $I$.`,
+      `ليكن $(D_m)$ المستقيم ذا المعادلة $(m - 1)x + 2y + 3 = 0$ حيث $m \\in \\mathbb{R}$. حدد قيمة العدد الحقيقي $m$ لكي يكون المستقيمان $(D_m)$ و $(AB)$ متوازيين.`,
+    ];
+    questionsFr = [
+      `Dans le plan muni d'un repère $(O; \\vec{i}, \\vec{j})$, on considère les points $A(1, 2)$, $B(${xb}, 4)$ et $C(-1, ${yc})$. Calculer les coordonnées des vecteurs $\\overrightarrow{AB}$ et $\\overrightarrow{AC}$, puis calculer $\\det(\\overrightarrow{AB}, \\overrightarrow{AC})$ et en déduire que $A, B, C$ ne sont pas alignés.`,
+      `Déterminer une équation cartésienne de la droite $(AB)$, puis donner une représentation paramétrique de la droite $(D)$ passant par $C$ et de vecteur directeur $\\vec{u}(2, -1)$.`,
+      `Étudier la position relative des droites $(AB)$ et $(D)$ et déterminer les coordonnées de leur point d'intersection $I$.`,
+      `Soit $(D_m)$ la droite d'équation $(m - 1)x + 2y + 3 = 0$ ($m \\in \\mathbb{R}$). Déterminer la valeur du réel $m$ pour que $(D_m)$ soit parallèle à $(AB)$.`,
+    ];
+  } else if (titleFr.includes("transformation") || titleAr.includes("التحويلات")) {
+    // التحويلات الاعتيادية في المستوى (الجذع المشترك)
+    const kHom = model === "A" ? 2 : 3;
+    questionsAr = [
+      `ليكن $ABCD$ متوازي أضلاع و $t$ الإزاحة ذات المتجهة $\\overrightarrow{AB}$. حدد صورتي النقطتين $A$ و $D$ بالإزاحة $t$، ثم أنشئ النقطة $E = t(B)$.`,
+      `ليكن $h$ التحاكي الذي مركزه $A$ ونسبته $k = ${kHom}$. حدد النقطتين $B' = h(B)$ و $D' = h(D)$ وعبر عن $\\overrightarrow{B'D'}$ بدلالة $\\overrightarrow{BD}$.`,
+      `بين أن المستقيمين $(B'D')$ و $(BD)$ متوازيان وأحسب النسبة $\\frac{B'D'}{BD}$.`,
+      `لتكن $I$ منتصف $[BD]$ و $I' = h(I)$. باستعمال خاصية الحفاظ على المنتصف، بين أن $I'$ منتصف $[B'D']$ وأن النقط $A$ و $I$ و $I'$ مستقيمية.`,
+    ];
+    questionsFr = [
+      `Soit $ABCD$ un parallélogramme et $t$ la translation de vecteur $\\overrightarrow{AB}$. Déterminer les images $t(A)$ et $t(D)$, puis construire le point $E = t(B)$.`,
+      `Soit $h$ l'homothétie de centre $A$ et de rapport $k = ${kHom}$. Construire $B' = h(B)$ et $D' = h(D)$, puis exprimer $\\overrightarrow{B'D'}$ en fonction de $\\overrightarrow{BD}$.`,
+      `Montrer que les droites $(B'D')$ et $(BD)$ sont parallèles et calculer le rapport $\\frac{B'D'}{BD}$.`,
+      `Soit $I$ le milieu de $[BD]$ et $I' = h(I)$. En utilisant la conservation du milieu par homothétie, montrer que $I'$ est le milieu de $[B'D']$ et que $A, I, I'$ sont alignés.`,
+    ];
   } else if (subCat === "هندسة مستوية" || lesson.category === "Geometry") {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
     const xa = String((model === "A" ? 0 : 1) + seedMod);
@@ -2167,6 +2295,93 @@ export function getVariantQuestions(
       `1. b) Déterminer une équation cartésienne de la hauteur (Δ) issue de A et calculer la distance de B à la droite (AC).`,
       `2. a) Montrer que (C) est un cercle dont on précisera le centre Ω et le rayon R, et vérifier que A ∈ (C).`,
       `2. b) Déterminer une équation de la tangente (T) à (C) en A et étudier la position relative de (C) et de la droite (D) : 3x + 4y - 25 = 0.`,
+    ];
+  } else if (titleFr.includes("ensembles de nombres") || titleAr.includes("المجموعات N")) {
+    // المجموعات N, Z, D, Q, R (الجذع المشترك)
+    const aRad = model === "A" ? 3 : 5;
+    questionsAr = [
+      `بسط واكتب على شكل جذر مبسط العددين: $A = \\sqrt{${aRad * 4}} + 2\\sqrt{${aRad * 9}} - \\sqrt{${aRad * 16}}$ و $B = \\frac{1}{\\sqrt{${aRad}} - 1} - \\frac{1}{\\sqrt{${aRad}} + 1}$، ثم حدد أصغر مجموعة من بين $\\mathbb{N}, \\mathbb{Z}, \\mathbb{D}, \\mathbb{Q}, \\mathbb{R}$ ينتمي إليها كل عدد.`,
+      `أنشر وبسط التعبير $E(x) = (2x - 3)^2 - (x + 1)(x - 1)$، ثم عمل التعبير $F(x) = 4x^2 - 9 + (2x - 3)(x + 4)$.`,
+      `أحسب وبسط العدد $C = \\frac{10^{-3} \\times (2^3)^2 \\times 5^4}{2^4 \\times 10^{-2}}$ واكتبه بالكتابة العلمية.`,
+      `بين أن العدد $D = \\sqrt{7 + 4\\sqrt{3}} - \\sqrt{7 - 4\\sqrt{3}}$ عدد صحيح طبيعي.`,
+    ];
+    questionsFr = [
+      `Simplifier les réels $A = \\sqrt{${aRad * 4}} + 2\\sqrt{${aRad * 9}} - \\sqrt{${aRad * 16}}$ et $B = \\frac{1}{\\sqrt{${aRad}} - 1} - \\frac{1}{\\sqrt{${aRad}} + 1}$, puis préciser le plus petit ensemble parmi $\\mathbb{N}, \\mathbb{Z}, \\mathbb{D}, \\mathbb{Q}, \\mathbb{R}$ auquel chacun appartient.`,
+      `Développer et réduire $E(x) = (2x - 3)^2 - (x + 1)(x - 1)$, puis factoriser $F(x) = 4x^2 - 9 + (2x - 3)(x + 4)$.`,
+      `Simplifier $C = \\frac{10^{-3} \\times (2^3)^2 \\times 5^4}{2^4 \\times 10^{-2}}$ et donner son écriture scientifique.`,
+      `Montrer que le nombre $D = \\sqrt{7 + 4\\sqrt{3}} - \\sqrt{7 - 4\\sqrt{3}}$ est un entier naturel.`,
+    ];
+  } else if (titleFr.includes("ordre dans r") || titleAr.includes("الترتيب في المجموعة")) {
+    // الترتيب في R (الجذع المشترك)
+    const xMax = model === "A" ? 4 : 5;
+    questionsAr = [
+      `قارن العددين $a = 2\\sqrt{5}$ و $b = 3\\sqrt{2}$، ثم استنتج مقارنة العددين $\\frac{1}{2\\sqrt{5} + 1}$ و $\\frac{1}{3\\sqrt{2} + 1}$.`,
+      `ليكن $x$ و $y$ عددين حقيقيين بحيث $2 \\le x \\le ${xMax}$ و $-3 \\le y \\le -1$. أطر كلاً من الأعداد: $x + y$ و $x - y$ و $x \\cdot y$ و $\\frac{x}{y}$.`,
+      `حل في $\\mathbb{R}$ المعادلة $|2x - 3| = 5$، ثم المتراجحة $|2x - 3| \\le 5$ ومثل مجموعة الحلول على المستقيم العددي.`,
+      `نعتبر المجالين $I = [-2, 4]$ و $J = ]1, 7[$. حدد التقاطع $I \\cap J$ والاتحاد $I \\cup J$، ثم حدد مركز وشعاع المجال $I$.`,
+    ];
+    questionsFr = [
+      `Comparer les réels $a = 2\\sqrt{5}$ et $b = 3\\sqrt{2}$, puis en déduire la comparaison de $\\frac{1}{2\\sqrt{5} + 1}$ et $\\frac{1}{3\\sqrt{2} + 1}$.`,
+      `Soient $x$ et $y$ deux réels tels que $2 \\le x \\le ${xMax}$ et $-3 \\le y \\le -1$. Encadrer $x + y$, $x - y$, $x \\cdot y$ et $\\frac{x}{y}$.`,
+      `Résoudre dans $\\mathbb{R}$ l'équation $|2x - 3| = 5$ puis l'inéquation $|2x - 3| \\le 5$ et représenter l'ensemble des solutions sur la droite réelle.`,
+      `On considère les intervalles $I = [-2, 4]$ et $J = ]1, 7[$. Déterminer $I \\cap J$ et $I \\cup J$, puis préciser le centre et le rayon de l'intervalle $I$.`,
+    ];
+  } else if (
+    (titleFr.includes("polynôme") || titleAr.includes("الحدوديات")) &&
+    !titleFr.includes("équation") &&
+    !titleFr.includes("système")
+  ) {
+    // الحدوديات (الجذع المشترك)
+    const kNum = model === "A" ? 2 : 3;
+    questionsAr = [
+      `نعتبر الحدودية $P(x) = x^3 - ${kNum + 4}x^2 + ${4 * kNum + 3}x - ${3 * kNum}$. أحسب $P(1)$، ماذا تستنتج بالنسبة للحدودية $P(x)$؟`,
+      `حدد الحدودية $Q(x)$ من الدرجة الثانية بحيث $P(x) = (x - 1)Q(x)$ لكل $x \\in \\mathbb{R}$ (باستعمال القسمة الإقليدية أو طريقة المعاملات غير المحددة).`,
+      `عمل الحدودية $Q(x)$ إلى جداء حدانيتين من الدرجة الأولى، ثم استنتج التعميل الكامل للحدودية $P(x)$.`,
+      `ضع جدول إشارة الحدودية $P(x)$ على $\\mathbb{R}$، ثم استنتج مجموعة حلول المتراجحة $P(x) \\le 0$.`,
+    ];
+    questionsFr = [
+      `On considère le polynôme $P(x) = x^3 - ${kNum + 4}x^2 + ${4 * kNum + 3}x - ${3 * kNum}$. Calculer $P(1)$ et en déduire que $P(x)$ est divisible par $(x - 1)$.`,
+      `Déterminer le polynôme $Q(x)$ de degré $2$ tel que $P(x) = (x - 1)Q(x)$ pour tout $x \\in \\mathbb{R}$ par division euclidienne.`,
+      `Factoriser le trinôme $Q(x)$ en produit de deux binômes du premier degré, puis en déduire la factorisation complète de $P(x)$.`,
+      `Dresser le tableau de signes de $P(x)$ sur $\\mathbb{R}$, puis en déduire l'ensemble des solutions de l'inéquation $P(x) \\le 0$.`,
+    ];
+  } else if (
+    titleFr.includes("système") ||
+    titleAr.includes("النظمات") ||
+    (titleFr.includes("inéquation") && !titleFr.includes("logique"))
+  ) {
+    // المعادلات والمتراجحات والنظمات (الجذع المشترك والأولى باك آداب)
+    const rhs1 = model === "A" ? 7 : 9;
+    const rhs2 = model === "A" ? 1 : 3;
+    questionsAr = [
+      `حل في $\\mathbb{R}$ المعادلة من الدرجة الثانية: $2x^2 - 5x + 2 = 0$ بحساب المميز $\\Delta$.`,
+      `ضع جدول إشارة ثلاثية الحدود $T(x) = 2x^2 - 5x + 2$ على $\\mathbb{R}$، ثم استنتج مجموعة حلول المتراجحة $2x^2 - 5x + 2 \\le 0$.`,
+      `حل في $\\mathbb{R}^2$ باستعمال طريقة المحددة (كرامر) النظمة التالية: $\\begin{cases} 2x + y = ${rhs1} \\\\ x - y = ${rhs2} \\end{cases}$.`,
+      `مسألة تطبيقية: اشترى تلميذ دفترين وقلماً بمبلغ $${rhs1 * 5}$ درهماً، بينما الفرق بين ثمن الدفتر وثمن القلم هو $${rhs2 * 5}$ دراهم. حدد ثمن الدفتر وثمن القلم.`,
+    ];
+    questionsFr = [
+      `Résoudre dans $\\mathbb{R}$ l'équation du second degré : $2x^2 - 5x + 2 = 0$ à l'aide du discriminant $\\Delta$.`,
+      `Dresser le tableau de signes du trinôme $T(x) = 2x^2 - 5x + 2$ sur $\\mathbb{R}$, puis en déduire l'ensemble des solutions de l'inéquation $2x^2 - 5x + 2 \\le 0$.`,
+      `Résoudre dans $\\mathbb{R}^2$ par la méthode des déterminants (Cramer) le système : $\\begin{cases} 2x + y = ${rhs1} \\\\ x - y = ${rhs2} \\end{cases}$.`,
+      `Problème : Un élève achète $2$ cahiers et $1$ stylo pour $${rhs1 * 5}\\text{ DH}$, sachant que la différence de prix entre un cahier et un stylo est de $${rhs2 * 5}\\text{ DH}$. Déterminer le prix d'un cahier et celui d'un stylo.`,
+    ];
+  } else if (
+    (titleFr.includes("ensembles et applications") || titleAr.includes("المجموعات والتطبيقات")) &&
+    !titleFr.includes("dériv")
+  ) {
+    // المجموعات والتطبيقات (الأولى بكالوريا علوم رياضية)
+    const cShift = model === "A" ? 1 : 2;
+    questionsAr = [
+      `نعتبر المجموعتين $A = \\{x \\in \\mathbb{R} \\mid |x - 1| \\le 2\\}$ و $B = \\{x \\in \\mathbb{R} \\mid x^2 - 4x + 3 \\le 0\\}$. أكتب $A$ و $B$ على شكل مجالين، ثم حدد $A \\cap B$ و $A \\cup B$ و $\\overline{A}$ في $\\mathbb{R}$.`,
+      `ليكن التطبيق $f: \\mathbb{R} \\to \\mathbb{R}$ المعرف بـ: $f(x) = x^2 - 2x + ${cShift}$. هل التطبيق $f$ تبايني؟ هل هو شمولي؟ علل جوابك.`,
+      `ليكن $g$ قصور التطبيق $f$ على المجال $I = [1, +\\infty[$ نحو $J = [${cShift - 1}, +\\infty[$. بين أن $g$ تطبيق تقابلي من $I$ نحو $J$.`,
+      `حدد التطبيق العكسي $g^{-1}(y)$ لكل $y \\in J$، ثم تحقق أن $(g^{-1} \\circ g)(x) = x$ لكل $x \\in I$.`,
+    ];
+    questionsFr = [
+      `On considère les ensembles $A = \\{x \\in \\mathbb{R} \\mid |x - 1| \\le 2\\}$ et $B = \\{x \\in \\mathbb{R} \\mid x^2 - 4x + 3 \\le 0\\}$. Écrire $A$ et $B$ sous forme d'intervalles, puis déterminer $A \\cap B$, $A \\cup B$ et le complémentaire $\\overline{A}$ dans $\\mathbb{R}$.`,
+      `Soit l'application $f: \\mathbb{R} \\to \\mathbb{R}$ définie par $f(x) = x^2 - 2x + ${cShift}$. L'application $f$ est-elle injective ? surjective ? Justifier.`,
+      `Soit $g$ la restriction de $f$ de $I = [1, +\\infty[$ vers $J = [${cShift - 1}, +\\infty[$. Montrer que $g$ est une bijection de $I$ sur $J$.`,
+      `Déterminer l'application réciproque $g^{-1}(y)$ pour tout $y \\in J$, puis vérifier que $(g^{-1} \\circ g)(x) = x$ pour tout $x \\in I$.`,
     ];
   } else if (subCat === "جبر" || subCat === "منطق ومجموعات" || subCat === "حسابيات" || lesson.category === "Algebra") {
     const seedMod = Math.abs(Math.floor(variantSeed)) % 4;
@@ -2186,6 +2401,25 @@ export function getVariantQuestions(
       `Partie II (Polynômes & Équations) : On considère le polynôme P(x) = x³ - ${kNum + 4}x² + ${4 * kNum + 3}x - ${3 * kNum} pour tout x ∈ ℝ.`,
       `2. a) Vérifier que α = 1 est une racine de P(x), puis déterminer le polynôme Q(x) tel que P(x) = (x - 1)Q(x) par division euclidienne.`,
       `2. b) Résoudre dans ℝ l'équation P(x) = 0, dresser le tableau de signes de P(x) et en déduire les solutions de P(x) ≤ 0 ainsi que de l'équation P(√x) = 0.`,
+    ];
+  } else if (
+    (titleFr.includes("limite") || titleAr.includes("النهايات")) &&
+    !titleFr.includes("continuit") &&
+    !titleAr.includes("الاتصال")
+  ) {
+    // نهايات دالة عددية (السنة الأولى بكالوريا — بدون اتصال أو مبرهنة القيم الوسطية أو دالة عكسية)
+    const aLim = model === "A" ? 2 : 3;
+    questionsAr = [
+      `أحسب النهايتين التاليتين عند اللانهاية: $\\lim_{x \\to +\\infty} (${aLim}x^3 - 5x + 1)$ و $\\lim_{x \\to -\\infty} \\frac{${aLim}x^2 - 3x + 1}{x^2 + 4}$.`,
+      `أحسب النهاية عند نقطة باستعمال التعميل والاختزال: $\\lim_{x \\to 2} \\frac{x^2 - 4}{x^2 - x - 2}$.`,
+      `باستعمال المرافق، أحسب النهاية اللاجذرية التالية: $\\lim_{x \\to 1} \\frac{\\sqrt{x + 3} - 2}{x - 1}$.`,
+      `أحسب النهايتين على اليمين وعلى اليسار عند $x_0 = 1$ للدالة $f(x) = \\frac{${aLim}x + 1}{x - 1}$، ثم أول النتيجتين هندسياً.`,
+    ];
+    questionsFr = [
+      `Calculer les limites suivantes à l'infini : $\\lim_{x \\to +\\infty} (${aLim}x^3 - 5x + 1)$ et $\\lim_{x \\to -\\infty} \\frac{${aLim}x^2 - 3x + 1}{x^2 + 4}$.`,
+      `Calculer la limite en $2$ par factorisation et simplification : $\\lim_{x \\to 2} \\frac{x^2 - 4}{x^2 - x - 2}$.`,
+      `À l'aide de l'expression conjuguée, calculer la limite irrationnelle : $\\lim_{x \\to 1} \\frac{\\sqrt{x + 3} - 2}{x - 1}$.`,
+      `Calculer les limites à droite et à gauche en $x_0 = 1$ de la fonction $f(x) = \\frac{${aLim}x + 1}{x - 1}$, puis interpréter géométriquement.`,
     ];
   } else if (
     titleFr.includes("continuit") ||
@@ -2272,7 +2506,7 @@ export function getVariantQuestions(
       lesson.capacitiesFr[0] ||
       lesson.lessonFr;
     const nextNum = questionsAr.length + 1;
-    if (subCat === "هندسة فضائية") {
+    if (subCat === "هندسة فضائية" && /vectoriel|sphère|analytique|équation cartésienne/.test(capsFrLower)) {
       questionsAr.push(
         `${nextNum}. استثمار هندسي فضائي (المستوى N2): حدد إحداثيات النقطة M' مماثلة النقطة المدروسة بالنسبة للمستوى، ثم أحسب حجم رباعي الأوجه.`,
         `${nextNum + 1}. سؤال التميز والمبادرة (المستوى N3): ناقش حسب قيم الوسيط الحقيقي m الوضع النسبي للفلكة والمستوى.`
@@ -2281,12 +2515,33 @@ export function getVariantQuestions(
         `${nextNum}. Exploitation géométrique 3D (Niveau N2) : Déterminer les coordonnées du symétrique orthogonal M', puis calculer le volume du tétraèdre associé.`,
         `${nextNum + 1}. Approfondissement & Initiative (Niveau N3) : Discuter suivant les valeurs du paramètre réel m la position relative de la sphère et du plan.`
       );
+    } else if (subCat === "هندسة فضائية") {
+      questionsAr.push(
+        `سؤال التعمق الفضائي (المستوى N3): حدد طبيعة المقطع المستوي للهرم بمستوى موازٍ للقاعدة ثم أحسب مساحته.`
+      );
+      questionsFr.push(
+        `Approfondissement géométrie 3D (Niveau N3) : Déterminer la nature de la section plane de la pyramide par un plan parallèle à la base et calculer son aire.`
+      );
     } else if (subCat === "هندسة مستوية" || lesson.category === "Geometry") {
       questionsAr.push(
         `${nextNum}. سؤال التعمق الهندسي (المستوى N3): لتكن G النقطة المعرفة بالعلاقة المتجهية المدروسة؛ بين استقامية النقط وحدد نسبة التحاكي أو الإسقاط المرافق.`
       );
       questionsFr.push(
         `${nextNum}. Approfondissement géométrique (Niveau N3) : Étudier la relation vectorielle associée à « ${capExtraFr} » et caractériser l'alignement des points.`
+      );
+    } else if (titleFr.includes("statistique") || titleAr.includes("الإحصاء")) {
+      questionsAr.push(
+        `سؤال التعمق (المستوى N3): نضيف نقطتين لكل تلميذ في القسم ($y_i = x_i + 2$). حدد دون إعادة الحساب المعدل الحسابي الجديد $\\bar{y}$ والانحراف الطرازي الجديد $\\sigma_y$.`
+      );
+      questionsFr.push(
+        `Approfondissement (Niveau N3) : On ajoute $2$ points à chaque élève ($y_i = x_i + 2$). Déterminer sans tout recalculer la nouvelle moyenne $\\bar{y}$ et le nouvel écart-type $\\sigma_y$.`
+      );
+    } else if (titleFr.includes("dénombrement") || titleAr.includes("التعداد")) {
+      questionsAr.push(
+        `سؤال التعمق (المستوى N3): بكم طريقة يمكن تكوين لجنة من $3$ أعضاء (رئيس ونائب وأمين مال) من بين $8$ مترشحين بحيث لا يشغل شخص واحد منصبين؟`
+      );
+      questionsFr.push(
+        `Approfondissement (Niveau N3) : De combien de façons peut-on former un bureau de $3$ membres distincts (président, vice-président, trésorier) parmi $8$ candidats ?`
       );
     } else if (subCat === "احتمالات وإحصاء" || titleFr.includes("probabilit")) {
       questionsAr.push(
@@ -2304,7 +2559,10 @@ export function getVariantQuestions(
       questionsFr.push(
         `${nextNum}. Raisonnement & Synthèse (Niveau N3) : Démontrer par disjonction des cas ou factorisation la propriété associée à « ${capExtraFr} ».`
       );
-  } else {
+    } else if (
+      (titleFr.includes("continuit") || titleFr.includes("logarithm") || titleFr.includes("exponentielle")) &&
+      /réciproque|bijection|suite/.test(capsFrLower)
+    ) {
       questionsAr.push(
         `${nextNum}. تأويل مبياني (المستوى N2): بين أن الدالة تقبل دالة عكسية f⁻¹ على مجال يطلب تحديده، ثم أنشئ منحناها (C_{f⁻¹}) في نفس المعلم المتعامد الممنظم.`,
         `${nextNum + 1}. سؤال التوليف والمبادرة (المستوى N3): باعتبار المتتالية المعرفة بـ u_{n+1} = f(u_n)، أدرس رتابتها وتقاربها.`
@@ -2313,6 +2571,69 @@ export function getVariantQuestions(
         `${nextNum}. Bijection & Courbe réciproque (Niveau N2) : Montrer que f réalise une bijection sur un intervalle J à préciser et construire (C_{f⁻¹}) dans le même repère.`,
         `${nextNum + 1}. Problème de synthèse (Niveau N3) : Étudier la monotonie et la convergence de la suite récurrente définie par u_{n+1} = f(u_n).`
       );
+    } else {
+      questionsAr.push(
+        `سؤال التوليف والمناقشة المبيانية (المستوى N3): ناقش مبيانياً حسب قيم الوسيط الحقيقي $m$ عدد حلول المعادلة $f(x) = m$ في مجموعة التعريف.`
+      );
+      questionsFr.push(
+        `Synthèse & Discussion graphique (Niveau N3) : Discuter graphiquement suivant les valeurs du paramètre réel $m$ le nombre de solutions de l'équation $f(x) = m$.`
+      );
+    }
+  }
+
+  // دمج الجمل التمهيدية غير الاستفهامية (مثل "الجزء الأول: نعتبر الدالة..." أو "Soit f...") في بداية السؤال الموالي
+  // لضمان أن كل عنصر مرقم في الفرض يمثل سؤالاً حقيقياً خاضعاً للتنقيط بدون منح نقط لنص المعطيات فقط
+  if (
+    !lesson.hasCustomQuestions &&
+    !lesson.isImportedSimulation &&
+    !(lesson.sampleSolutionAr && lesson.sampleSolutionAr.length > 0) &&
+    !(lesson.sampleSolutionFr && lesson.sampleSolutionFr.length > 0) &&
+    questionsAr.length === questionsFr.length &&
+    questionsFr.length > 1
+  ) {
+    const isPureContextPreamble = (qFr: string): boolean => {
+      const t = (qFr || "").trim();
+      if (!t) return false;
+      if (/^(?:\d+[\.\)\-]|[a-d][\)\.])\s*/i.test(t)) return false;
+      if (t.includes("?")) return false;
+      if (
+        /\b(calculer|montrer|démontrer|déterminer|résoudre|étudier|dresser|vérifier|simplifier|donner|écrire|exprimer|préciser|construire|tracer|discuter|justifier|comparer|factoriser|développer|établir|déduire|interpréter|placer|représenter|encadrer|classer|trouver|combien|quel|quelle|quels|quelles|prouver|caractériser)\b/i.test(
+          t
+        )
+      ) {
+        return false;
+      }
+      return true;
+    };
+
+    const foldedAr: string[] = [];
+    const foldedFr: string[] = [];
+    let pendingAr = "";
+    let pendingFr = "";
+
+    for (let i = 0; i < questionsFr.length; i++) {
+      const curAr = questionsAr[i] || "";
+      const curFr = questionsFr[i] || "";
+      if (i < questionsFr.length - 1 && isPureContextPreamble(curFr)) {
+        pendingAr = pendingAr ? `${pendingAr} ${curAr.trim()}` : curAr.trim();
+        pendingFr = pendingFr ? `${pendingFr} ${curFr.trim()}` : curFr.trim();
+      } else {
+        if (pendingFr) {
+          const cleanNextAr = curAr.replace(/^\s*(?:\d+|[\u0660-\u0669]+)[\.\)\-]\s*(?:[أبجد][\)\.\-]\s+)?/, "").trim();
+          const cleanNextFr = curFr.replace(/^\s*\d+[\.\)\-]\s*(?:[a-d][\)\.\-]\s+)?/i, "").trim();
+          foldedAr.push(`${pendingAr} ${cleanNextAr}`.trim());
+          foldedFr.push(`${pendingFr} ${cleanNextFr}`.trim());
+          pendingAr = "";
+          pendingFr = "";
+        } else {
+          foldedAr.push(curAr);
+          foldedFr.push(curFr);
+        }
+      }
+    }
+    if (foldedFr.length >= 3) {
+      questionsAr = foldedAr;
+      questionsFr = foldedFr;
     }
   }
 

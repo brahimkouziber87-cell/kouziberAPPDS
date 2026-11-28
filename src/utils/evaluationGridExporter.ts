@@ -127,9 +127,9 @@ export function buildCustomEvaluationGrid(
       dsStructureMode === "COMPLETE_EXAM_MAROC");
   const hasSynthesisProblem =
     isDS &&
-    !isMission &&
     (dsStructureMode === "EXERCICES_ET_PROBLEME" ||
-      dsStructureMode === "COMPLETE_EXAM_MAROC");
+      dsStructureMode === "COMPLETE_EXAM_MAROC" ||
+      dsStructureMode === "EXAMEN_BLANC_2BAC");
   const synthProbForBudget = hasSynthesisProblem
     ? generateMoroccanSynthesisProblem(lessons, modelCode, track.cycle, isMission)
     : null;

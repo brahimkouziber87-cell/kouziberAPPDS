@@ -600,6 +600,100 @@ D'après la formule d'IPP : $I = \\left[ -(x+1)e^{-x} \\right]_0^1 + \\int_0^1 e
       ],
     });
   } else if (
+    titleFr.includes("statistique") ||
+    titleAr.includes("الإحصاء")
+  ) {
+    solutions.push({
+      questionNumber: "1",
+      questionText: questionsFr[0] || "Tableau des effectifs cumulés croissants, mode et médiane",
+      solutionTextAr: `1. حساب الحصيصات المتراكمة والحصيص الإجمالي $N = \\sum n_i$.
+- المنوال هو قيمة الميزة ذات أكبر حصيص.
+- القيمة الوسطية $M_e$ هي أصغر قيمة للميزة حصيصها المتراكم أكبر من أو يساوي $\\frac{N}{2}$.`,
+      solutionTextFr: `1. Calcul des effectifs cumulés croissants et de l'effectif total $N = \\sum n_i$.
+- Le mode est la valeur du caractère correspondant au plus grand effectif.
+- La médiane $M_e$ est la plus petite valeur dont l'effectif cumulé est supérieur ou égal à $\\frac{N}{2}$.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : إتمام جدول الحصيصات المتراكمة وحساب الحصيص الإجمالي $N$",
+        "0.50 ن : تحديد المنوال مع التعليل",
+        "0.50 ن : تحديد القيمة الوسطية $M_e$",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Effectifs cumulés croissants et effectif total $N$",
+        "0.50 pt : Identification du mode",
+        "0.50 pt : Détermination de la médiane $M_e$",
+      ],
+    });
+    solutions.push({
+      questionNumber: "2",
+      questionText: questionsFr[1] || "Moyenne arithmétique, variance et écart-type",
+      solutionTextAr: `2. المعدل الحسابي $\\bar{x} = \\frac{1}{N} \\sum n_i x_i$.
+- المغايرة $V = \\frac{1}{N} \\sum n_i (x_i - \\bar{x})^2 = \\frac{1}{N}\\sum n_i x_i^2 - \\bar{x}^2$، والانحراف الطرازي $\\sigma = \\sqrt{V}$.`,
+      solutionTextFr: `2. Moyenne arithmétique : $\\bar{x} = \\frac{1}{N} \\sum n_i x_i$.
+- Variance : $V = \\frac{1}{N} \\sum n_i x_i^2 - \\bar{x}^2$ et écart-type $\\sigma = \\sqrt{V}$.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : تطبيق صيغة المعدل الحسابي $\\bar{x}$",
+        "0.50 ن : حساب المغايرة $V$",
+        "0.50 ن : استنتاج الانحراف الطرازي $\\sigma = \\sqrt{V}$",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Calcul de la moyenne arithmétique $\\bar{x}$",
+        "0.50 pt : Calcul de la variance $V$",
+        "0.50 pt : Calcul de l'écart-type $\\sigma = \\sqrt{V}$",
+      ],
+    });
+  } else if (
+    titleFr.includes("dénombrement") ||
+    titleAr.includes("التعداد")
+  ) {
+    solutions.push({
+      questionNumber: "1",
+      questionText: questionsFr[0] || "Dénombrement : tirages simultanés (combinaisons) et successifs (arrangements)",
+      solutionTextAr: `1. السحب آنياً: نستعمل التأليفات $C_n^p = \\frac{n!}{p!(n-p)!}$ لتحديد عدد السحبات الممكنة.
+2. السحب بالتتابع وبدون إحلال: الترتيب مهم، نستعمل الترتيبات $A_n^p = \\frac{n!}{(n-p)!}$.
+3. السحب بالتتابع وبإحلال: عدد الإمكانيات هو $n^p$.`,
+      solutionTextFr: `1. Tirage simultané : l'ordre n'intervient pas, on utilise les combinaisons $C_n^p = \\frac{n!}{p!(n-p)!}$.
+2. Tirage successif sans remise : l'ordre intervient, on utilise les arrangements $A_n^p = \\frac{n!}{(n-p)!}$.
+3. Tirage successif avec remise : le nombre de tirages possibles est $n^p$.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : اختيار النموذج التعدادي المناسب ($C_n^p$ أو $A_n^p$ أو $n^p$)",
+        "0.50 ن : تفكيك الحالات وحساب عدد الإمكانيات",
+        "0.50 ن : النتيجة العددية النهائية المضبوطة",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Choix du modèle de dénombrement ($C_n^p$, $A_n^p$ ou $n^p$)",
+        "0.50 pt : Décomposition des cas et calculs intermédiaires",
+        "0.50 pt : Résultat numérique exact",
+      ],
+    });
+  } else if (
+    titleFr.includes("barycentre") ||
+    titleAr.includes("المرجح")
+  ) {
+    solutions.push({
+      questionNumber: "1",
+      questionText: questionsFr[0] || "Existence, relation vectorielle et associativité du barycentre",
+      solutionTextAr: `1. شرط الوجود: مجموع المعاملات غير منعدم ($\\alpha + \\beta \\neq 0$).
+2. العلاقة المتجهية: $\\alpha\\vec{GA} + \\beta\\vec{GB} = \\vec{0} \\implies \\vec{AG} = \\frac{\\beta}{\\alpha + \\beta}\\vec{AB}$.
+3. خاصية التجميعية: بتعويض $(A,\\alpha)$ و $(B,\\beta)$ بمرجحهما الجزئي $(G, \\alpha+\\beta)$ نستنتج استقامية النقط.`,
+      solutionTextFr: `1. Condition d'existence : la somme des coefficients est non nulle ($\\alpha + \\beta \\neq 0$).
+2. Relation vectorielle : $\\alpha\\vec{GA} + \\beta\\vec{GB} = \\vec{0} \\implies \\vec{AG} = \\frac{\\beta}{\\alpha + \\beta}\\vec{AB}$.
+3. Associativité du barycentre : on remplace $(A,\\alpha)$ et $(B,\\beta)$ par leur barycentre partiel $(G, \\alpha+\\beta)$ pour conclure à l'alignement.`,
+      bareme: "1.50 pt",
+      baremeBreakdownAr: [
+        "0.50 ن : التحقق من شرط وجود المرجح وحساب $\\vec{AG}$",
+        "0.50 ن : تطبيق خاصية التجميعية واستنتاج الاستقامية",
+        "0.50 ن : تحديد مجموعة النقط $(\\Gamma)$ بدقة",
+      ],
+      baremeBreakdownFr: [
+        "0.50 pt : Existence du barycentre et expression de $\\vec{AG}$",
+        "0.50 pt : Associativité du barycentre et alignement",
+        "0.50 pt : Caractérisation géométrique de l'ensemble $(\\Gamma)$",
+      ],
+    });
+  } else if (
     lesson.subCategory === "احتمالات وإحصاء" ||
     titleFr.includes("probabilit") ||
     titleAr.includes("الاحتمالات")
